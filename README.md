@@ -1,0 +1,138 @@
+# Perlin Studio
+
+> Parametrische 3D/4D-Perlin-Animationen im Browser — Worker-beschleunigt,
+> WebM-Export, nahtlos loopbar. Komplett clientseitig, keine Dependencies,
+> kein Build-Step.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![No build step](https://img.shields.io/badge/build-none-blue)
+![No dependencies](https://img.shields.io/badge/dependencies-0-success)
+![Browser only](https://img.shields.io/badge/runtime-browser-orange)
+
+Aus zwei alten Hobbyprojekten (`_archiv/texturizer.ipynb` Anfang 2023 +
+`_archiv/perlin_noise/` Mai 2023) zu einem fokussierten Browser-Tool
+zusammengewachsen. Geeignet für statisches Hosting, Embedding auf der
+Homepage und als Grundlage für ein Obsidian-Plugin.
+
+---
+
+## Quickstart
+
+```bash
+# Variante A — Doppelklick reicht
+open index.html       # macOS
+start index.html      # Windows
+xdg-open index.html   # Linux
+
+# Variante B — lokaler Server (für Hot-Reload während Entwicklung)
+python3 -m http.server 8000
+# → http://localhost:8000
+```
+
+Drücke **▶** oder **Leertaste**, klicke einen Preset-Chip, oder drehe an
+den Reglern — die Live-Vorschau aktualisiert sich nach jedem Input.
+
+## Was kann es?
+
+- **Live-Vorschau** parametrischer Perlin-Animationen (fBm mit Oktaven,
+  Persistence, Lacunarity, Seed)
+- **Vier Farb-Modi**: RGB (pro Kanal), Gradient (8 Presets), HSV, Posterize
+- **Nahtloser Loop** — 4D-Perlin mit Kreisbahn in `(z, w)`, mathematisch
+  perfekt schließend, ohne „Atmen"-Effekt
+- **WebM-Export** beliebiger Länge/Framerate via `MediaRecorder`
+- **PNG-Snapshot** des aktuellen Frames
+- **Preset-System** mit 6 Builtin-Presets und JSON-Import/Export
+- **Worker-beschleunigt** — Main-Thread bleibt frei, Frame-Skip ohne Drift,
+  Wall-Clock-Zeit als Animation-Basis
+
+## Bedienung
+
+Komplette Bedienungsanleitung mit allen Parametern erklärt:
+**[docs/USAGE.md](docs/USAGE.md)**.
+
+Kurzfassung der wichtigsten Bedienelemente:
+
+| Element | Funktion |
+|---------|----------|
+| Linke Sidebar | Alle Parameter (Auflösung, Rauschen, Loop, Farbe, Presets, Export) |
+| Großes Canvas | Live-Vorschau (immer aktuell zum Slider-/Input-Stand) |
+| **▶ / Space** | Play/Pause |
+| **⏮** | Slider zurück auf 0 |
+| **t-Slider** | Zeit-Scrubbing (Loop: `[0, 1)`, sonst frei) |
+| **fps / frames** | Wirken nur beim WebM-Export |
+
+## Architektur in einem Bild
+
+```
+Main-Thread (UI)              Web Worker
+┌─────────────────┐           ┌────────────────┐
+│ RAF-Loop        │ params/t  │ makePermutation│
+│ gatherParams()  │──────────▶│ fbm3/fbm4      │
+│                 │           │ colorize()     │
+│ putImageData    │ ImageData │                │
+│ (zero-copy)     │◀──────────│ postMessage    │
+│                 │           │  (transferable)│
+└─────────────────┘           └────────────────┘
+```
+
+Vollständige technische Doku (Math, Pipeline, Edge-Cases):
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
+## Browser-Kompatibilität
+
+| Browser | Status |
+|---------|--------|
+| Chrome / Edge (Chromium) ≥ 90 | ✅ voll inkl. Worker + VP9-WebM |
+| Firefox ≥ 90 | ✅ voll, WebM via VP8 |
+| Safari ≥ 14 | ✅ Live-Vorschau; WebM-Export funktioniert, manche Versionen unter `file://` blockieren den Worker → Fallback auf Main-Thread |
+| Mobile Safari / Chrome Mobile | ✅ Live-Vorschau; Export erfordert evtl. längere Touch-Geste |
+
+Die App ist responsive und funktioniert auf Mobilgeräten — der Worker-Pfad
+hält die Animation auch bei niedriger Auflösung flüssig.
+
+## Projektstruktur
+
+```
+.
+├── index.html             # UI-Markup
+├── styles.css             # Theme (Dark + Light auto via prefers-color-scheme)
+├── perlin.js              # Math/API (3D+4D-Noise, Farb-Modi, Worker-Source)
+├── perlin-studio.js       # Controller (RAF-Loop, Recording, Presets, Events)
+├── assets/                # leer (Platzhalter für künftige statische Assets)
+├── docs/
+│   ├── ARCHITECTURE.md    # technische Doku
+│   └── USAGE.md           # ausführliche Bedienungsanleitung
+├── _archiv/               # historische Vorgänger (READ-ONLY)
+│   ├── perlin_noise/      # Python-Original
+│   ├── texturizer.ipynb   # Texturizer-Notebook
+│   └── old_texturizer_combined/   # erste Browser-Version inkl. Texturizer
+├── LICENSE                # MIT
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── AGENTS.md              # Kontext für KI-Assistenten
+```
+
+## Mitmachen
+
+Issues und PRs willkommen. Quickstart für Entwickler:
+**[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
+Für KI-Assistenten (Claude Code etc.) liegt eine Orientierung in
+**[AGENTS.md](AGENTS.md)**.
+
+## Roadmap
+
+- [ ] **Gradient-Editor** — eigene Color Stops definieren statt nur Presets
+- [ ] **Tileable Noise** — `repeatx`/`repeaty`/`repeatz` wie in der
+  Python-Library, für nahtlos kachelbare Texturen
+- [ ] **GIF-Export** als Alternative zu WebM (`gif.js`, ~12 KB)
+- [ ] **Obsidian-Plugin** — `main.ts` mit Modal + Canvas-Embed
+- [ ] **Web-Component** — embed-bare `<perlin-studio>`-Variante für Homepage
+
+## Lizenz
+
+MIT — siehe [LICENSE](LICENSE).
+
+Die Perlin-Permutationstabelle und die „Improved Noise"-Algorithmik stammen
+aus Ken Perlins frei publizierter Java-Referenz (2002), die hier in JS
+nachimplementiert ist.

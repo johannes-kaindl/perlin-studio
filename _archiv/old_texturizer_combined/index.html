@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minecraft Texturizer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <h1>Minecraft Texturizer</h1>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-mode="texturize" role="tab" aria-selected="true">Texturizer</button>
+        <button class="tab" data-mode="perlin" role="tab" aria-selected="false">Perlin Studio</button>
+      </nav>
+    </div>
+    <p class="subtitle" id="mode-subtitle">
+      Verwandle ein beliebiges Bild in ein Mosaik aus Minecraft-Texturen — komplett im Browser.
+    </p>
+  </header>
+
+  <main>
+    <!-- ============ TEXTURIZER MODE ============ -->
+    <section class="panel mode mode-texturize active" id="panel-texturize">
+      <h2>1. Eingangsbild</h2>
+
+      <div class="dropzone" id="dropzone-image" data-target="image">
+        <strong>Eingangsbild</strong>
+        <small>Klicken oder hierher ziehen (PNG / JPG / WEBP)</small>
+        <input type="file" id="file-image" accept="image/*" hidden>
+        <img class="preview" id="preview-image" alt="">
+      </div>
+
+      <p class="cross-hint">
+        Du kannst auch im <a href="#" data-jump-to="perlin">Perlin Studio</a> ein
+        Bild oder eine Animation generieren und an den Texturizer übergeben.
+      </p>
+
+      <h2>2. Atlas</h2>
+      <div class="dropzone" id="dropzone-atlas" data-target="atlas">
+        <strong>Textur-Atlas</strong>
+        <small>Optional — Standard-Atlas wird geladen, falls leer.</small>
+        <input type="file" id="file-atlas" accept="image/*" hidden>
+        <img class="preview" id="preview-atlas" alt="">
+      </div>
+
+      <h2>3. Parameter</h2>
+      <label>
+        Tiles pro Atlas-Zeile/Spalte
+        <input type="number" id="atlas-tiles" min="1" max="64" value="16" step="1">
+        <small>Standard-Atlas: 16. Bei eigenem Atlas: wie viele Texturen entlang einer Kante.</small>
+      </label>
+
+      <label>
+        Output-Breite (in Blöcken)
+        <input type="number" id="output-width" min="4" max="512" value="64" step="1">
+        <small>Mehr = detaillierter, aber langsamer.</small>
+      </label>
+
+      <label>
+        Block-Pixelgröße (Output)
+        <input type="number" id="block-size" min="2" max="64" value="16" step="1">
+        <small>Wie groß jeder Block im Output-Bild gerendert wird.</small>
+      </label>
+
+      <label>
+        Farb-Distanz
+        <select id="metric">
+          <option value="weighted" selected>Gewichtet (wahrnehmungsnah)</option>
+          <option value="rgb">Euklidisch RGB</option>
+          <option value="lab">CIE76 (Lab)</option>
+        </select>
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" id="solid-mode">
+        Nur Durchschnittsfarbe (kein Textur-Mosaik)
+      </label>
+
+      <button id="btn-render" class="primary" disabled>Mosaik generieren</button>
+      <button id="btn-reset" class="secondary">Zurücksetzen</button>
+    </section>
+
+    <!-- ============ PERLIN STUDIO MODE ============ -->
+    <section class="panel mode mode-perlin" id="panel-perlin">
+      <h2>Perlin-Parameter</h2>
+
+      <div class="perlin-grid">
+        <label>Breite<input type="number" id="perlin-w" min="4" max="1024" value="256"></label>
+        <label>Höhe<input type="number" id="perlin-h" min="4" max="1024" value="256"></label>
+        <label>scale x<input type="number" id="perlin-sx" step="0.01" value="0.02"></label>
+        <label>scale y<input type="number" id="perlin-sy" step="0.01" value="0.02"></label>
+        <label>scale t<input type="number" id="perlin-st" step="0.01" value="0.5"></label>
+        <label>base (seed)<input type="number" id="perlin-base" value="0"></label>
+        <label>octaves<input type="number" id="perlin-oct" min="1" max="10" value="6"></label>
+        <label>persistence<input type="number" id="perlin-pers" step="0.05" value="0.5"></label>
+        <label class="span2">lacunarity<input type="number" id="perlin-lac" step="0.1" value="2.0"></label>
+
+        <label class="span2">r scale<input type="range" id="perlin-rs" min="0" max="2" step="0.05" value="0.0"></label>
+        <label class="span2">g scale<input type="range" id="perlin-gs" min="0" max="2" step="0.05" value="1.0"></label>
+        <label class="span2">b scale<input type="range" id="perlin-bs" min="0" max="2" step="0.05" value="0.0"></label>
+
+        <label class="checkbox"><input type="checkbox" id="perlin-ri"> r invert</label>
+        <label class="checkbox"><input type="checkbox" id="perlin-gi" checked> g invert</label>
+        <label class="checkbox"><input type="checkbox" id="perlin-bi" checked> b invert</label>
+      </div>
+
+      <h2>t — Zeitkoordinate (Live)</h2>
+      <label class="t-slider-label">
+        <span>t = <span id="perlin-t-display">0.00</span></span>
+        <input type="range" id="perlin-t" min="0" max="100" step="0.05" value="0">
+        <small>Bewegung des Sliders rendert live (debounced). Für Animationen wird t von 0 bis frames × scale_t durchgefahren.</small>
+      </label>
+
+      <h2>Animation</h2>
+      <div class="perlin-grid">
+        <label>Frames<input type="number" id="perlin-frames" min="1" max="600" value="120"></label>
+        <label>FPS<input type="number" id="perlin-fps" min="1" max="60" value="24"></label>
+      </div>
+
+      <label class="checkbox" id="texturize-toggle-wrap">
+        <input type="checkbox" id="perlin-texturize">
+        Animation durch Texturizer rendern (jedes Frame als Block-Mosaik)
+      </label>
+
+      <div class="perlin-actions stacked">
+        <button id="btn-perlin-gen">Standbild rendern</button>
+        <button id="btn-perlin-anim" class="primary">Animation (WebM) exportieren</button>
+        <button id="btn-perlin-use">Aktuelles Standbild → Texturizer</button>
+      </div>
+
+      <p class="cross-hint">
+        Der Texturizer-Tab teilt sich Atlas + Mosaik-Parameter mit diesem Studio.
+        Stelle dort <em>Output-Breite</em>, <em>Block-Pixelgröße</em> usw. ein, bevor du
+        eine texturisierte Animation startest.
+      </p>
+    </section>
+
+    <!-- ============ SHARED OUTPUT PANEL ============ -->
+    <section class="panel" id="output">
+      <h2 id="output-title">Ergebnis</h2>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="canvas-output"></canvas>
+        <canvas id="canvas-perlin" class="hidden-canvas"></canvas>
+        <video id="anim-preview" class="hidden-canvas" controls loop></video>
+        <p class="hint" id="output-hint">Lade ein Eingangsbild und klicke „Mosaik generieren".</p>
+      </div>
+
+      <div class="status" id="status"></div>
+      <div class="progress" id="progress"><div class="bar" id="progress-bar"></div></div>
+
+      <div class="actions">
+        <button id="btn-download" disabled>PNG herunterladen</button>
+        <button id="btn-download-csv" disabled>Farbpalette als CSV</button>
+        <button id="btn-download-webm" disabled hidden>WebM herunterladen</button>
+      </div>
+
+      <details class="palette-details">
+        <summary>Atlas-Palette anzeigen</summary>
+        <div id="palette-grid"></div>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <small>
+      Vanilla JS, kein Backend. Aus dem alten Hobbyprojekt
+      <code>_archiv/texturizer.ipynb</code> + <code>_archiv/perlin_noise/</code>.
+    </small>
+  </footer>
+
+  <script src="perlin.js" defer></script>
+  <script src="texturizer.js" defer></script>
+</body>
+</html>
