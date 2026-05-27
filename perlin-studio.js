@@ -94,6 +94,9 @@ const GRADIENTS = {
 // the loop stays within a single cell-sized region.
 const LOOP_DEFAULTS = { loop: true, loopDuration: 4, loopRadius: 1.0 };
 
+// Default warp = off. Presets that want warp opt in explicitly.
+const WARP_OFF = { warpStrength: 0, warpScale: 1 };
+
 const BUILTIN_PRESETS = {
   default: {
     width: 256, height: 256,
@@ -102,46 +105,67 @@ const BUILTIN_PRESETS = {
     colorMode: "rgb",
     rScale: 0, gScale: 1, bScale: 0,
     rInvert: false, gInvert: true, bInvert: true,
-    ...LOOP_DEFAULTS,
+    ...WARP_OFF, ...LOOP_DEFAULTS,
   },
   lava: {
     width: 384, height: 256,
     scaleX: 0.015, scaleY: 0.015, scaleT: 0.12,
     octaves: 5, persistence: 0.65, lacunarity: 2.2, base: 7,
     colorMode: "gradient", gradientName: "fire",
-    ...LOOP_DEFAULTS, loopDuration: 6,
+    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 6,
   },
   aurora: {
     width: 384, height: 256,
     scaleX: 0.009, scaleY: 0.024, scaleT: 0.18,
     octaves: 5, persistence: 0.6, lacunarity: 2.4, base: 19,
     colorMode: "hsv", hsvHueShift: 0.30, hsvHueRange: 0.48, hsvSat: 0.88, hsvVal: 1.0,
-    ...LOOP_DEFAULTS, loopDuration: 5,
+    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 5,
   },
   clouds: {
     width: 384, height: 256,
     scaleX: 0.008, scaleY: 0.008, scaleT: 0.1,
     octaves: 7, persistence: 0.5, lacunarity: 2.0, base: 3,
     colorMode: "gradient", gradientName: "grayscale",
-    ...LOOP_DEFAULTS, loopDuration: 8,
+    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 8,
   },
   terrain: {
     width: 384, height: 256,
     scaleX: 0.01, scaleY: 0.01, scaleT: 0.08,
     octaves: 6, persistence: 0.55, lacunarity: 2.0, base: 42,
     colorMode: "posterize", posterizeSteps: 6, gradientName: "forest",
-    ...LOOP_DEFAULTS, loopDuration: 10,
+    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 10,
   },
   circuit: {
     width: 384, height: 256,
     scaleX: 0.03, scaleY: 0.03, scaleT: 0.2,
     octaves: 3, persistence: 0.7, lacunarity: 3.0, base: 11,
     colorMode: "posterize", posterizeSteps: 3, gradientName: "ocean",
-    ...LOOP_DEFAULTS, loopDuration: 3,
+    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 3,
+  },
+  // Domain-warp showcase: chunky low-octave field gets pulled into
+  // marble-vein swirls by a slower, stronger warp field. Warm earthy
+  // gradient sells the stone look.
+  marble: {
+    width: 384, height: 256,
+    scaleX: 0.012, scaleY: 0.012, scaleT: 0.1,
+    octaves: 4, persistence: 0.55, lacunarity: 2.2, base: 31,
+    warpStrength: 1.6, warpScale: 0.6,
+    colorMode: "gradient", gradientName: "sunset",
+    ...LOOP_DEFAULTS, loopDuration: 8,
   },
 };
 
 // ============= STATE =============
+// Custom gradient — survives switches between named presets and "Custom"
+// in the same session. JSON preset save/load round-trips it through the
+// `gradient` field. Seeded with viridis so first activation has something
+// editable rather than an empty list.
+const DEFAULT_CUSTOM_STOPS = [
+  { pos: 0.0, color: [68, 1, 84] },
+  { pos: 0.5, color: [33, 145, 140] },
+  { pos: 1.0, color: [253, 231, 37] },
+];
+
 const state = {
   worker: null,
   workerBusy: false,
@@ -155,6 +179,8 @@ const state = {
   lastFrameTime: 0,
   fpsEMA: 0,          // exponentially smoothed mean for the FPS readout
   framesRendered: 0,
+
+  customStops: DEFAULT_CUSTOM_STOPS.map(s => ({ pos: s.pos, color: s.color.slice() })),
 
   recording: false,
   recordedChunks: [],
@@ -173,6 +199,10 @@ const els = {
   sx: $("p-sx"), sy: $("p-sy"), st: $("p-st"),
   base: $("p-base"), oct: $("p-oct"), pers: $("p-pers"), lac: $("p-lac"),
 
+  // Warp
+  warpStrength: $("p-warp-strength"),
+  warpScale:    $("p-warp-scale"),
+
   // Loop
   loop: $("p-loop"),
   loopDuration: $("p-loop-duration"),
@@ -187,6 +217,9 @@ const els = {
   // gradient
   gradientPreset: $("p-gradient-preset"),
   gradientPreview: $("p-gradient-preview"),
+  customStopsWrap: $("custom-stops"),
+  customStopsList: $("custom-stops-list"),
+  btnAddStop: $("btn-add-stop"),
   // hsv
   hueShift: $("p-hue-shift"), hueRange: $("p-hue-range"),
   sat: $("p-sat"), val: $("p-val"),
@@ -272,6 +305,8 @@ function gatherParams() {
     octaves:     clampInt(els.oct.value, 1, 10, 6),
     persistence: clampFloat(els.pers.value, 0, 2, 0.5),
     lacunarity:  clampFloat(els.lac.value, 1, 8, 2.0),
+    warpStrength: clampFloat(els.warpStrength.value, 0, 8, 0),
+    warpScale:    clampFloat(els.warpScale.value, 0.05, 16, 1),
     colorMode,
     loop:         els.loop.checked,
     loopDuration: clampFloat(els.loopDuration.value, 0.5, 60, 4),
@@ -287,7 +322,9 @@ function gatherParams() {
   } else if (colorMode === "gradient") {
     const name = els.gradientPreset.value;
     base.gradientName = name;
-    base.gradient = GRADIENTS[name] || GRADIENTS.viridis;
+    base.gradient = (name === "custom")
+      ? state.customStops.map(s => ({ pos: s.pos, color: s.color.slice() }))
+      : (GRADIENTS[name] || GRADIENTS.viridis);
   } else if (colorMode === "hsv") {
     base.hsvHueShift = clampFloat(els.hueShift.value, 0, 1, 0);
     base.hsvHueRange = clampFloat(els.hueRange.value, 0, 1, 0.6);
@@ -297,7 +334,9 @@ function gatherParams() {
     base.posterizeSteps = clampInt(els.posterSteps.value, 2, 16, 5);
     const name = els.posterGradient.value;
     base.gradientName = name;
-    base.gradient = GRADIENTS[name] || GRADIENTS.viridis;
+    base.gradient = (name === "custom")
+      ? state.customStops.map(s => ({ pos: s.pos, color: s.color.slice() }))
+      : (GRADIENTS[name] || GRADIENTS.viridis);
   }
   return base;
 }
@@ -320,6 +359,8 @@ function applyParamsToUi(p) {
   if (p.octaves != null) els.oct.value = p.octaves;
   if (p.persistence != null) els.pers.value = p.persistence;
   if (p.lacunarity != null) els.lac.value = p.lacunarity;
+  if (p.warpStrength != null) els.warpStrength.value = p.warpStrength;
+  if (p.warpScale != null) els.warpScale.value = p.warpScale;
 
   if (p.loop != null) { els.loop.checked = p.loop; }
   if (p.loopDuration != null) els.loopDuration.value = p.loopDuration;
@@ -339,6 +380,16 @@ function applyParamsToUi(p) {
   if (p.gradientName) {
     els.gradientPreset.value = p.gradientName;
     els.posterGradient.value = p.gradientName;
+    // A saved custom gradient travels in `p.gradient`. Pull it into state
+    // so the editor reflects what was loaded — otherwise switching to
+    // "Custom" would silently show the previous in-memory stops.
+    if (p.gradientName === "custom" && Array.isArray(p.gradient) && p.gradient.length >= 2) {
+      state.customStops = p.gradient.map(s => ({
+        pos: typeof s.pos === "number" ? s.pos : 0,
+        color: Array.isArray(s.color) ? s.color.slice(0, 3) : [0, 0, 0],
+      }));
+      renderCustomStops();
+    }
     updateGradientPreview();
   }
   if (p.hsvHueShift != null) els.hueShift.value = p.hsvHueShift;
@@ -377,15 +428,115 @@ function updateLoopMode() {
   els.tDisplay.textContent = parseFloat(els.t.value).toFixed(2);
 }
 
+function activeGradientStops() {
+  const mode = els.colorMode.value;
+  const name = mode === "posterize" ? els.posterGradient.value : els.gradientPreset.value;
+  if (name === "custom") return state.customStops;
+  return GRADIENTS[name] || GRADIENTS.viridis;
+}
+
 function updateGradientPreview() {
-  const name = els.colorMode.value === "posterize"
-    ? els.posterGradient.value
-    : els.gradientPreset.value;
-  const stops = GRADIENTS[name] || GRADIENTS.viridis;
+  const stops = activeGradientStops();
   const css = stops
     .map(s => `rgb(${s.color.join(",")}) ${(s.pos * 100).toFixed(1)}%`)
     .join(", ");
   els.gradientPreview.style.background = `linear-gradient(to right, ${css})`;
+  // Show the custom-stops editor only when the active gradient mode is custom.
+  const mode = els.colorMode.value;
+  const name = mode === "posterize" ? els.posterGradient.value : els.gradientPreset.value;
+  els.customStopsWrap.hidden = !(mode === "gradient" && name === "custom");
+}
+
+// ---- Custom gradient editor ----
+// state.customStops is the single source of truth. The DOM is rebuilt from
+// it on every change (cheap — at most ~10 stops) so we never have to keep
+// the editor's row order in sync with the array by hand.
+function rgbToHex(rgb) {
+  const h = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return "#" + h(rgb[0]) + h(rgb[1]) + h(rgb[2]);
+}
+function hexToRgb(hex) {
+  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || "");
+  if (!m) return [0, 0, 0];
+  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+function renderCustomStops() {
+  const list = els.customStopsList;
+  list.textContent = "";
+  // Sort by position so the editor reads left-to-right and the gradient
+  // lookup also gets a monotonically ordered list.
+  state.customStops.sort((a, b) => a.pos - b.pos);
+  for (let i = 0; i < state.customStops.length; i++) {
+    const stop = state.customStops[i];
+    const row = document.createElement("div");
+    row.className = "custom-stop";
+
+    const pos = document.createElement("input");
+    pos.type = "range"; pos.min = "0"; pos.max = "1"; pos.step = "0.01";
+    pos.value = String(stop.pos);
+    pos.className = "stop-pos";
+    pos.addEventListener("input", () => {
+      stop.pos = parseFloat(pos.value);
+      updateGradientPreview();
+      schedulePreview();
+    });
+    pos.addEventListener("change", () => {
+      // On release: re-sort and rebuild so the row reorders if positions crossed.
+      renderCustomStops();
+    });
+
+    const color = document.createElement("input");
+    color.type = "color";
+    color.value = rgbToHex(stop.color);
+    color.className = "stop-color";
+    color.addEventListener("input", () => {
+      stop.color = hexToRgb(color.value);
+      updateGradientPreview();
+      schedulePreview();
+    });
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "stop-remove";
+    remove.setAttribute("aria-label", "Remove stop");
+    remove.title = "Remove stop";
+    remove.textContent = "×";
+    remove.disabled = state.customStops.length <= 2;
+    remove.addEventListener("click", () => {
+      if (state.customStops.length <= 2) return;
+      state.customStops.splice(i, 1);
+      renderCustomStops();
+      updateGradientPreview();
+      schedulePreview();
+    });
+
+    row.appendChild(pos);
+    row.appendChild(color);
+    row.appendChild(remove);
+    list.appendChild(row);
+  }
+}
+function addCustomStop() {
+  // Insert at the midpoint of the largest gap so the new stop appears
+  // somewhere visible by default. Color = linear interpolation between
+  // the neighbouring stops.
+  const s = state.customStops.slice().sort((a, b) => a.pos - b.pos);
+  let bestGap = 0, leftIdx = 0;
+  for (let i = 0; i < s.length - 1; i++) {
+    const gap = s[i + 1].pos - s[i].pos;
+    if (gap > bestGap) { bestGap = gap; leftIdx = i; }
+  }
+  const a = s[leftIdx], b = s[leftIdx + 1];
+  const pos = (a.pos + b.pos) / 2;
+  const color = [
+    Math.round((a.color[0] + b.color[0]) / 2),
+    Math.round((a.color[1] + b.color[1]) / 2),
+    Math.round((a.color[2] + b.color[2]) / 2),
+  ];
+  state.customStops.push({ pos, color });
+  renderCustomStops();
+  updateGradientPreview();
+  schedulePreview();
 }
 
 // ============= WORKER (with main-thread fallback) =============
@@ -773,6 +924,7 @@ function downloadWebm() {
 // ============= EVENTS =============
 const PARAM_INPUTS = [
   "w", "h", "sx", "sy", "st", "base", "oct", "pers", "lac",
+  "warpStrength", "warpScale",
   "loopDuration", "loopRadius",
   "rs", "gs", "bs", "ri", "gi", "bi",
   "hueShift", "hueRange", "sat", "val",
@@ -796,6 +948,7 @@ function wireEvents() {
     updateGradientPreview();
     schedulePreview();
   });
+  els.btnAddStop.addEventListener("click", addCustomStop);
 
   els.t.addEventListener("input", () => {
     els.tDisplay.textContent = parseFloat(els.t.value).toFixed(2);
@@ -891,6 +1044,7 @@ function initThemeToggle() {
 (function init() {
   initWorker();
   updateColorSections();
+  renderCustomStops();
   updateGradientPreview();
   updateLoopMode();
   wireEvents();

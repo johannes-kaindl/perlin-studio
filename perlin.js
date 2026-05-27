@@ -249,6 +249,37 @@
     return (n + 1) * 0.5;
   }
 
+  // ---------- DOMAIN WARPING ----------
+  // Inigo-Quilez-style domain warp: displace the sample coordinate by a
+  // second, smoother noise field before running the main fbm. Tiny code,
+  // huge visual change — Perlin output stops looking like "Perlin" and
+  // starts looking like marble veins, ink in water, alien terrain.
+  //
+  // The displacement uses single-octave `perlin3/4` (not fbm) — cheap,
+  // smooth, and detail isn't useful in the warp field. Two arbitrary
+  // offsets (137/23 and 211/-53) decorrelate the x and y displacements
+  // from each other and from the main field, otherwise you'd get
+  // diagonal streaking.
+  //
+  // `warpStrength=0` skips the warp entirely → byte-identical output to
+  // the un-warped fbm path. That's the regression guarantee.
+
+  function warpedFbm3(perm, x, y, z, octaves, persistence, lacunarity, warpStrength, warpScale) {
+    if (!warpStrength) return fbm3(perm, x, y, z, octaves, persistence, lacunarity);
+    const s = warpScale || 1;
+    const dx = perlin3(perm, x * s + 137.0, y * s +  23.0, z) * warpStrength;
+    const dy = perlin3(perm, x * s + 211.0, y * s -  53.0, z) * warpStrength;
+    return fbm3(perm, x + dx, y + dy, z, octaves, persistence, lacunarity);
+  }
+
+  function warpedFbm4(perm, x, y, z, w, octaves, persistence, lacunarity, warpStrength, warpScale) {
+    if (!warpStrength) return fbm4(perm, x, y, z, w, octaves, persistence, lacunarity);
+    const s = warpScale || 1;
+    const dx = perlin4(perm, x * s + 137.0, y * s +  23.0, z, w) * warpStrength;
+    const dy = perlin4(perm, x * s + 211.0, y * s -  53.0, z, w) * warpStrength;
+    return fbm4(perm, x + dx, y + dy, z, w, octaves, persistence, lacunarity);
+  }
+
   // ---------- COLOR MODES ----------
 
   function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -347,7 +378,10 @@
       scaleX, scaleY, scaleT,
       octaves, persistence, lacunarity, base,
       loop, loopProgress, loopRadius,
+      warpStrength, warpScale,
     } = params;
+    const ws = warpStrength || 0;
+    const wsc = warpScale || 1;
 
     const perm = makePermutation(base);
     const img = ctx.createImageData(width, height);
@@ -366,7 +400,7 @@
       const wc = Math.sin(alpha) * radius;
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          const n = fbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity);
+          const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
           const [r, g, b] = colorize(n, params);
           const i = (y * width + x) * 4;
           data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
@@ -376,7 +410,7 @@
       const tz = (t || 0) * scaleT;
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          const n = fbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity);
+          const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
           const [r, g, b] = colorize(n, params);
           const i = (y * width + x) * 4;
           data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
@@ -401,6 +435,8 @@
     ${perlin4.toString()}
     ${fbm3.toString()}
     ${fbm4.toString()}
+    ${warpedFbm3.toString()}
+    ${warpedFbm4.toString()}
     ${clamp01.toString()}
     ${gradientLookup.toString()}
     ${hsvToRgb.toString()}
@@ -410,7 +446,10 @@
       const { id, params } = e.data;
       const { width, height, t, scaleX, scaleY, scaleT,
               octaves, persistence, lacunarity, base,
-              loop, loopProgress, loopRadius } = params;
+              loop, loopProgress, loopRadius,
+              warpStrength, warpScale } = params;
+      const ws = warpStrength || 0;
+      const wsc = warpScale || 1;
       const perm = makePermutation(base);
       const buf = new Uint8ClampedArray(width * height * 4);
 
@@ -422,7 +461,7 @@
         const wc = Math.sin(alpha) * radius;
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
-            const n = fbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity);
+            const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
             const c = colorize(n, params);
             const i = (y * width + x) * 4;
             buf[i] = c[0]; buf[i+1] = c[1]; buf[i+2] = c[2]; buf[i+3] = 255;
@@ -432,7 +471,7 @@
         const tz = (t || 0) * scaleT;
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
-            const n = fbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity);
+            const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
             const c = colorize(n, params);
             const i = (y * width + x) * 4;
             buf[i] = c[0]; buf[i+1] = c[1]; buf[i+2] = c[2]; buf[i+3] = 255;
@@ -447,6 +486,7 @@
 
   window.MTPerlin = {
     makePermutation, perlin3, perlin4, fbm3, fbm4,
+    warpedFbm3, warpedFbm4,
     generatePerlinImage, colorize,
     WORKER_SOURCE,
   };

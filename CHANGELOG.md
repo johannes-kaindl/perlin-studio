@@ -6,15 +6,38 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-05-27
+
 ### Added
+- **Domain warping** — new `Warp` section in the sidebar with
+  `strength` and `scale` controls. The classical Inigo-Quilez technique:
+  before each fbm sample, the `(x, y)` coordinate is displaced by a
+  smoother, single-octave noise field. Perlin output stops looking
+  like Perlin and starts looking like marble veins, ink in water,
+  alien terrain. Implemented as new top-level `warpedFbm3` / `warpedFbm4`
+  that auto-flow into the worker source via the existing `.toString()`
+  interpolation pattern. `warpStrength=0` is a fast path that returns
+  bit-identical output to plain fbm — smoke-tested as a regression guard.
+- **`marble` preset** showcasing domain warp on a warm sunset gradient
+  — chunky low-octave field pulled into stone-vein swirls.
+- **Custom gradient editor** — pick `Custom …` in the gradient-mode
+  preset dropdown and an inline stops editor appears: each stop has a
+  position slider and a colour picker, with add and remove buttons.
+  Stops are re-sorted on release. JSON preset save/load round-trips
+  the custom gradient through the existing `gradient` field. Default
+  seed is the viridis stops, so first activation has something
+  editable.
 - `scripts/smoke-test.js` — math invariants for `perlin.js`. Covers
   permutation determinism, `perlin3`/`perlin4` value range, loop
   identity at `progress=0` vs `progress=1` (bytewise and bit-exact at
-  the float level), Z/W axis independence, and `colorize` range. The
-  Forgejo deploy workflow now gates on it, so a regression in any of
-  these stops the site from being republished.
+  the float level), Z/W axis independence, domain-warp regression
+  (warpStrength=0 bit-identical to fbm) + activation, and `colorize`
+  range. The Forgejo deploy workflow gates on this — a regression in
+  any of these stops the site from being republished.
 
 ### Changed
+- Sidebar section numbering: Loop becomes `04`, Color mode `05`,
+  Presets `06`, Export `07` — Warp slots in at `03`.
 - PWA / address-bar `theme-color` meta tag now tracks the theme toggle
   too. Previously the two static `prefers-color-scheme`-keyed metas
   fell out of sync with explicit light/dark overrides on PWA install.

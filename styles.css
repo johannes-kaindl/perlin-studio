@@ -331,6 +331,14 @@ main {
   margin-left: 4px;
   align-self: center;
 }
+.sec-hint {
+  margin: -4px 0 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+}
 
 /* ----- Form rows ----- */
 label {
@@ -527,6 +535,76 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
   font-size: 9.5px;
   color: var(--text-faint);
   letter-spacing: 0.04em;
+}
+
+/* Custom-gradient stops editor */
+.custom-stops {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.custom-stops[hidden] { display: none; }
+.custom-stops-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.custom-stop {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+}
+.custom-stop .stop-pos {
+  width: 100%;
+  margin: 0;
+}
+.custom-stop .stop-color {
+  width: 28px; height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-3);
+  cursor: pointer;
+}
+.custom-stop .stop-color::-webkit-color-swatch-wrapper { padding: 2px; }
+.custom-stop .stop-color::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+.custom-stop .stop-color::-moz-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+.custom-stop .stop-remove {
+  width: 24px; height: 24px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-dim);
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.custom-stop .stop-remove:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 30%, var(--border));
+}
+.custom-stop .stop-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.add-stop-btn {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  background: var(--panel-3);
+}
+.add-stop-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
 }
 
 /* ============================================================

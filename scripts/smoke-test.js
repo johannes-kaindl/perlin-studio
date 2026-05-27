@@ -172,6 +172,37 @@ function ok(label, cond, detail) {
   ok("z and w shifts are not collinear", zwAgree <= 1, zwAgree + "/12 pairs were identical");
 }
 
+// ----- D2: domain warping regression + activation -----
+// warpStrength=0 must produce bit-identical output to the un-warped fbm.
+// That's the regression guard — adding the warp feature can't drift the
+// default rendering by even one float.
+{
+  const perm = MT.makePermutation(17);
+  let driftSamples = 0;
+  let activeSamples = 0;
+  for (let i = 0; i < 32; i++) {
+    const x = (i * 0.41) % 10;
+    const y = ((i + 5) * 0.27) % 10;
+    const z = 0.3;
+
+    const base3   = MT.fbm3(perm, x, y, z, 5, 0.5, 2.0);
+    const warp0_3 = MT.warpedFbm3(perm, x, y, z, 5, 0.5, 2.0, 0, 1);
+    const warp1_3 = MT.warpedFbm3(perm, x, y, z, 5, 0.5, 2.0, 0.8, 1);
+    if (base3 !== warp0_3) driftSamples++;
+    if (Math.abs(base3 - warp1_3) > 1e-9) activeSamples++;
+
+    const base4   = MT.fbm4(perm, x, y, z, 0.1, 5, 0.5, 2.0);
+    const warp0_4 = MT.warpedFbm4(perm, x, y, z, 0.1, 5, 0.5, 2.0, 0, 1);
+    const warp1_4 = MT.warpedFbm4(perm, x, y, z, 0.1, 5, 0.5, 2.0, 0.8, 1);
+    if (base4 !== warp0_4) driftSamples++;
+    if (Math.abs(base4 - warp1_4) > 1e-9) activeSamples++;
+  }
+  ok("warpStrength=0 is bit-identical to plain fbm3/fbm4", driftSamples === 0,
+     driftSamples + " of 64 samples drifted");
+  ok("warpStrength>0 actually displaces the sample", activeSamples >= 60,
+     activeSamples + "/64 samples moved");
+}
+
 // ----- E: colorize stays in 0–255 -----
 {
   const params = {
