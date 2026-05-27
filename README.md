@@ -4,10 +4,16 @@
 > WebM-Export, nahtlos loopbar. Komplett clientseitig, keine Dependencies,
 > kein Build-Step.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![No build step](https://img.shields.io/badge/build-none-blue)
-![No dependencies](https://img.shields.io/badge/dependencies-0-success)
-![Browser only](https://img.shields.io/badge/runtime-browser-orange)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-8a4dff?style=flat-square)](LICENSE)
+[![No build step](https://img.shields.io/badge/build-none-39ff7a?style=flat-square)](#quickstart)
+[![No dependencies](https://img.shields.io/badge/dependencies-0-16e0e0?style=flat-square)](#)
+[![Runtime: Browser](https://img.shields.io/badge/runtime-browser-orange?style=flat-square)](#browser-kompatibilität)
+
+<p align="center">
+  <a href="https://jkaindl.codeberg.page/perlin-studio/">
+    <img alt="Launch the web app" src="https://img.shields.io/badge/Launch_Web_App-16e0e0?style=for-the-badge&logo=pwa&logoColor=060709">
+  </a>
+</p>
 
 Aus zwei alten Hobbyprojekten (`_archiv/texturizer.ipynb` Anfang 2023 +
 `_archiv/perlin_noise/` Mai 2023) zu einem fokussierten Browser-Tool
@@ -106,7 +112,7 @@ hält die Animation auch bei niedriger Auflösung flüssig.
 │   ├── perlin_noise/      # Python-Original
 │   ├── texturizer.ipynb   # Texturizer-Notebook
 │   └── old_texturizer_combined/   # erste Browser-Version inkl. Texturizer
-├── LICENSE                # MIT
+├── LICENSE                # AGPL-3.0
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 └── AGENTS.md              # Kontext für KI-Assistenten
@@ -131,7 +137,9 @@ Für KI-Assistenten (Claude Code etc.) liegt eine Orientierung in
 
 ## Lizenz
 
-MIT — siehe [LICENSE](LICENSE).
+[GNU AGPL-3.0](LICENSE) — Copyleft mit Network-Use-Klausel. Wenn du das
+Tool (oder einen Fork) öffentlich übers Netz anbietest, muss der Quellcode
+deiner Variante ebenfalls unter AGPL verfügbar sein.
 
 Die Perlin-Permutationstabelle und die „Improved Noise"-Algorithmik stammen
 aus Ken Perlins frei publizierter Java-Referenz (2002), die hier in JS

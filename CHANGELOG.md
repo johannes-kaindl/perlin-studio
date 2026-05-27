@@ -7,12 +7,18 @@ Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Hinzugefügt
-- Open-Source-Basisdateien: `LICENSE` (MIT), `CONTRIBUTING.md`, `AGENTS.md`,
-  `CHANGELOG.md`, `.gitignore`.
+- Open-Source-Basisdateien: `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`,
+  `AGENTS.md`, `CHANGELOG.md`, `.gitignore`.
 - `docs/ARCHITECTURE.md` und `docs/USAGE.md` mit detaillierter technischer
   und bedienungsorientierter Dokumentation.
 - JSDoc-Blöcke an den öffentlichen API-Funktionen in `perlin.js` und
   `perlin-studio.js`.
+- Veröffentlichung auf Codeberg: <https://codeberg.org/jkaindl/perlin-studio>,
+  live unter <https://jkaindl.codeberg.page/perlin-studio/>.
+
+### Geändert
+- Lizenz von MIT auf **GNU AGPL-3.0** umgestellt (Konsistenz mit anderen
+  Repos des Autors, Network-Use-Copyleft).
 
 ## [0.3.0] — 2026-05-20
 

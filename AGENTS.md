@@ -54,7 +54,7 @@ auf jedem statischen Webhoster.
 ├── README.md              # Einstieg + Quickstart
 ├── CONTRIBUTING.md        # Entwickler-Workflow
 ├── CHANGELOG.md
-├── LICENSE                # MIT
+├── LICENSE                # AGPL-3.0
 └── AGENTS.md              # diese Datei
 ```
 

@@ -12,8 +12,8 @@ Es gibt keinen Build-Step und keine Dependencies. Du brauchst nur:
 - Optional: Node.js für die Sanity-Checks
 
 ```bash
-git clone <repo>
-cd minecraft_texturizer
+git clone https://codeberg.org/jkaindl/perlin-studio.git
+cd perlin-studio
 python3 -m http.server 8000
 # → http://localhost:8000
 ```
@@ -132,4 +132,6 @@ Bitte **vor** der Arbeit klären:
 
 ## Lizenz
 
-Beiträge stehen unter MIT (siehe [LICENSE](LICENSE)).
+Beiträge stehen unter [GNU AGPL-3.0](LICENSE). Mit dem Einreichen eines
+PRs erklärst du dich einverstanden, dass dein Beitrag unter dieser Lizenz
+veröffentlicht wird.
