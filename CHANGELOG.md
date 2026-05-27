@@ -6,6 +6,29 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-05-27
+
+### Added
+- **Per-channel noise** for RGB colour mode. A new checkbox at the
+  bottom of the RGB sub-section turns single-sample RGB into three
+  independent samples (at offset positions in noise space, same
+  permutation table). Channels drift independently — film-grain,
+  nebula, stellar-cloud looks become reachable. Default off, no
+  behaviour change for existing users.
+- **Flow-field colour mode** — fifth option in the colour-mode
+  dropdown. Renders the noise as a vector field: a 3-point stencil per
+  pixel computes the local gradient (∂noise/∂x, ∂noise/∂y), atan2
+  maps the angle to hue, and the magnitude tints brightness. Tunable
+  hue shift, saturation, gain, floor, stencil ε. Looks like a wind
+  map / storm front instead of a noise pattern. Compatible with the
+  loop and warp pipelines.
+- **`nebula` preset** showcases per-channel noise with a gentle warp.
+- **`flow` preset** showcases flow-field mode on a high-octave field.
+- Smoke tests grew from 15 to 19: range invariants for
+  `colorizeRgbMulti` and `colorizeFlow`, plus divergence checks that
+  confirm `rgbMultiChannel=true` and `colorMode='flow'` actually reach
+  different render paths.
+
 ## [0.8.0] — 2026-05-27
 
 ### Added

@@ -148,6 +148,7 @@
             <option value="gradient">Gradient · preset</option>
             <option value="hsv">HSV · hue from noise</option>
             <option value="posterize">Posterize · steps + gradient</option>
+            <option value="flow">Flow · gradient direction</option>
           </select>
         </label>
 
@@ -161,6 +162,10 @@
             <label class="checkbox"><input type="checkbox" id="p-gi" checked><span>g invert</span></label>
             <label class="checkbox"><input type="checkbox" id="p-bi" checked><span>b invert</span></label>
           </div>
+          <label class="checkbox switch-row">
+            <input type="checkbox" id="p-rgb-multi">
+            <span class="switch-label">Per-channel noise <span class="unit">— each channel its own sample</span></span>
+          </label>
         </div>
 
         <!-- Gradient-specific -->
@@ -198,6 +203,16 @@
           <label>value<input type="range" id="p-val" min="0" max="1" step="0.05" value="1"></label>
         </div>
 
+        <!-- Flow-specific -->
+        <div class="color-section" data-for="flow" hidden>
+          <p class="sec-hint">Visualises the noise as a vector field. Hue = local gradient direction, brightness = magnitude.</p>
+          <label>hue shift<input type="range" id="p-flow-hue-shift" min="0" max="1" step="0.01" value="0"></label>
+          <label>saturation<input type="range" id="p-flow-sat" min="0" max="1" step="0.05" value="0.85"></label>
+          <label>gain<input type="range" id="p-flow-gain" min="0.1" max="20" step="0.1" value="4"></label>
+          <label>floor<input type="range" id="p-flow-floor" min="0" max="0.6" step="0.01" value="0.05"></label>
+          <label>stencil ε<input type="range" id="p-flow-eps" min="0.1" max="3" step="0.1" value="0.6"></label>
+        </div>
+
         <!-- Posterize-specific -->
         <div class="color-section" data-for="posterize" hidden>
           <label>Steps<input type="number" id="p-poster-steps" min="2" max="16" value="5"></label>
@@ -231,6 +246,8 @@
           <button class="preset-chip" data-preset="terrain" style="--chip-grad: linear-gradient(90deg,#192314,#28501e,#508c32,#b4c86e,#f0f5c8)"><span class="chip-swatch"></span><span class="chip-label">terrain</span></button>
           <button class="preset-chip" data-preset="circuit" style="--chip-grad: linear-gradient(90deg,#030b29,#05386b,#0090b2,#78dcdc)"><span class="chip-swatch"></span><span class="chip-label">circuit</span></button>
           <button class="preset-chip" data-preset="marble" style="--chip-grad: linear-gradient(90deg,#1a1410,#7a5a3a,#d4b896,#f0e6d8)"><span class="chip-swatch"></span><span class="chip-label">marble</span></button>
+          <button class="preset-chip" data-preset="nebula" style="--chip-grad: linear-gradient(90deg,#1a0033,#8836a8,#4ac8d8,#d3e6ff)"><span class="chip-swatch"></span><span class="chip-label">nebula</span></button>
+          <button class="preset-chip" data-preset="flow" style="--chip-grad: linear-gradient(90deg,#5b0099,#0099b3,#39ff7a,#ffd64a,#d44488)"><span class="chip-swatch"></span><span class="chip-label">flow</span></button>
         </div>
       </section>
 

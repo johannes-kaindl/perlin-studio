@@ -328,6 +328,48 @@
     return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
   }
 
+  // ---------- RGB MULTI-CHANNEL (per-channel offset noise) ----------
+  // When the studio's RGB mode runs in "multi-channel" mode, three
+  // independent noise samples (taken at offset positions, but from the
+  // same permutation) feed the R / G / B channels separately. The result:
+  // colour channels drift independently, producing nebula-/film-grain-
+  // like outputs that the single-noise RGB mode can't reach.
+
+  function colorizeRgbMulti(nr, ng, nb, p) {
+    const r = (p.rInvert ? 1 - nr : nr) * (p.rScale ?? 1);
+    const g = (p.gInvert ? 1 - ng : ng) * (p.gScale ?? 1);
+    const b = (p.bInvert ? 1 - nb : nb) * (p.bScale ?? 1);
+    return [
+      Math.max(0, Math.min(255, Math.round(r * 255))),
+      Math.max(0, Math.min(255, Math.round(g * 255))),
+      Math.max(0, Math.min(255, Math.round(b * 255))),
+    ];
+  }
+
+  // ---------- FLOW FIELD ----------
+  // Instead of mapping the noise *value* to colour, map the local
+  // *gradient direction* — i.e. visualise the noise as a vector field.
+  // Hue = atan2(dy, dx); magnitude tints brightness. Renders Perlin as
+  // a flow chart of how it'd push a particle around. The render loops
+  // sample a 3-point stencil per pixel and pass dx / dy here.
+
+  function colorizeFlow(dx, dy, p) {
+    const angle = Math.atan2(dy, dx); // (-π, π]
+    // Map angle to hue with an optional shift so users can rotate the
+    // colour wheel. (angle/(2π) + 0.5) brings it into [0, 1).
+    let hue = angle / (Math.PI * 2) + 0.5 + (p.flowHueShift || 0);
+    hue = ((hue % 1) + 1) % 1;
+    const mag = Math.sqrt(dx * dx + dy * dy);
+    // Magnitude can exceed 1 for noisy/warped fields. Scale by flowGain
+    // (default 1) and clamp. flowFloor lifts the darkest pixels so the
+    // image doesn't dissolve into black where the noise is flat.
+    const gain = p.flowGain ?? 1.0;
+    const floor = p.flowFloor ?? 0.0;
+    const v = Math.max(0, Math.min(1, floor + mag * gain * (1 - floor)));
+    const sat = p.flowSat ?? 0.85;
+    return hsvToRgb(hue, sat, v);
+  }
+
   /**
    * Maps a noise value to RGB. Branches on `params.colorMode`.
    *
@@ -379,9 +421,13 @@
       octaves, persistence, lacunarity, base,
       loop, loopProgress, loopRadius,
       warpStrength, warpScale,
+      colorMode, rgbMultiChannel,
     } = params;
     const ws = warpStrength || 0;
     const wsc = warpScale || 1;
+    const isFlow = colorMode === "flow";
+    const isMulti = colorMode === "rgb" && rgbMultiChannel;
+    const eps = (params.flowEps ?? 0.6);
 
     const perm = makePermutation(base);
     const img = ctx.createImageData(width, height);
@@ -400,8 +446,21 @@
       const wc = Math.sin(alpha) * radius;
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
-          const [r, g, b] = colorize(n, params);
+          let r, g, b;
+          if (isFlow) {
+            const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            [r, g, b] = colorizeFlow(n1 - n0, n2 - n0, params);
+          } else if (isMulti) {
+            const nr = warpedFbm4(perm,  x * scaleX,         y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,       zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
+          } else {
+            const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            [r, g, b] = colorize(n, params);
+          }
           const i = (y * width + x) * 4;
           data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
         }
@@ -410,8 +469,21 @@
       const tz = (t || 0) * scaleT;
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
-          const [r, g, b] = colorize(n, params);
+          let r, g, b;
+          if (isFlow) {
+            const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
+            const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
+            const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+            [r, g, b] = colorizeFlow(n1 - n0, n2 - n0, params);
+          } else if (isMulti) {
+            const nr = warpedFbm3(perm,  x * scaleX,         y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc);
+            const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,       tz, octaves, persistence, lacunarity, ws, wsc);
+            const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc);
+            [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
+          } else {
+            const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+            [r, g, b] = colorize(n, params);
+          }
           const i = (y * width + x) * 4;
           data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
         }
@@ -440,6 +512,8 @@
     ${clamp01.toString()}
     ${gradientLookup.toString()}
     ${hsvToRgb.toString()}
+    ${colorizeRgbMulti.toString()}
+    ${colorizeFlow.toString()}
     ${colorize.toString()}
 
     self.onmessage = function(e) {
@@ -447,9 +521,13 @@
       const { width, height, t, scaleX, scaleY, scaleT,
               octaves, persistence, lacunarity, base,
               loop, loopProgress, loopRadius,
-              warpStrength, warpScale } = params;
+              warpStrength, warpScale,
+              colorMode, rgbMultiChannel } = params;
       const ws = warpStrength || 0;
       const wsc = warpScale || 1;
+      const isFlow = colorMode === "flow";
+      const isMulti = colorMode === "rgb" && rgbMultiChannel;
+      const eps = params.flowEps != null ? params.flowEps : 0.6;
       const perm = makePermutation(base);
       const buf = new Uint8ClampedArray(width * height * 4);
 
@@ -461,8 +539,21 @@
         const wc = Math.sin(alpha) * radius;
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
-            const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
-            const c = colorize(n, params);
+            let c;
+            if (isFlow) {
+              const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              c = colorizeFlow(n1 - n0, n2 - n0, params);
+            } else if (isMulti) {
+              const nr = warpedFbm4(perm,  x * scaleX,          y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              c = colorizeRgbMulti(nr, ng, nb, params);
+            } else {
+              const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              c = colorize(n, params);
+            }
             const i = (y * width + x) * 4;
             buf[i] = c[0]; buf[i+1] = c[1]; buf[i+2] = c[2]; buf[i+3] = 255;
           }
@@ -471,8 +562,21 @@
         const tz = (t || 0) * scaleT;
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
-            const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
-            const c = colorize(n, params);
+            let c;
+            if (isFlow) {
+              const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
+              const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
+              const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+              c = colorizeFlow(n1 - n0, n2 - n0, params);
+            } else if (isMulti) {
+              const nr = warpedFbm3(perm,  x * scaleX,          y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc);
+              const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc);
+              const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc);
+              c = colorizeRgbMulti(nr, ng, nb, params);
+            } else {
+              const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+              c = colorize(n, params);
+            }
             const i = (y * width + x) * 4;
             buf[i] = c[0]; buf[i+1] = c[1]; buf[i+2] = c[2]; buf[i+3] = 255;
           }
@@ -487,7 +591,7 @@
   window.MTPerlin = {
     makePermutation, perlin3, perlin4, fbm3, fbm4,
     warpedFbm3, warpedFbm4,
-    generatePerlinImage, colorize,
+    generatePerlinImage, colorize, colorizeRgbMulti, colorizeFlow,
     WORKER_SOURCE,
   };
 })();

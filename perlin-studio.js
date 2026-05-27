@@ -153,6 +153,31 @@ const BUILTIN_PRESETS = {
     colorMode: "gradient", gradientName: "sunset",
     ...LOOP_DEFAULTS, loopDuration: 8,
   },
+  // Per-channel-noise showcase: three independent noise fields drive
+  // R / G / B separately. Warp adds vein-like coherence.
+  nebula: {
+    width: 384, height: 256,
+    scaleX: 0.014, scaleY: 0.014, scaleT: 0.12,
+    octaves: 5, persistence: 0.55, lacunarity: 2.1, base: 53,
+    warpStrength: 0.9, warpScale: 0.8,
+    colorMode: "rgb",
+    rScale: 1.0, gScale: 0.7, bScale: 1.1,
+    rInvert: false, gInvert: false, bInvert: false,
+    rgbMultiChannel: true,
+    ...LOOP_DEFAULTS, loopDuration: 9,
+  },
+  // Flow-field showcase: noise rendered as vector-field directions, so
+  // the eye reads it as a storm front or a wind map. High gain pushes
+  // even gentle gradients to readable saturation.
+  flow: {
+    width: 384, height: 256,
+    scaleX: 0.02, scaleY: 0.02, scaleT: 0.1,
+    octaves: 5, persistence: 0.5, lacunarity: 2.0, base: 23,
+    ...WARP_OFF,
+    colorMode: "flow",
+    flowHueShift: 0.05, flowSat: 0.85, flowGain: 6, flowFloor: 0.08, flowEps: 0.6,
+    ...LOOP_DEFAULTS, loopDuration: 6,
+  },
 };
 
 // ============= STATE =============
@@ -214,6 +239,7 @@ const els = {
   // rgb
   rs: $("p-rs"), gs: $("p-gs"), bs: $("p-bs"),
   ri: $("p-ri"), gi: $("p-gi"), bi: $("p-bi"),
+  rgbMulti: $("p-rgb-multi"),
   // gradient
   gradientPreset: $("p-gradient-preset"),
   gradientPreview: $("p-gradient-preview"),
@@ -223,6 +249,12 @@ const els = {
   // hsv
   hueShift: $("p-hue-shift"), hueRange: $("p-hue-range"),
   sat: $("p-sat"), val: $("p-val"),
+  // flow
+  flowHueShift: $("p-flow-hue-shift"),
+  flowSat:      $("p-flow-sat"),
+  flowGain:     $("p-flow-gain"),
+  flowFloor:    $("p-flow-floor"),
+  flowEps:      $("p-flow-eps"),
   // posterize
   posterSteps: $("p-poster-steps"),
   posterGradient: $("p-poster-gradient"),
@@ -319,6 +351,13 @@ function gatherParams() {
     base.rInvert = els.ri.checked;
     base.gInvert = els.gi.checked;
     base.bInvert = els.bi.checked;
+    base.rgbMultiChannel = els.rgbMulti.checked;
+  } else if (colorMode === "flow") {
+    base.flowHueShift = clampFloat(els.flowHueShift.value, 0, 1, 0);
+    base.flowSat      = clampFloat(els.flowSat.value, 0, 1, 0.85);
+    base.flowGain     = clampFloat(els.flowGain.value, 0.05, 50, 4);
+    base.flowFloor    = clampFloat(els.flowFloor.value, 0, 1, 0.05);
+    base.flowEps      = clampFloat(els.flowEps.value, 0.05, 10, 0.6);
   } else if (colorMode === "gradient") {
     const name = els.gradientPreset.value;
     base.gradientName = name;
@@ -377,6 +416,12 @@ function applyParamsToUi(p) {
   if (p.rInvert != null) els.ri.checked = p.rInvert;
   if (p.gInvert != null) els.gi.checked = p.gInvert;
   if (p.bInvert != null) els.bi.checked = p.bInvert;
+  if (p.rgbMultiChannel != null) els.rgbMulti.checked = p.rgbMultiChannel;
+  if (p.flowHueShift != null) els.flowHueShift.value = p.flowHueShift;
+  if (p.flowSat != null) els.flowSat.value = p.flowSat;
+  if (p.flowGain != null) els.flowGain.value = p.flowGain;
+  if (p.flowFloor != null) els.flowFloor.value = p.flowFloor;
+  if (p.flowEps != null) els.flowEps.value = p.flowEps;
   if (p.gradientName) {
     els.gradientPreset.value = p.gradientName;
     els.posterGradient.value = p.gradientName;
@@ -926,8 +971,9 @@ const PARAM_INPUTS = [
   "w", "h", "sx", "sy", "st", "base", "oct", "pers", "lac",
   "warpStrength", "warpScale",
   "loopDuration", "loopRadius",
-  "rs", "gs", "bs", "ri", "gi", "bi",
+  "rs", "gs", "bs", "ri", "gi", "bi", "rgbMulti",
   "hueShift", "hueRange", "sat", "val",
+  "flowHueShift", "flowSat", "flowGain", "flowFloor", "flowEps",
   "posterSteps",
 ];
 

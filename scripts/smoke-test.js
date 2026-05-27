@@ -223,6 +223,76 @@ function ok(label, cond, detail) {
   ok("colorize returns rgb in [0, 255]", inRange, ex || "");
 }
 
+// ----- F: colorizeRgbMulti + colorizeFlow stay in range -----
+{
+  const params = {
+    rScale: 1.0, gScale: 1.0, bScale: 1.0,
+    rInvert: false, gInvert: false, bInvert: false,
+  };
+  let multiOk = true, flowOk = true;
+  for (let i = 0; i < 500; i++) {
+    const rgb = MT.colorizeRgbMulti(Math.random(), Math.random(), Math.random(), params);
+    for (const c of rgb) if (!Number.isFinite(c) || c < 0 || c > 255) { multiOk = false; break; }
+    if (!multiOk) break;
+    // Flow gets arbitrary signed dx/dy
+    const flow = MT.colorizeFlow((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2,
+                                  { flowSat: 0.8, flowGain: 4, flowFloor: 0.05 });
+    for (const c of flow) if (!Number.isFinite(c) || c < 0 || c > 255) { flowOk = false; break; }
+    if (!flowOk) break;
+  }
+  ok("colorizeRgbMulti returns rgb in [0, 255]", multiOk);
+  ok("colorizeFlow returns rgb in [0, 255]", flowOk);
+}
+
+// ----- G: render-loop branches differ (per-channel + flow) -----
+// Sanity check that flipping rgbMultiChannel and colorMode actually
+// reaches different render paths — otherwise the new sample loops
+// could silently be no-ops.
+{
+  const W = 16, H = 16;
+  function mockCtx() {
+    return {
+      createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+      _img: null,
+      putImageData(img) { this._img = img; },
+    };
+  }
+  const baseParams = {
+    width: W, height: H, t: 0,
+    scaleX: 0.04, scaleY: 0.04, scaleT: 0.15,
+    octaves: 3, persistence: 0.5, lacunarity: 2.0, base: 41,
+    loop: true, loopProgress: 0.2, loopRadius: 1.0,
+    colorMode: "rgb",
+    rScale: 1, gScale: 1, bScale: 1,
+    rInvert: false, gInvert: false, bInvert: false,
+  };
+  const ctxSingle = mockCtx();
+  MT.generatePerlinImage({ ...baseParams, rgbMultiChannel: false }, ctxSingle);
+  const ctxMulti = mockCtx();
+  MT.generatePerlinImage({ ...baseParams, rgbMultiChannel: true }, ctxMulti);
+  let diffMulti = 0;
+  for (let i = 0; i < ctxSingle._img.data.length; i++) {
+    if (ctxSingle._img.data[i] !== ctxMulti._img.data[i]) diffMulti++;
+  }
+  ok("rgbMultiChannel=true diverges from single-noise RGB",
+     diffMulti > (W * H * 4) * 0.4,
+     diffMulti + "/" + (W * H * 4) + " bytes differed");
+
+  const ctxFlow = mockCtx();
+  MT.generatePerlinImage({
+    ...baseParams,
+    colorMode: "flow",
+    flowSat: 0.85, flowGain: 5, flowFloor: 0.05, flowEps: 0.6,
+  }, ctxFlow);
+  let diffFlow = 0;
+  for (let i = 0; i < ctxSingle._img.data.length; i++) {
+    if (ctxSingle._img.data[i] !== ctxFlow._img.data[i]) diffFlow++;
+  }
+  ok("colorMode='flow' diverges from rgb",
+     diffFlow > (W * H * 4) * 0.5,
+     diffFlow + "/" + (W * H * 4) + " bytes differed");
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");
