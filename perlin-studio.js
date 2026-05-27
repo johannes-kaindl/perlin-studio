@@ -790,8 +790,10 @@ function applyPreset(name) {
 
 function savePreset() {
   const params = gatherParams();
-  // Don't serialise the gradient stops list — the name is enough.
-  if (params.gradient) delete params.gradient;
+  // Strip the resolved gradient stops list for named presets — the name
+  // is enough to reconstruct them. For `custom` the stops ARE the user's
+  // data, so they must travel with the preset.
+  if (params.gradient && params.gradientName !== "custom") delete params.gradient;
   params.t = getTValue();
   const json = JSON.stringify(params, null, 2);
   const blob = new Blob([json], { type: "application/json" });

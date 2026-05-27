@@ -6,6 +6,22 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- `savePreset` now keeps the `gradient` field in the JSON when the
+  active gradient is `Custom …` — previously it stripped the stops
+  unconditionally, so custom gradients couldn't actually be saved
+  and restored. Discovered while updating the user guide.
+
+### Changed
+- **Docs sync to v0.10.** `docs/USAGE.md` rewritten from scratch
+  for the current feature set (warp, tile, flow, custom gradient,
+  per-channel noise, theme toggle, 9 presets). `docs/ARCHITECTURE.md`
+  gained dedicated sections on domain warping, tileable noise, and
+  the smoke-test battery, plus updated colour-modes and code-layout
+  blocks. `CONTRIBUTING.md` replaces the "no formal test suite" note
+  with the `node scripts/smoke-test.js` workflow and the manual
+  browser checklist covers the new features.
+
 ## [0.10.0] — 2026-05-27
 
 ### Added

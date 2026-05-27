@@ -37,7 +37,7 @@ in the issue/PR — we'll decide together.
 
 ## Tests
 
-There's no formal test suite. Instead three levels:
+Three levels, in order of how often you'll touch them:
 
 ### 1. Syntax checks (mandatory before each commit)
 
@@ -45,49 +45,60 @@ There's no formal test suite. Instead three levels:
 node --check perlin.js && node --check perlin-studio.js
 ```
 
-### 2. Math sanity checks (when changing `perlin.js`)
+### 2. Math smoke tests (mandatory when changing `perlin.js`)
 
-Write a temporary Node script that verifies the Perlin properties.
-Template:
-
-```js
-global.window = {};
-require("./perlin.js");
-const P = global.window.MTPerlin;
-
-const perm = P.makePermutation(42);
-
-// 1. Reproducibility
-console.assert(P.perlin3(perm, 1.3, 2.7, 0.5) === P.perlin3(perm, 1.3, 2.7, 0.5));
-
-// 2. Grid-point value = 0
-console.assert(Math.abs(P.perlin3(perm, 1, 1, 0)) < 1e-10);
-
-// 3. Value range
-let min = Infinity, max = -Infinity;
-for (let i = 0; i < 10000; i++) {
-  const v = P.perlin3(perm, Math.random()*100, Math.random()*100, Math.random()*100);
-  if (v < min) min = v; if (v > max) max = v;
-}
-console.assert(min > -1 && max < 1);
-console.log("perlin3 range:", min, max);
-
-// 4. Loop identity (for perlin4 with a circular orbit)
-const r = 0.5;
-const a = P.perlin4(perm, 1, 1, Math.cos(0)*r, Math.sin(0)*r);
-const b = P.perlin4(perm, 1, 1, Math.cos(2*Math.PI)*r, Math.sin(2*Math.PI)*r);
-// Not exactly identical in practice because of floats — `safeProgress` makes it robust
-console.log("Loop endpoints diff:", Math.abs(a - b));
+```bash
+node scripts/smoke-test.js
 ```
 
+The script runs 25 invariants in ~0.1 s. Exit 0 = all pass; exit 1
+on any failure with a one-line reason. The Forgejo deploy workflow
+runs the same script before publishing, so a regression here also
+blocks the live site.
+
+If you add a new top-level function to `perlin.js`:
+
+1. List it in `MTPerlin = { ... }` at the bottom of the file so the
+   smoke can import it.
+2. Add it to the `${fn.toString()}` interpolation block in
+   `WORKER_SOURCE` so the worker can call it too.
+3. Add a smoke assertion for the new behaviour. Pattern: one test
+   for the **off** state (bit-identical to pre-feature output —
+   regression guard), one for the **on** state (output actually
+   diverges meaningfully — guards against silent no-ops).
+
+For ad-hoc investigations the smoke uses the same `global.window =
+{}` + `require()` pattern documented in [AGENTS.md](AGENTS.md) — copy
+that and explore.
+
 ### 3. Manual browser test
+
+```bash
+python3 -m http.server 8000
+# → http://localhost:8000
+```
 
 At least before submitting a PR:
 
 - [ ] Default preset renders right after page load
 - [ ] Play starts a smooth animation (no flicker)
 - [ ] Loop toggle switches between loop and linear mode, slider adapts
-- [ ] All 6 built-in presets load without console errors
+- [ ] All 9 built-in presets load without console errors
+  (`default`, `lava`, `aurora`, `clouds`, `terrain`, `circuit`,
+  `marble`, `nebula`, `flow`)
+- [ ] Warp section: pushing `strength` above 0 visibly distorts the
+  noise; pulling it back to 0 returns to the baseline look
+- [ ] Tile X / Y: setting both to a small integer (4–8) produces a
+  visibly repeating texture
+- [ ] Custom gradient: picking `Custom …` in the gradient dropdown
+  reveals the inline stops editor; adding / removing / dragging
+  stops updates the preview live
+- [ ] RGB → Per-channel noise toggle changes the output visibly
+  (channels drift independently)
+- [ ] Flow colour mode renders a wind-map-like image (not a noise
+  pattern)
+- [ ] Theme toggle (sun/moon, top-right of the topbar) flips dark↔
+  light and the choice survives a reload
 - [ ] WebM export produces a downloadable file that plays in VLC
 - [ ] WebM with loop=on repeats seamlessly
 - [ ] Resizing `width`/`height` renders at the new resolution
