@@ -221,6 +221,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   // Resolution / noise
   w: $("p-w"), h: $("p-h"),
+  tileX: $("p-tile-x"), tileY: $("p-tile-y"),
   sx: $("p-sx"), sy: $("p-sy"), st: $("p-st"),
   base: $("p-base"), oct: $("p-oct"), pers: $("p-pers"), lac: $("p-lac"),
 
@@ -330,6 +331,8 @@ function gatherParams() {
   const base = {
     width:       clampInt(els.w.value, 4, 1024, 256),
     height:      clampInt(els.h.value, 4, 1024, 256),
+    tileX:       clampInt(els.tileX.value, 0, 64, 0),
+    tileY:       clampInt(els.tileY.value, 0, 64, 0),
     scaleX:      clampFloat(els.sx.value, 0.0001, 10, 0.02),
     scaleY:      clampFloat(els.sy.value, 0.0001, 10, 0.02),
     scaleT:      clampFloat(els.st.value, 0, 10, 0.15),
@@ -391,6 +394,8 @@ function gatherParams() {
 function applyParamsToUi(p) {
   if (p.width != null) els.w.value = p.width;
   if (p.height != null) els.h.value = p.height;
+  if (p.tileX != null) els.tileX.value = p.tileX;
+  if (p.tileY != null) els.tileY.value = p.tileY;
   if (p.scaleX != null) els.sx.value = p.scaleX;
   if (p.scaleY != null) els.sy.value = p.scaleY;
   if (p.scaleT != null) els.st.value = p.scaleT;
@@ -968,7 +973,7 @@ function downloadWebm() {
 
 // ============= EVENTS =============
 const PARAM_INPUTS = [
-  "w", "h", "sx", "sy", "st", "base", "oct", "pers", "lac",
+  "w", "h", "tileX", "tileY", "sx", "sy", "st", "base", "oct", "pers", "lac",
   "warpStrength", "warpScale",
   "loopDuration", "loopRadius",
   "rs", "gs", "bs", "ri", "gi", "bi", "rgbMulti",

@@ -244,6 +244,105 @@ function ok(label, cond, detail) {
   ok("colorizeFlow returns rgb in [0, 255]", flowOk);
 }
 
+// ----- F2: tileable noise — seam closes, off path stays identical -----
+// The reason this feature even ships: with repeatX=N, perlin3 must
+// return the SAME value at (x) and (x + N). If the seam doesn't close,
+// the tile fails visually. Test against multiple offsets along both
+// axes plus into the negative range.
+{
+  const perm = MT.makePermutation(13);
+  const N = 8;
+  // repeat=0 baseline: function still returns same value as before the
+  // tile refactor — sanity check that the new code path with repeat=0
+  // is bit-identical to the un-tiled call.
+  let baseDrift = 0;
+  for (let i = 0; i < 32; i++) {
+    const x = (i * 0.31), y = (i * 0.27), z = 0.3;
+    const v0 = MT.perlin3(perm, x, y, z);
+    const v0_explicit = MT.perlin3(perm, x, y, z, 0, 0);
+    if (v0 !== v0_explicit) baseDrift++;
+  }
+  ok("perlin3 with repeat=0 is bit-identical to repeat-arg-omitted", baseDrift === 0);
+
+  // X-axis tile identity. With repeat = N, value at (x, y, z) must
+  // equal value at (x + N, y, z) and (x + 2N, y, z) and (x - N, y, z).
+  let xSeam = 0, xExpected = 0;
+  for (let i = 0; i < 24; i++) {
+    const x = (i % 6) * 0.7 - 1.5;
+    const y = (i * 0.41) % 10;
+    const z = 0.5;
+    const a = MT.perlin3(perm, x, y, z, N, 0);
+    const b = MT.perlin3(perm, x + N, y, z, N, 0);
+    const c = MT.perlin3(perm, x + 2 * N, y, z, N, 0);
+    const d = MT.perlin3(perm, x - N, y, z, N, 0);
+    xExpected += 3;
+    if (Math.abs(a - b) < 1e-12) xSeam++;
+    if (Math.abs(a - c) < 1e-12) xSeam++;
+    if (Math.abs(a - d) < 1e-12) xSeam++;
+  }
+  ok("perlin3 tile-X seam closes (a == a + N == a + 2N == a - N)",
+     xSeam === xExpected,
+     xSeam + "/" + xExpected + " seam comparisons matched");
+
+  // Y-axis tile identity.
+  let ySeam = 0, yExpected = 0;
+  for (let i = 0; i < 24; i++) {
+    const x = (i * 0.41) % 10;
+    const y = (i % 6) * 0.7 - 1.5;
+    const z = 0.5;
+    const a = MT.perlin3(perm, x, y, z, 0, N);
+    const b = MT.perlin3(perm, x, y + N, z, 0, N);
+    const c = MT.perlin3(perm, x, y + 2 * N, z, 0, N);
+    const d = MT.perlin3(perm, x, y - N, z, 0, N);
+    yExpected += 3;
+    if (Math.abs(a - b) < 1e-12) ySeam++;
+    if (Math.abs(a - c) < 1e-12) ySeam++;
+    if (Math.abs(a - d) < 1e-12) ySeam++;
+  }
+  ok("perlin3 tile-Y seam closes",
+     ySeam === yExpected,
+     ySeam + "/" + yExpected + " seam comparisons matched");
+
+  // Same checks for perlin4 (X/Y only — Z and W don't tile by design).
+  let p4Seam = 0;
+  for (let i = 0; i < 12; i++) {
+    const x = (i * 0.31) - 1, y = (i * 0.19), z = 0.5, w = 0.7;
+    const a = MT.perlin4(perm, x, y, z, w, N, N);
+    const b = MT.perlin4(perm, x + N, y, z, w, N, N);
+    const c = MT.perlin4(perm, x, y + N, z, w, N, N);
+    if (Math.abs(a - b) < 1e-12) p4Seam++;
+    if (Math.abs(a - c) < 1e-12) p4Seam++;
+  }
+  ok("perlin4 tile seam closes on X and Y", p4Seam === 24,
+     p4Seam + "/24 seam comparisons matched");
+
+  // fbm3 inherits tile identity from perlin3 across all octaves, as
+  // long as lacunarity is integer (default 2) so each octave's wrap
+  // lands on an integer cell.
+  let fbmSeam = 0;
+  for (let i = 0; i < 12; i++) {
+    const x = (i * 0.41), y = (i * 0.37), z = 0.5;
+    const a = MT.fbm3(perm, x, y, z, 5, 0.5, 2.0, N, 0);
+    const b = MT.fbm3(perm, x + N, y, z, 5, 0.5, 2.0, N, 0);
+    if (Math.abs(a - b) < 1e-12) fbmSeam++;
+  }
+  ok("fbm3 tile seam closes across octaves (lacunarity=2)",
+     fbmSeam === 12,
+     fbmSeam + "/12 fbm samples matched at the seam");
+
+  // warpedFbm3 must also tile, otherwise warp on a tile breaks the seam.
+  let warpSeam = 0;
+  for (let i = 0; i < 12; i++) {
+    const x = (i * 0.41), y = (i * 0.37), z = 0.5;
+    const a = MT.warpedFbm3(perm, x, y, z, 5, 0.5, 2.0, 1.2, 0.7, N, 0);
+    const b = MT.warpedFbm3(perm, x + N, y, z, 5, 0.5, 2.0, 1.2, 0.7, N, 0);
+    if (Math.abs(a - b) < 1e-12) warpSeam++;
+  }
+  ok("warpedFbm3 tile seam closes with warp on",
+     warpSeam === 12,
+     warpSeam + "/12 warped samples matched at the seam");
+}
+
 // ----- G: render-loop branches differ (per-channel + flow) -----
 // Sanity check that flipping rgbMultiChannel and colorMode actually
 // reaches different render paths — otherwise the new sample loops

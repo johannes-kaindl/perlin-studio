@@ -90,25 +90,45 @@
    * @param {number} z
    * @returns {number}  Noise value in roughly `[-1, 1]`
    */
-  function perlin3(perm, x, y, z) {
-    const X = Math.floor(x) & 255;
-    const Y = Math.floor(y) & 255;
-    const Z = Math.floor(z) & 255;
-    x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+  // Wrap an integer cell index for tileable noise. `period=0` falls back
+  // to the classic `& 255` infinite-noise behaviour — bit-identical to
+  // the pre-tileable code, that's the regression guarantee.
+  function wrapCell(v, period) {
+    return period > 0 ? (((v % period) + period) % period) & 255 : v & 255;
+  }
+  function nextCell(v, period) {
+    return period > 0 ? ((((v + 1) % period) + period) % period) & 255 : (v + 1) & 255;
+  }
+
+  function perlin3(perm, x, y, z, repeatX, repeatY) {
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+    const rx = repeatX || 0;
+    const ry = repeatY || 0;
+    const Xa = wrapCell(xi, rx), Xb = nextCell(xi, rx);
+    const Ya = wrapCell(yi, ry), Yb = nextCell(yi, ry);
+    const Za = zi & 255,         Zb = (zi + 1) & 255;
+    x -= xi; y -= yi; z -= zi;
     const u = fade(x), v = fade(y), w = fade(z);
 
-    const A  = perm[X] + Y, AA = perm[A] + Z, AB = perm[A + 1] + Z;
-    const B  = perm[X + 1] + Y, BA = perm[B] + Z, BB = perm[B + 1] + Z;
+    // Eight-corner hash, written with explicit X/Y wrap so the tile
+    // closes seamlessly. (Z does not tile — loop mode uses tiny Z and
+    // doesn't benefit from spatial tiling on the time axis.)
+    const Aa = perm[Xa] + Ya, Ab = perm[Xa] + Yb;
+    const Ba = perm[Xb] + Ya, Bb = perm[Xb] + Yb;
+    const Aa0 = perm[Aa] + Za, Aa1 = perm[Aa] + Zb;
+    const Ab0 = perm[Ab] + Za, Ab1 = perm[Ab] + Zb;
+    const Ba0 = perm[Ba] + Za, Ba1 = perm[Ba] + Zb;
+    const Bb0 = perm[Bb] + Za, Bb1 = perm[Bb] + Zb;
 
     return lerp(
       lerp(
-        lerp(grad(perm[AA], x, y, z),       grad(perm[BA], x - 1, y, z), u),
-        lerp(grad(perm[AB], x, y - 1, z),   grad(perm[BB], x - 1, y - 1, z), u),
+        lerp(grad(perm[Aa0], x,     y,     z),     grad(perm[Ba0], x - 1, y,     z),     u),
+        lerp(grad(perm[Ab0], x,     y - 1, z),     grad(perm[Bb0], x - 1, y - 1, z),     u),
         v
       ),
       lerp(
-        lerp(grad(perm[AA + 1], x, y, z - 1),     grad(perm[BA + 1], x - 1, y, z - 1), u),
-        lerp(grad(perm[AB + 1], x, y - 1, z - 1), grad(perm[BB + 1], x - 1, y - 1, z - 1), u),
+        lerp(grad(perm[Aa1], x,     y,     z - 1), grad(perm[Ba1], x - 1, y,     z - 1), u),
+        lerp(grad(perm[Ab1], x,     y - 1, z - 1), grad(perm[Bb1], x - 1, y - 1, z - 1), u),
         v
       ),
       w
@@ -129,10 +149,18 @@
    * @param {number} lacunarity   Frequency factor per octave (2.0 = standard)
    * @returns {number} Value in `[0, 1]`
    */
-  function fbm3(perm, x, y, z, octaves, persistence, lacunarity) {
+  function fbm3(perm, x, y, z, octaves, persistence, lacunarity, repeatX, repeatY) {
+    const rx0 = repeatX || 0;
+    const ry0 = repeatY || 0;
     let amp = 1, freq = 1, sum = 0, norm = 0;
     for (let o = 0; o < octaves; o++) {
-      sum  += amp * perlin3(perm, x * freq, y * freq, z * freq);
+      // Tile period scales with octave frequency so all octaves agree on
+      // where the seam is. Rounded to the nearest integer cell — small
+      // mismatch for non-integer lacunarity is unavoidable, but with the
+      // default lacunarity = 2 every octave lands on an integer multiple.
+      const rx = rx0 > 0 ? Math.round(rx0 * freq) : 0;
+      const ry = ry0 > 0 ? Math.round(ry0 * freq) : 0;
+      sum  += amp * perlin3(perm, x * freq, y * freq, z * freq, rx, ry);
       norm += amp;
       amp  *= persistence;
       freq *= lacunarity;
@@ -175,25 +203,33 @@
    * @param {number} w
    * @returns {number} Noise value in roughly `[-1, 1]`
    */
-  function perlin4(perm, x, y, z, w) {
-    const X = Math.floor(x) & 255;
-    const Y = Math.floor(y) & 255;
-    const Z = Math.floor(z) & 255;
-    const W = Math.floor(w) & 255;
-    x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z); w -= Math.floor(w);
+  function perlin4(perm, x, y, z, w, repeatX, repeatY) {
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), wi = Math.floor(w);
+    const rx = repeatX || 0;
+    const ry = repeatY || 0;
+    const Xa = wrapCell(xi, rx), Xb = nextCell(xi, rx);
+    const Ya = wrapCell(yi, ry), Yb = nextCell(yi, ry);
+    const Za = zi & 255,         Zb = (zi + 1) & 255;
+    const Wa = wi & 255,         Wb = (wi + 1) & 255;
+    x -= xi; y -= yi; z -= zi; w -= wi;
     const u = fade(x), v = fade(y), s = fade(z), tt = fade(w);
 
-    // Hash tree along X → Y → Z → W. A/B suffixes = "low/high" side per axis.
-    const A   = perm[X] + Y;
-    const B   = perm[X + 1] + Y;
-    const AA  = perm[A] + Z;
-    const AB  = perm[A + 1] + Z;
-    const BA  = perm[B] + Z;
-    const BB  = perm[B + 1] + Z;
-    const AAA = perm[AA] + W,     AAB = perm[AA + 1] + W;
-    const ABA = perm[AB] + W,     ABB = perm[AB + 1] + W;
-    const BAA = perm[BA] + W,     BAB = perm[BA + 1] + W;
-    const BBA = perm[BB] + W,     BBB = perm[BB + 1] + W;
+    // Hash tree along X → Y → Z → W. Suffixes: a/b = low/high cell per axis,
+    // chosen explicitly so X and Y can wrap for tileability while Z and W
+    // pass through unchanged. The internal +1 lookups still go through the
+    // duplicated perm table; only the X / Y entry points are wrap-aware.
+    const Aa  = perm[Xa] + Ya;
+    const Ab  = perm[Xa] + Yb;
+    const Ba  = perm[Xb] + Ya;
+    const Bb  = perm[Xb] + Yb;
+    const AA  = perm[Aa] + Za;
+    const AB  = perm[Ab] + Za;
+    const BA  = perm[Ba] + Za;
+    const BB  = perm[Bb] + Za;
+    const AAA = perm[AA] + Wa, AAB = perm[AA + 1] + Wa;
+    const ABA = perm[AB] + Wa, ABB = perm[AB + 1] + Wa;
+    const BAA = perm[BA] + Wa, BAB = perm[BA + 1] + Wa;
+    const BBA = perm[BB] + Wa, BBB = perm[BB + 1] + Wa;
 
     // 16 corners → 4-deep nested lerp.
     // Hash convention: AAB = Z shift (perm[AA+1]+W), AAA+1 = W shift (perm[AA]+W+1).
@@ -237,10 +273,14 @@
   }
 
   /** fBm on top of `perlin4`. Value range `[0, 1]`. */
-  function fbm4(perm, x, y, z, w, octaves, persistence, lacunarity) {
+  function fbm4(perm, x, y, z, w, octaves, persistence, lacunarity, repeatX, repeatY) {
+    const rx0 = repeatX || 0;
+    const ry0 = repeatY || 0;
     let amp = 1, freq = 1, sum = 0, norm = 0;
     for (let o = 0; o < octaves; o++) {
-      sum  += amp * perlin4(perm, x * freq, y * freq, z * freq, w * freq);
+      const rx = rx0 > 0 ? Math.round(rx0 * freq) : 0;
+      const ry = ry0 > 0 ? Math.round(ry0 * freq) : 0;
+      sum  += amp * perlin4(perm, x * freq, y * freq, z * freq, w * freq, rx, ry);
       norm += amp;
       amp  *= persistence;
       freq *= lacunarity;
@@ -264,20 +304,39 @@
   // `warpStrength=0` skips the warp entirely → byte-identical output to
   // the un-warped fbm path. That's the regression guarantee.
 
-  function warpedFbm3(perm, x, y, z, octaves, persistence, lacunarity, warpStrength, warpScale) {
-    if (!warpStrength) return fbm3(perm, x, y, z, octaves, persistence, lacunarity);
+  // When tile is on AND warp is on, warpScale must be integer for the
+  // tile to actually close — the warp samples in (x*s + offset) space,
+  // so for the seam to coincide we need (tileWidth * s) to be an integer
+  // multiple of the warp's wrap period. The simplest correctness-first
+  // rule: round warpScale to the nearest non-zero integer whenever both
+  // features are co-active. Outside this case the user keeps the full
+  // sub-1.0 fidelity of the warp.
+  function effectiveWarpScale(warpScale, repeatX, repeatY) {
     const s = warpScale || 1;
-    const dx = perlin3(perm, x * s + 137.0, y * s +  23.0, z) * warpStrength;
-    const dy = perlin3(perm, x * s + 211.0, y * s -  53.0, z) * warpStrength;
-    return fbm3(perm, x + dx, y + dy, z, octaves, persistence, lacunarity);
+    if ((repeatX > 0 || repeatY > 0) && warpScale) return Math.max(1, Math.round(s));
+    return s;
   }
 
-  function warpedFbm4(perm, x, y, z, w, octaves, persistence, lacunarity, warpStrength, warpScale) {
-    if (!warpStrength) return fbm4(perm, x, y, z, w, octaves, persistence, lacunarity);
-    const s = warpScale || 1;
-    const dx = perlin4(perm, x * s + 137.0, y * s +  23.0, z, w) * warpStrength;
-    const dy = perlin4(perm, x * s + 211.0, y * s -  53.0, z, w) * warpStrength;
-    return fbm4(perm, x + dx, y + dy, z, w, octaves, persistence, lacunarity);
+  function warpedFbm3(perm, x, y, z, octaves, persistence, lacunarity, warpStrength, warpScale, repeatX, repeatY) {
+    if (!warpStrength) return fbm3(perm, x, y, z, octaves, persistence, lacunarity, repeatX, repeatY);
+    const s = effectiveWarpScale(warpScale, repeatX, repeatY);
+    // Warp's perlin3 wraps at (tile * s) so the seam in main space coincides.
+    // With integer s (guaranteed above when tile is on), this is always integer.
+    const wrx = repeatX > 0 ? repeatX * s : 0;
+    const wry = repeatY > 0 ? repeatY * s : 0;
+    const dx = perlin3(perm, x * s + 137.0, y * s +  23.0, z, wrx, wry) * warpStrength;
+    const dy = perlin3(perm, x * s + 211.0, y * s -  53.0, z, wrx, wry) * warpStrength;
+    return fbm3(perm, x + dx, y + dy, z, octaves, persistence, lacunarity, repeatX, repeatY);
+  }
+
+  function warpedFbm4(perm, x, y, z, w, octaves, persistence, lacunarity, warpStrength, warpScale, repeatX, repeatY) {
+    if (!warpStrength) return fbm4(perm, x, y, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
+    const s = effectiveWarpScale(warpScale, repeatX, repeatY);
+    const wrx = repeatX > 0 ? repeatX * s : 0;
+    const wry = repeatY > 0 ? repeatY * s : 0;
+    const dx = perlin4(perm, x * s + 137.0, y * s +  23.0, z, w, wrx, wry) * warpStrength;
+    const dy = perlin4(perm, x * s + 211.0, y * s -  53.0, z, w, wrx, wry) * warpStrength;
+    return fbm4(perm, x + dx, y + dy, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
   }
 
   // ---------- COLOR MODES ----------
@@ -421,10 +480,13 @@
       octaves, persistence, lacunarity, base,
       loop, loopProgress, loopRadius,
       warpStrength, warpScale,
+      tileX, tileY,
       colorMode, rgbMultiChannel,
     } = params;
     const ws = warpStrength || 0;
     const wsc = warpScale || 1;
+    const rx = tileX || 0;
+    const ry = tileY || 0;
     const isFlow = colorMode === "flow";
     const isMulti = colorMode === "rgb" && rgbMultiChannel;
     const eps = (params.flowEps ?? 0.6);
@@ -448,17 +510,17 @@
         for (let x = 0; x < width; x++) {
           let r, g, b;
           if (isFlow) {
-            const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
-            const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
-            const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeFlow(n1 - n0, n2 - n0, params);
           } else if (isMulti) {
-            const nr = warpedFbm4(perm,  x * scaleX,         y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc);
-            const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,       zc, wc, octaves, persistence, lacunarity, ws, wsc);
-            const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const nr = warpedFbm4(perm,  x * scaleX,         y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,       zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
           } else {
-            const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+            const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorize(n, params);
           }
           const i = (y * width + x) * 4;
@@ -471,17 +533,17 @@
         for (let x = 0; x < width; x++) {
           let r, g, b;
           if (isFlow) {
-            const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
-            const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
-            const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+            const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeFlow(n1 - n0, n2 - n0, params);
           } else if (isMulti) {
-            const nr = warpedFbm3(perm,  x * scaleX,         y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc);
-            const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,       tz, octaves, persistence, lacunarity, ws, wsc);
-            const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc);
+            const nr = warpedFbm3(perm,  x * scaleX,         y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,       tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
           } else {
-            const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+            const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorize(n, params);
           }
           const i = (y * width + x) * 4;
@@ -503,10 +565,13 @@
     ${lerp.toString()}
     ${grad.toString()}
     ${grad4.toString()}
+    ${wrapCell.toString()}
+    ${nextCell.toString()}
     ${perlin3.toString()}
     ${perlin4.toString()}
     ${fbm3.toString()}
     ${fbm4.toString()}
+    ${effectiveWarpScale.toString()}
     ${warpedFbm3.toString()}
     ${warpedFbm4.toString()}
     ${clamp01.toString()}
@@ -522,9 +587,12 @@
               octaves, persistence, lacunarity, base,
               loop, loopProgress, loopRadius,
               warpStrength, warpScale,
+              tileX, tileY,
               colorMode, rgbMultiChannel } = params;
       const ws = warpStrength || 0;
       const wsc = warpScale || 1;
+      const rx = tileX || 0;
+      const ry = tileY || 0;
       const isFlow = colorMode === "flow";
       const isMulti = colorMode === "rgb" && rgbMultiChannel;
       const eps = params.flowEps != null ? params.flowEps : 0.6;
@@ -541,17 +609,17 @@
           for (let x = 0; x < width; x++) {
             let c;
             if (isFlow) {
-              const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
-              const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc);
-              const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeFlow(n1 - n0, n2 - n0, params);
             } else if (isMulti) {
-              const nr = warpedFbm4(perm,  x * scaleX,          y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc);
-              const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc);
-              const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const nr = warpedFbm4(perm,  x * scaleX,          y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeRgbMulti(nr, ng, nb, params);
             } else {
-              const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc);
+              const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorize(n, params);
             }
             const i = (y * width + x) * 4;
@@ -564,17 +632,17 @@
           for (let x = 0; x < width; x++) {
             let c;
             if (isFlow) {
-              const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
-              const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc);
-              const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+              const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeFlow(n1 - n0, n2 - n0, params);
             } else if (isMulti) {
-              const nr = warpedFbm3(perm,  x * scaleX,          y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc);
-              const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc);
-              const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc);
+              const nr = warpedFbm3(perm,  x * scaleX,          y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeRgbMulti(nr, ng, nb, params);
             } else {
-              const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc);
+              const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorize(n, params);
             }
             const i = (y * width + x) * 4;

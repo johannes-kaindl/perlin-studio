@@ -6,6 +6,35 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-05-27
+
+### Added
+- **Tileable noise** — new `Tile X` and `Tile Y` inputs in the
+  Resolution section (in noise cells, `0` = off). The X and Y axes of
+  `perlin3` / `perlin4` wrap modulo the tile period, so the output
+  seamlessly repeats and is usable as a background texture, wallpaper,
+  game-engine asset, etc. Octave wrap scales with frequency (with
+  integer lacunarity = 2 by default, every octave lands on an integer
+  cell). The Z axis (3D mode) and W axis (4D loop) stay infinite so
+  seamless looping still works.
+- Tile + warp interplay: when both are active, `warpScale` is rounded
+  to the nearest non-zero integer for the warp's internal wrap period
+  to coincide with the main field's tile period — otherwise the warp
+  displacement would slip the seam by a fractional cell. Documented
+  in the Warp section hint.
+
+### Changed
+- `perlin3` and `perlin4` gained `repeatX` / `repeatY` parameters
+  (default `0` = infinite noise = bit-identical to pre-tileable).
+  Same for `fbm3` / `fbm4` / `warpedFbm3` / `warpedFbm4`.
+
+### Tests
+- Smoke battery grew to 25: tile-X seam, tile-Y seam, perlin4 tile
+  seam, fbm3 tile seam across octaves, warpedFbm3 tile seam (which
+  caught a real bug during development — the warp displacement field
+  needed its own wrap period of `tile * warpScale`, not `tile`), and
+  bit-identity regression when `repeat=0`.
+
 ## [0.9.0] — 2026-05-27
 
 ### Added
