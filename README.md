@@ -54,6 +54,12 @@ live preview updates after every input.
 - **Domain warping** — pre-displaces the sample point by a smoother
   noise field. Switches Perlin output from "Perlin" to marble veins,
   ink in water, alien terrain
+- **Layer compositing** — a second noise field can be blended on top
+  of the main one with multiply / add / screen / darken / lighten /
+  difference modes and a mix slider
+- **Image mask** — load a PNG / JPG and use its alpha (or luminance
+  as fallback) as a per-pixel mask. PNG export keeps the
+  transparency
 - **Tileable** — `Tile X` / `Tile Y` make the noise wrap modulo a
   configurable cell period, so the output repeats seamlessly as a
   background texture
@@ -61,8 +67,9 @@ live preview updates after every input.
   mathematically without any "breathing" artifact
 - **WebM export** at arbitrary length/framerate via `MediaRecorder`
 - **PNG snapshot** of the current frame
-- **Preset system** with 9 built-ins (default, lava, aurora, clouds,
-  terrain, circuit, marble, nebula, flow) and JSON import/export
+- **Preset system** with 10 built-ins (default, lava, aurora, clouds,
+  terrain, circuit, marble, nebula, flow, composite) and JSON import
+  / export
 - **Worker-accelerated** — main thread stays free, frame-skip without
   drift, wall-clock time as animation basis
 - **Dark + light theme**, follows the OS by default; a sun/moon toggle
@@ -206,14 +213,21 @@ Shipped since the original list:
 - [x] **Per-channel noise** for RGB mode (v0.9.0)
 - [x] **Flow-field colour mode** — render the noise as a vector field (v0.9.0)
 - [x] **Tileable noise** — `Tile X` / `Tile Y` make the output repeat (v0.10.0)
+- [x] **Image mask** — load a PNG / JPG, render noise inside the alpha (v0.11.0)
+- [x] **Layer system** — composite two noise fields with a blend mode (v0.11.0)
 
 Still on the wishlist:
 
-- [ ] **GIF export** as alternative to WebM (`gif.js`, ~12 KB)
-- [ ] **Reference-image mask** — load a PNG, render noise only inside its alpha
-- [ ] **Layer system** — composite two noise fields with a blend mode
-- [ ] **Obsidian plugin** — `main.ts` with a modal + canvas embed
+- [ ] **Obsidian plugin** — `main.ts` with a modal + canvas embed (separate repo)
 - [ ] **Web Component** — embeddable `<perlin-studio>` variant for the homepage
+
+Considered and explicitly deferred:
+
+- ~~GIF export~~ — WebM is technically superior in every dimension
+  (smaller, higher quality, alpha-friendly), and `gif.js` would be
+  the project's first JavaScript dependency. The Discord/Slack
+  reach gain doesn't justify breaking the "no dependencies"
+  principle.
 
 ## License
 

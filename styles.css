@@ -607,6 +607,32 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
   border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
 }
 
+/* Mask section */
+.mask-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mask-controls > button {
+  text-align: left;
+}
+.mask-controls .mask-name {
+  margin: 2px 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#btn-mask-load,
+#btn-mask-clear {
+  font-size: 10.5px;
+}
+#btn-mask-load { width: 100%; }
+#btn-mask-clear { width: 100%; }
+
 /* ============================================================
    BUTTONS
    ============================================================ */

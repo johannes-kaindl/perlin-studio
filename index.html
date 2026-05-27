@@ -122,7 +122,33 @@
       </section>
 
       <section class="ctrl-section">
-        <h2><span class="sec-num">03</span><span class="sec-name">Warp</span></h2>
+        <h2><span class="sec-num">03</span><span class="sec-name">Layer 2</span></h2>
+        <p class="sec-hint">Composite a second noise field on top of the main one. Ignored in flow mode and RGB · per-channel mode.</p>
+        <label class="checkbox switch-row">
+          <input type="checkbox" id="p-layer2-on">
+          <span class="switch-label">Enable Layer 2</span>
+        </label>
+        <div class="grid-2">
+          <label>scale x<input type="number" id="p-layer2-sx" step="0.005" value="0.06"></label>
+          <label>scale y<input type="number" id="p-layer2-sy" step="0.005" value="0.06"></label>
+          <label>octaves<input type="number" id="p-layer2-oct" min="1" max="10" value="4"></label>
+          <label>base (seed)<input type="number" id="p-layer2-base" value="101"></label>
+        </div>
+        <label class="select-row">blend mode
+          <select id="p-layer2-blend">
+            <option value="multiply" selected>multiply</option>
+            <option value="add">add</option>
+            <option value="screen">screen</option>
+            <option value="darken">darken</option>
+            <option value="lighten">lighten</option>
+            <option value="difference">difference</option>
+          </select>
+        </label>
+        <label>mix<input type="range" id="p-layer2-mix" min="0" max="1" step="0.01" value="0.5"></label>
+      </section>
+
+      <section class="ctrl-section">
+        <h2><span class="sec-num">04</span><span class="sec-name">Warp</span></h2>
         <p class="sec-hint">Domain-warp the noise sample point by a smoother field. Strength 0 = off. When tile X / Y is set, scale rounds to integer so the seam still closes.</p>
         <div class="grid-2">
           <label>strength<input type="range" id="p-warp-strength" min="0" max="3" step="0.05" value="0"></label>
@@ -131,7 +157,7 @@
       </section>
 
       <section class="ctrl-section">
-        <h2><span class="sec-num">04</span><span class="sec-name">Loop</span></h2>
+        <h2><span class="sec-num">05</span><span class="sec-name">Loop</span></h2>
         <label class="checkbox switch-row">
           <input type="checkbox" id="p-loop" checked>
           <span class="switch-label">Seamless loop</span>
@@ -143,7 +169,7 @@
       </section>
 
       <section class="ctrl-section">
-        <h2><span class="sec-num">05</span><span class="sec-name">Color mode</span></h2>
+        <h2><span class="sec-num">06</span><span class="sec-name">Color mode</span></h2>
         <label class="select-row">
           <select id="p-color-mode">
             <option value="rgb" selected>RGB · per channel</option>
@@ -234,7 +260,26 @@
       </section>
 
       <section class="ctrl-section">
-        <h2><span class="sec-num">06</span><span class="sec-name">Presets</span></h2>
+        <h2><span class="sec-num">07</span><span class="sec-name">Mask</span></h2>
+        <p class="sec-hint">Load a PNG / JPG. Transparent (or dark) regions hide the noise. Affects live preview and PNG export — WebM is RGB-only.</p>
+        <div class="mask-controls">
+          <button type="button" id="btn-mask-load">Load image</button>
+          <button type="button" id="btn-mask-clear" disabled>Clear</button>
+          <input type="file" id="mask-file" accept="image/png,image/jpeg,image/webp" hidden>
+          <p class="mask-name" id="mask-name">no mask loaded</p>
+          <label class="checkbox switch-row">
+            <input type="checkbox" id="p-mask-apply" disabled>
+            <span class="switch-label">Apply mask</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="p-mask-invert">
+            <span>Invert (transparent regions show noise)</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="ctrl-section">
+        <h2><span class="sec-num">08</span><span class="sec-name">Presets</span></h2>
         <div class="preset-actions">
           <button id="btn-preset-save">Save JSON</button>
           <button id="btn-preset-load">Load JSON</button>
@@ -250,11 +295,12 @@
           <button class="preset-chip" data-preset="marble" style="--chip-grad: linear-gradient(90deg,#1a1410,#7a5a3a,#d4b896,#f0e6d8)"><span class="chip-swatch"></span><span class="chip-label">marble</span></button>
           <button class="preset-chip" data-preset="nebula" style="--chip-grad: linear-gradient(90deg,#1a0033,#8836a8,#4ac8d8,#d3e6ff)"><span class="chip-swatch"></span><span class="chip-label">nebula</span></button>
           <button class="preset-chip" data-preset="flow" style="--chip-grad: linear-gradient(90deg,#5b0099,#0099b3,#39ff7a,#ffd64a,#d44488)"><span class="chip-swatch"></span><span class="chip-label">flow</span></button>
+          <button class="preset-chip" data-preset="composite" style="--chip-grad: linear-gradient(90deg,#0a1432,#5082c8,#b4dcfa,#ffffff)"><span class="chip-swatch"></span><span class="chip-label">composite</span></button>
         </div>
       </section>
 
       <section class="ctrl-section">
-        <h2><span class="sec-num">07</span><span class="sec-name">Export</span></h2>
+        <h2><span class="sec-num">09</span><span class="sec-name">Export</span></h2>
         <div class="export-actions">
           <button id="btn-png">PNG · current frame</button>
           <button id="btn-webm" class="primary">WebM animation</button>

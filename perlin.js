@@ -339,6 +339,27 @@
     return fbm4(perm, x + dx, y + dy, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
   }
 
+  // ---------- LAYER BLENDING ----------
+  // Composite two noise samples in [0, 1] with one of a few classic
+  // blend modes. The studio uses these to stack a second noise field
+  // ("Layer 2") on top of the main one — e.g. fine grain over slow
+  // rolling hills, or a contour grid multiplied with a colour field.
+  // All modes return a value in [0, 1] so the downstream `colorize`
+  // pipeline is unchanged.
+
+  function blendLayers(n1, n2, mode) {
+    if (mode === "multiply") return n1 * n2;
+    if (mode === "add")      return n1 + n2 > 1 ? 1 : n1 + n2;
+    if (mode === "screen")   return 1 - (1 - n1) * (1 - n2);
+    if (mode === "darken")   return n1 < n2 ? n1 : n2;
+    if (mode === "lighten")  return n1 > n2 ? n1 : n2;
+    if (mode === "difference") {
+      const d = n1 - n2;
+      return d < 0 ? -d : d;
+    }
+    return n1; // unknown mode — Layer 2 ignored
+  }
+
   // ---------- COLOR MODES ----------
 
   function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -481,6 +502,8 @@
       loop, loopProgress, loopRadius,
       warpStrength, warpScale,
       tileX, tileY,
+      layer2On, layer2ScaleX, layer2ScaleY, layer2Octaves, layer2Base,
+      layer2BlendMode, layer2Mix,
       colorMode, rgbMultiChannel,
     } = params;
     const ws = warpStrength || 0;
@@ -490,6 +513,17 @@
     const isFlow = colorMode === "flow";
     const isMulti = colorMode === "rgb" && rgbMultiChannel;
     const eps = (params.flowEps ?? 0.6);
+    // Layer 2 only composes into the standard render path — combining it
+    // with the multi-sample flow stencil or per-channel RGB would 6× the
+    // per-pixel cost and the visual win is unclear. Document the
+    // restriction in the UI.
+    const isLayer = !!layer2On && (layer2Mix || 0) > 0 && !isFlow && !isMulti;
+    const l2sx = layer2ScaleX || scaleX;
+    const l2sy = layer2ScaleY || scaleY;
+    const l2oct = layer2Octaves || octaves;
+    const l2blend = layer2BlendMode || "multiply";
+    const lmix = layer2Mix || 0;
+    const perm2 = isLayer ? makePermutation(layer2Base || 0) : null;
 
     const perm = makePermutation(base);
     const img = ctx.createImageData(width, height);
@@ -520,7 +554,12 @@
             const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
           } else {
-            const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            let n = n1;
+            if (isLayer) {
+              const n2 = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+              n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
+            }
             [r, g, b] = colorize(n, params);
           }
           const i = (y * width + x) * 4;
@@ -543,7 +582,12 @@
             const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
           } else {
-            const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            let n = n1;
+            if (isLayer) {
+              const n2 = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+              n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
+            }
             [r, g, b] = colorize(n, params);
           }
           const i = (y * width + x) * 4;
@@ -574,6 +618,7 @@
     ${effectiveWarpScale.toString()}
     ${warpedFbm3.toString()}
     ${warpedFbm4.toString()}
+    ${blendLayers.toString()}
     ${clamp01.toString()}
     ${gradientLookup.toString()}
     ${hsvToRgb.toString()}
@@ -588,6 +633,8 @@
               loop, loopProgress, loopRadius,
               warpStrength, warpScale,
               tileX, tileY,
+              layer2On, layer2ScaleX, layer2ScaleY, layer2Octaves,
+              layer2Base, layer2BlendMode, layer2Mix,
               colorMode, rgbMultiChannel } = params;
       const ws = warpStrength || 0;
       const wsc = warpScale || 1;
@@ -596,7 +643,14 @@
       const isFlow = colorMode === "flow";
       const isMulti = colorMode === "rgb" && rgbMultiChannel;
       const eps = params.flowEps != null ? params.flowEps : 0.6;
+      const isLayer = !!layer2On && (layer2Mix || 0) > 0 && !isFlow && !isMulti;
+      const l2sx = layer2ScaleX || scaleX;
+      const l2sy = layer2ScaleY || scaleY;
+      const l2oct = layer2Octaves || octaves;
+      const l2blend = layer2BlendMode || "multiply";
+      const lmix = layer2Mix || 0;
       const perm = makePermutation(base);
+      const perm2 = isLayer ? makePermutation(layer2Base || 0) : null;
       const buf = new Uint8ClampedArray(width * height * 4);
 
       if (loop) {
@@ -619,7 +673,12 @@
               const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeRgbMulti(nr, ng, nb, params);
             } else {
-              const n = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              let n = n1;
+              if (isLayer) {
+                const n2 = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+                n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
+              }
               c = colorize(n, params);
             }
             const i = (y * width + x) * 4;
@@ -642,7 +701,12 @@
               const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeRgbMulti(nr, ng, nb, params);
             } else {
-              const n = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              let n = n1;
+              if (isLayer) {
+                const n2 = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+                n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
+              }
               c = colorize(n, params);
             }
             const i = (y * width + x) * 4;
@@ -658,7 +722,7 @@
 
   window.MTPerlin = {
     makePermutation, perlin3, perlin4, fbm3, fbm4,
-    warpedFbm3, warpedFbm4,
+    warpedFbm3, warpedFbm4, blendLayers,
     generatePerlinImage, colorize, colorizeRgbMulti, colorizeFlow,
     WORKER_SOURCE,
   };

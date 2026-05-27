@@ -392,6 +392,112 @@ function ok(label, cond, detail) {
      diffFlow + "/" + (W * H * 4) + " bytes differed");
 }
 
+// ----- H0: blendLayers — each blend mode has the right algebra -----
+{
+  const eps = 1e-12;
+  const close = (a, b) => Math.abs(a - b) < eps;
+  ok("multiply: 0.5 × 0.4 = 0.2", close(MT.blendLayers(0.5, 0.4, "multiply"), 0.2));
+  ok("add clamps at 1 (0.6 + 0.5 → 1)", close(MT.blendLayers(0.6, 0.5, "add"), 1));
+  ok("add below 1 stays linear (0.3 + 0.4 = 0.7)", close(MT.blendLayers(0.3, 0.4, "add"), 0.7));
+  ok("screen: 1 − (1 − 0.5)(1 − 0.4) = 0.7", close(MT.blendLayers(0.5, 0.4, "screen"), 0.7));
+  ok("darken: min(0.5, 0.3) = 0.3", close(MT.blendLayers(0.5, 0.3, "darken"), 0.3));
+  ok("lighten: max(0.5, 0.3) = 0.5", close(MT.blendLayers(0.5, 0.3, "lighten"), 0.5));
+  ok("difference: |0.7 − 0.3| = 0.4", close(MT.blendLayers(0.7, 0.3, "difference"), 0.4));
+  // Unknown blend mode falls back to "Layer 2 ignored" → return n1.
+  ok("unknown blend mode returns n1", close(MT.blendLayers(0.5, 0.4, "rubberduck"), 0.5));
+}
+
+// ----- H1: layer2On = false produces same output as no layer at all -----
+{
+  const W = 16, H = 16;
+  function mockCtx() {
+    return {
+      createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+      _img: null,
+      putImageData(img) { this._img = img; },
+    };
+  }
+  const base = {
+    width: W, height: H, t: 0,
+    scaleX: 0.04, scaleY: 0.04, scaleT: 0.15,
+    octaves: 3, persistence: 0.5, lacunarity: 2.0, base: 53,
+    loop: true, loopProgress: 0.3, loopRadius: 1.0,
+    colorMode: "rgb",
+    rScale: 1, gScale: 1, bScale: 1,
+    rInvert: false, gInvert: false, bInvert: false,
+  };
+  const ctx0 = mockCtx();
+  MT.generatePerlinImage(base, ctx0);
+  const ctxOff = mockCtx();
+  MT.generatePerlinImage({
+    ...base, layer2On: false, layer2BlendMode: "multiply", layer2Mix: 1.0,
+    layer2ScaleX: 0.05, layer2ScaleY: 0.05, layer2Octaves: 3, layer2Base: 99,
+  }, ctxOff);
+  let drift = 0;
+  for (let i = 0; i < ctx0._img.data.length; i++) {
+    if (ctx0._img.data[i] !== ctxOff._img.data[i]) drift++;
+  }
+  ok("layer2On=false is bit-identical to the un-layered baseline", drift === 0,
+     drift + " bytes drifted");
+
+  // And with layer2On=true + mix > 0 the output MUST diverge.
+  const ctxOn = mockCtx();
+  MT.generatePerlinImage({
+    ...base, layer2On: true, layer2BlendMode: "multiply", layer2Mix: 1.0,
+    layer2ScaleX: 0.06, layer2ScaleY: 0.06, layer2Octaves: 4, layer2Base: 101,
+  }, ctxOn);
+  let differ = 0;
+  for (let i = 0; i < ctx0._img.data.length; i++) {
+    if (ctx0._img.data[i] !== ctxOn._img.data[i]) differ++;
+  }
+  ok("layer2On=true with mix=1 actually composes a second field",
+     differ > (W * H * 4) * 0.4,
+     differ + " bytes differed");
+
+  // mix = 0 short-circuits: even with layer2On = true, the output stays
+  // on the un-layered baseline because (1−mix) = 1 keeps only n1.
+  const ctxMix0 = mockCtx();
+  MT.generatePerlinImage({
+    ...base, layer2On: true, layer2BlendMode: "multiply", layer2Mix: 0,
+    layer2ScaleX: 0.06, layer2ScaleY: 0.06, layer2Octaves: 4, layer2Base: 101,
+  }, ctxMix0);
+  let mix0Drift = 0;
+  for (let i = 0; i < ctx0._img.data.length; i++) {
+    if (ctx0._img.data[i] !== ctxMix0._img.data[i]) mix0Drift++;
+  }
+  ok("layer2 mix=0 short-circuits to the un-layered output", mix0Drift === 0);
+}
+
+// ----- H: image-mask alpha math (controller-side helper, sanity-only) -----
+// The mask helper itself lives in perlin-studio.js, but its core
+// behaviour — "set alpha = mask byte, optionally inverted" — is just
+// per-pixel byte arithmetic. Reproduce it here without DOM dependencies
+// to lock the invariant.
+{
+  function applyMaskByteArith(data, mask, invert) {
+    const out = data.slice();
+    for (let i = 0; i < mask.length; i++) {
+      out[i * 4 + 3] = invert ? 255 - mask[i] : mask[i];
+    }
+    return out;
+  }
+  const data = new Uint8ClampedArray([
+    10, 20, 30, 255,
+    40, 50, 60, 255,
+    70, 80, 90, 255,
+    100, 110, 120, 255,
+  ]);
+  const mask = new Uint8Array([0, 128, 255, 200]);
+  const masked = applyMaskByteArith(data, mask, false);
+  const inverted = applyMaskByteArith(data, mask, true);
+  ok("mask copies mask bytes into alpha channel",
+     masked[3] === 0 && masked[7] === 128 && masked[11] === 255 && masked[15] === 200);
+  ok("mask invert flips bytes via 255 − mask",
+     inverted[3] === 255 && inverted[7] === 127 && inverted[11] === 0 && inverted[15] === 55);
+  ok("mask leaves RGB channels untouched",
+     masked[0] === 10 && masked[5] === 50 && masked[10] === 90);
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");

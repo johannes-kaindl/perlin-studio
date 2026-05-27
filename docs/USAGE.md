@@ -9,20 +9,22 @@ curtain see [ARCHITECTURE](ARCHITECTURE.md).
 1. [UI overview](#ui-overview)
 2. [01 · Resolution & tile](#01--resolution--tile)
 3. [02 · Noise](#02--noise)
-4. [03 · Warp](#03--warp)
-5. [04 · Loop](#04--loop)
-6. [05 · Color mode](#05--color-mode)
+4. [03 · Layer 2](#03--layer-2)
+5. [04 · Warp](#04--warp)
+6. [05 · Loop](#05--loop)
+7. [06 · Color mode](#06--color-mode)
    - [RGB · per channel](#rgb--per-channel)
    - [Gradient · preset](#gradient--preset)
    - [HSV · hue from noise](#hsv--hue-from-noise)
    - [Posterize · steps + gradient](#posterize--steps--gradient)
    - [Flow · gradient direction](#flow--gradient-direction)
-7. [06 · Presets](#06--presets)
-8. [07 · Export](#07--export)
-9. [Transport bar](#transport-bar)
-10. [Theme toggle](#theme-toggle)
-11. [Tips and workflows](#tips-and-workflows)
-12. [Keyboard shortcuts](#keyboard-shortcuts)
+8. [07 · Mask](#07--mask)
+9. [08 · Presets](#08--presets)
+10. [09 · Export](#09--export)
+11. [Transport bar](#transport-bar)
+12. [Theme toggle](#theme-toggle)
+13. [Tips and workflows](#tips-and-workflows)
+14. [Keyboard shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -41,23 +43,32 @@ curtain see [ARCHITECTURE](ARCHITECTURE.md).
 │   base, octaves,               │                                     │
 │   persistence, lacunarity      │  ▶  ⏮   ━━●━━━━ t = 0.42  fps 30    │
 │                                │                            f   120  │
-│  03 · Warp                     │                                     │
-│   strength, scale              │  > Ready.                    30 fps │
+│  03 · Layer 2                  │  > Ready.                    30 fps │
+│   ☐ Enable, sx/sy/oct/base     │                                     │
+│   blend mode, mix              │                                     │
 │                                │                                     │
-│  04 · Loop                     │                                     │
+│  04 · Warp                     │                                     │
+│   strength, scale              │                                     │
+│                                │                                     │
+│  05 · Loop                     │                                     │
 │   ☑ Seamless loop              │                                     │
 │   Loop duration, Loop radius   │                                     │
 │                                │                                     │
-│  05 · Color mode               │                                     │
+│  06 · Color mode               │                                     │
 │   Dropdown + per-mode inputs   │                                     │
 │                                │                                     │
-│  06 · Presets                  │                                     │
+│  07 · Mask                     │                                     │
+│   Load | Clear, ☐ Apply,       │                                     │
+│   ☐ Invert                     │                                     │
+│                                │                                     │
+│  08 · Presets                  │                                     │
 │   Save JSON | Load JSON        │                                     │
 │   [default] [lava] [aurora]    │                                     │
 │   [clouds] [terrain] [circuit] │                                     │
 │   [marble] [nebula] [flow]     │                                     │
+│   [composite]                  │                                     │
 │                                │                                     │
-│  07 · Export                   │                                     │
+│  09 · Export                   │                                     │
 │   PNG | WebM | Download WebM   │                                     │
 └────────────────────────────────┴─────────────────────────────────────┘
                                                   Topbar: brand · ☀/🌙
@@ -206,7 +217,71 @@ per-octave wrap period and the smoke test catches the slip.
 
 ---
 
-## 03 · Warp
+## 03 · Layer 2
+
+A second noise field composited on top of the main one with a chosen
+blend mode. The second field shares the loop / warp / tile settings
+with Layer 1, but has its own spatial scale, octave count, and seed.
+
+```
+n_main      = fbm₁(x · scaleX,  y · scaleY,  ...)
+n_layer2    = fbm₂(x · l2scaleX, y · l2scaleY, ..., l2octaves, base: l2base)
+composite   = blend(n_main, n_layer2, blendMode)
+output      = (1 − mix) · n_main + mix · composite
+```
+
+| Parameter | Range | Default | Effect |
+|-----------|-------|---------|--------|
+| **Enable Layer 2** | checkbox | off | Compositing is fully bypassed when off — the render path matches v0.10 exactly. |
+| **scale x / scale y** | step 0.005 | 0.06 | Spatial scale of the second field. Use a different value from Layer 1 to get a *different size* of structure (otherwise you're just adding the same field to itself). |
+| **octaves** | 1–10 | 4 | Octave count for the second field. Lower than Layer 1 for soft overlays; higher for fine detail on top. |
+| **base (seed)** | int | 101 | Permutation seed for the second field. Different from Layer 1's `base` so the two fields are visually independent. |
+| **blend mode** | dropdown | multiply | How the two fields combine. See the modes below. |
+| **mix** | 0–1 | 0.5 | Linear interpolation between Layer 1 alone (0) and the full blend (1). Lets you ease a Layer 2 effect in or out without changing the blend mode. |
+
+### Blend modes
+
+All operate on values in `[0, 1]` and return values in `[0, 1]`.
+
+| Mode | Formula | Character |
+|------|---------|-----------|
+| **multiply** | `n₁ · n₂` | Darkens where either layer is dim. Classic for embossing one pattern onto another. |
+| **add** | `min(n₁ + n₂, 1)` | Lightens; the union of bright regions. Can blow out — pair with low `mix` for subtler results. |
+| **screen** | `1 − (1 − n₁)(1 − n₂)` | Inverse of multiply. Lifts darks, preserves brights — softer than add. |
+| **darken** | `min(n₁, n₂)` | Keeps only the darker layer per pixel. Reveals contour lines. |
+| **lighten** | `max(n₁, n₂)` | Keeps only the brighter layer per pixel. |
+| **difference** | `|n₁ − n₂|` | Distance between layers; sharp boundaries where they cross. Looks unstable, useful for stylised effects. |
+
+### Why a separate seed
+
+Layer 2 uses its own permutation table built from `base2`. Using the
+same `base` would just produce a scaled version of Layer 1 — adding
+no new information. With a distinct seed the two fields are
+statistically independent, which is what makes composite results
+look like "two materials" rather than "one material at two scales".
+
+### Mode restrictions
+
+Layer 2 is **ignored** when:
+- `colorMode` is `flow` — flow needs three samples per pixel for the
+  gradient stencil; layering would 6× the cost.
+- `colorMode` is `rgb` and Per-channel noise is on — that mode also
+  needs three samples per pixel.
+
+The UI hint in the section notes this. Switching to a layer-aware
+colour mode (`gradient`, `hsv`, `posterize`, single-sample `rgb`)
+re-activates Layer 2 automatically; nothing to reconfigure.
+
+### Performance
+
+When the layer is active, the render path makes two `warpedFbm`
+calls per pixel instead of one. Roughly 2× the per-frame cost. The
+worker fallback can dip below 30 fps at 384×256 with both layers at
+octaves 5+; the worker path handles it fine on most machines.
+
+---
+
+## 04 · Warp
 
 Domain warping — pre-displaces the noise sample point by a second,
 smoother noise field before the main fbm runs. Output stops looking
@@ -249,7 +324,7 @@ hint in the UI says the same.
 
 ---
 
-## 04 · Loop
+## 05 · Loop
 
 ### `Seamless loop` (checkbox, default on)
 
@@ -295,7 +370,7 @@ seamless but looks restless.
 
 ---
 
-## 05 · Color mode
+## 06 · Color mode
 
 Five modes, picked from the dropdown. Each reveals its own
 parameter block beneath the selector. The other blocks stay in the
@@ -446,7 +521,59 @@ read the gradient.
 
 ---
 
-## 06 · Presets
+## 07 · Mask
+
+Load a PNG / JPG / WebP and use its alpha (or luminance) as a per-
+pixel multiplier on the canvas alpha channel. Where the mask is
+transparent (or dark, for opaque source images), the noise is
+hidden; where it's opaque (or bright), it shows through.
+
+| Control | Effect |
+|---------|--------|
+| **Load image** | Opens a file picker. PNG with an alpha channel is the cleanest — the alpha *is* the mask. JPG / fully-opaque PNG falls back to luminance (Rec. 709) so a black-on-white silhouette also works. |
+| **Clear** | Drops the mask from memory. |
+| **Apply mask** | Toggle. On by default after loading. When off, the mask is kept in memory but not applied — useful for A/B comparisons. |
+| **Invert (transparent regions show noise)** | Flips the alpha — useful when your source is a silhouette where the "shape" is the bright/opaque part but you want to mask *around* it. |
+
+### How the mask is sampled
+
+The loaded image is **stretched** to the current canvas resolution
+on first use and cached as a `Uint8Array` of alpha bytes. When you
+change Width or Height the cache rebuilds at the new size — small
+hit on the next frame, then cached again.
+
+If you want the mask to *not* stretch, match its aspect ratio to
+the canvas (e.g. a 1024×512 mask paired with a 1024×512 canvas).
+
+### Export behaviour
+
+| Export | Mask result |
+|--------|-------------|
+| **PNG (current frame)** | Includes the alpha channel — masked regions are *transparent* in the PNG. Open in an editor and the canvas underneath shows through. |
+| **WebM** | RGB-only codec. Masked regions render onto whatever's behind the canvas at recording time (usually the page background). The video itself is not transparent. |
+
+### Practical use cases
+
+- **Branded textures** — render a Perlin animation only inside a
+  logo silhouette. Save the silhouette as a PNG with transparent
+  background, load, done.
+- **Vignettes** — load a radial-gradient PNG (centre opaque, edges
+  transparent) for a feathered edge.
+- **Composite passes** — render the same noise twice with two
+  different masks, then composite in Affinity / Photoshop / Pixelmator.
+
+### Limitations
+
+- Resolution-dependent — the mask is rasterised to canvas size, so
+  changing canvas dimensions stretches the mask. (See the "match
+  aspect" note above.)
+- The mask alpha is applied directly to the canvas pixel alpha.
+  The RGB stays untouched, so you can't use a coloured mask to tint
+  the noise (use the gradient editor or HSV mode for tinting).
+
+---
+
+## 08 · Presets
 
 ### Save JSON
 
@@ -502,12 +629,13 @@ Fields not present keep their current UI value.
 | `marble` | warm stone-vein swirls | warp strength 1.6, sunset gradient |
 | `nebula` | drifting RGB channels on a soft warp | per-channel noise + warp |
 | `flow` | storm-front-like vector field | flow colour mode, high gain |
+| `composite` | layered cloud-and-contour pattern | Layer 2 multiply blend on ice gradient |
 
 Clicking a chip loads the preset immediately and renders it.
 
 ---
 
-## 07 · Export
+## 09 · Export
 
 ### PNG · current frame
 
@@ -643,6 +771,25 @@ the chrome differs.
 2. Toggle individual channel inverts to flip colour relationships
 3. Adjust `base` to get a different overall composition while
    keeping the per-channel character
+
+### "I want noise inside a logo / silhouette"
+1. Save your logo as a PNG with transparent background (the shape
+   opaque, the rest transparent)
+2. Section 07 → Load image, pick the PNG
+3. Apply is on by default. Try Invert if your image has the shape
+   transparent
+4. Adjust canvas Width / Height to match the logo's aspect ratio for
+   no stretching
+5. Export → PNG; the export keeps the transparent background.
+
+### "I want a composite cloud-and-grain texture"
+1. `composite` preset as a starting point
+2. Section 03: bump `Layer 2 octaves` to add more detail; lower
+   `mix` to fade the layer in subtly
+3. Try `blend mode: screen` instead of multiply for a brighter
+   composite, or `difference` for sharp boundaries
+4. Lock the seeds (`base` for Layer 1, Layer 2's `base (seed)`) by
+   saving as a JSON preset once you like it
 
 ### "My browser is slow"
 - Lower the resolution (128 or 192)

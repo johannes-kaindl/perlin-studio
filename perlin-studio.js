@@ -96,6 +96,13 @@ const LOOP_DEFAULTS = { loop: true, loopDuration: 4, loopRadius: 1.0 };
 
 // Default warp = off. Presets that want warp opt in explicitly.
 const WARP_OFF = { warpStrength: 0, warpScale: 1 };
+// Default layer 2 = off. Presets that want a composite opt in explicitly.
+const LAYER2_OFF = {
+  layer2On: false,
+  layer2ScaleX: 0.06, layer2ScaleY: 0.06,
+  layer2Octaves: 4, layer2Base: 101,
+  layer2BlendMode: "multiply", layer2Mix: 0.5,
+};
 
 const BUILTIN_PRESETS = {
   default: {
@@ -105,42 +112,42 @@ const BUILTIN_PRESETS = {
     colorMode: "rgb",
     rScale: 0, gScale: 1, bScale: 0,
     rInvert: false, gInvert: true, bInvert: true,
-    ...WARP_OFF, ...LOOP_DEFAULTS,
+    ...WARP_OFF, ...LAYER2_OFF, ...LOOP_DEFAULTS,
   },
   lava: {
     width: 384, height: 256,
     scaleX: 0.015, scaleY: 0.015, scaleT: 0.12,
     octaves: 5, persistence: 0.65, lacunarity: 2.2, base: 7,
     colorMode: "gradient", gradientName: "fire",
-    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 6,
+    ...WARP_OFF, ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 6,
   },
   aurora: {
     width: 384, height: 256,
     scaleX: 0.009, scaleY: 0.024, scaleT: 0.18,
     octaves: 5, persistence: 0.6, lacunarity: 2.4, base: 19,
     colorMode: "hsv", hsvHueShift: 0.30, hsvHueRange: 0.48, hsvSat: 0.88, hsvVal: 1.0,
-    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 5,
+    ...WARP_OFF, ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 5,
   },
   clouds: {
     width: 384, height: 256,
     scaleX: 0.008, scaleY: 0.008, scaleT: 0.1,
     octaves: 7, persistence: 0.5, lacunarity: 2.0, base: 3,
     colorMode: "gradient", gradientName: "grayscale",
-    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 8,
+    ...WARP_OFF, ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 8,
   },
   terrain: {
     width: 384, height: 256,
     scaleX: 0.01, scaleY: 0.01, scaleT: 0.08,
     octaves: 6, persistence: 0.55, lacunarity: 2.0, base: 42,
     colorMode: "posterize", posterizeSteps: 6, gradientName: "forest",
-    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 10,
+    ...WARP_OFF, ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 10,
   },
   circuit: {
     width: 384, height: 256,
     scaleX: 0.03, scaleY: 0.03, scaleT: 0.2,
     octaves: 3, persistence: 0.7, lacunarity: 3.0, base: 11,
     colorMode: "posterize", posterizeSteps: 3, gradientName: "ocean",
-    ...WARP_OFF, ...LOOP_DEFAULTS, loopDuration: 3,
+    ...WARP_OFF, ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 3,
   },
   // Domain-warp showcase: chunky low-octave field gets pulled into
   // marble-vein swirls by a slower, stronger warp field. Warm earthy
@@ -151,7 +158,7 @@ const BUILTIN_PRESETS = {
     octaves: 4, persistence: 0.55, lacunarity: 2.2, base: 31,
     warpStrength: 1.6, warpScale: 0.6,
     colorMode: "gradient", gradientName: "sunset",
-    ...LOOP_DEFAULTS, loopDuration: 8,
+    ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 8,
   },
   // Per-channel-noise showcase: three independent noise fields drive
   // R / G / B separately. Warp adds vein-like coherence.
@@ -164,7 +171,7 @@ const BUILTIN_PRESETS = {
     rScale: 1.0, gScale: 0.7, bScale: 1.1,
     rInvert: false, gInvert: false, bInvert: false,
     rgbMultiChannel: true,
-    ...LOOP_DEFAULTS, loopDuration: 9,
+    ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 9,
   },
   // Flow-field showcase: noise rendered as vector-field directions, so
   // the eye reads it as a storm front or a wind map. High gain pushes
@@ -176,7 +183,22 @@ const BUILTIN_PRESETS = {
     ...WARP_OFF,
     colorMode: "flow",
     flowHueShift: 0.05, flowSat: 0.85, flowGain: 6, flowFloor: 0.08, flowEps: 0.6,
-    ...LOOP_DEFAULTS, loopDuration: 6,
+    ...LAYER2_OFF, ...LOOP_DEFAULTS, loopDuration: 6,
+  },
+  // Layer-2 showcase: slow rolling base + fine, denser second layer in
+  // multiply blend. Reads like clouds with embossed contours. Composed
+  // on the ice gradient for a frozen-pane look.
+  composite: {
+    width: 384, height: 256,
+    scaleX: 0.008, scaleY: 0.008, scaleT: 0.1,
+    octaves: 4, persistence: 0.5, lacunarity: 2.0, base: 17,
+    ...WARP_OFF,
+    layer2On: true,
+    layer2ScaleX: 0.045, layer2ScaleY: 0.045,
+    layer2Octaves: 5, layer2Base: 211,
+    layer2BlendMode: "multiply", layer2Mix: 0.65,
+    colorMode: "gradient", gradientName: "ice",
+    ...LOOP_DEFAULTS, loopDuration: 7,
   },
 };
 
@@ -207,6 +229,15 @@ const state = {
 
   customStops: DEFAULT_CUSTOM_STOPS.map(s => ({ pos: s.pos, color: s.color.slice() })),
 
+  // Image mask — see initMaskControls below.
+  maskSourceImage: null,        // ImageBitmap drawn from the loaded file
+  maskName: null,               // filename for the UI readout
+  maskAlphaCache: null,         // Uint8Array of alpha values at current canvas size
+  maskCacheW: 0,
+  maskCacheH: 0,
+  maskApplied: false,
+  maskInvert: false,
+
   recording: false,
   recordedChunks: [],
   recordedBlob: null,
@@ -228,6 +259,15 @@ const els = {
   // Warp
   warpStrength: $("p-warp-strength"),
   warpScale:    $("p-warp-scale"),
+
+  // Layer 2
+  layer2On:       $("p-layer2-on"),
+  layer2Sx:       $("p-layer2-sx"),
+  layer2Sy:       $("p-layer2-sy"),
+  layer2Oct:      $("p-layer2-oct"),
+  layer2Base:     $("p-layer2-base"),
+  layer2Blend:    $("p-layer2-blend"),
+  layer2Mix:      $("p-layer2-mix"),
 
   // Loop
   loop: $("p-loop"),
@@ -259,6 +299,14 @@ const els = {
   // posterize
   posterSteps: $("p-poster-steps"),
   posterGradient: $("p-poster-gradient"),
+
+  // Mask
+  btnMaskLoad: $("btn-mask-load"),
+  btnMaskClear: $("btn-mask-clear"),
+  maskFile: $("mask-file"),
+  maskName: $("mask-name"),
+  maskApply: $("p-mask-apply"),
+  maskInvert: $("p-mask-invert"),
 
   // Presets
   btnPresetSave: $("btn-preset-save"),
@@ -342,6 +390,13 @@ function gatherParams() {
     lacunarity:  clampFloat(els.lac.value, 1, 8, 2.0),
     warpStrength: clampFloat(els.warpStrength.value, 0, 8, 0),
     warpScale:    clampFloat(els.warpScale.value, 0.05, 16, 1),
+    layer2On:        els.layer2On.checked,
+    layer2ScaleX:    clampFloat(els.layer2Sx.value, 0.0001, 10, 0.06),
+    layer2ScaleY:    clampFloat(els.layer2Sy.value, 0.0001, 10, 0.06),
+    layer2Octaves:   clampInt(els.layer2Oct.value, 1, 10, 4),
+    layer2Base:      parseInt(els.layer2Base.value, 10) || 0,
+    layer2BlendMode: els.layer2Blend.value,
+    layer2Mix:       clampFloat(els.layer2Mix.value, 0, 1, 0.5),
     colorMode,
     loop:         els.loop.checked,
     loopDuration: clampFloat(els.loopDuration.value, 0.5, 60, 4),
@@ -406,6 +461,14 @@ function applyParamsToUi(p) {
   if (p.warpStrength != null) els.warpStrength.value = p.warpStrength;
   if (p.warpScale != null) els.warpScale.value = p.warpScale;
 
+  if (p.layer2On != null) els.layer2On.checked = p.layer2On;
+  if (p.layer2ScaleX != null) els.layer2Sx.value = p.layer2ScaleX;
+  if (p.layer2ScaleY != null) els.layer2Sy.value = p.layer2ScaleY;
+  if (p.layer2Octaves != null) els.layer2Oct.value = p.layer2Octaves;
+  if (p.layer2Base != null) els.layer2Base.value = p.layer2Base;
+  if (p.layer2BlendMode) els.layer2Blend.value = p.layer2BlendMode;
+  if (p.layer2Mix != null) els.layer2Mix.value = p.layer2Mix;
+
   if (p.loop != null) { els.loop.checked = p.loop; }
   if (p.loopDuration != null) els.loopDuration.value = p.loopDuration;
   if (p.loopRadius != null) els.loopRadius.value = p.loopRadius;
@@ -454,6 +517,109 @@ function updateColorSections() {
   for (const sec of els.colorSections) {
     const isActive = sec.dataset.for === active;
     sec.hidden = !isActive;
+  }
+}
+
+// ============= IMAGE MASK =============
+// The mask is loaded once from a user-supplied PNG / JPG and re-rasterised
+// to the current canvas resolution on demand. The cached Uint8Array of
+// alpha bytes is what the render pipeline consumes per pixel — cheap.
+// PNG export inherits the alpha automatically; WebM export does not (the
+// codec is RGB-only), so masked frames in WebM render onto whatever's
+// behind the canvas at recording time.
+
+function loadMaskFile(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const blob = new Blob([e.target.result]);
+      const bitmap = await createImageBitmap(blob);
+      state.maskSourceImage = bitmap;
+      state.maskName = file.name;
+      state.maskAlphaCache = null;
+      state.maskCacheW = 0;
+      state.maskCacheH = 0;
+      if (els.maskName) els.maskName.textContent = `${file.name} · ${bitmap.width}×${bitmap.height}`;
+      if (els.maskApply) els.maskApply.disabled = false;
+      if (els.maskClear) els.maskClear.disabled = false;
+      // Auto-enable on load so users see the effect immediately.
+      if (els.maskApply && !els.maskApply.checked) {
+        els.maskApply.checked = true;
+        state.maskApplied = true;
+      }
+      setStatus(`Mask loaded: ${file.name} (${bitmap.width}×${bitmap.height})`);
+      renderOnce();
+    } catch (err) {
+      console.error(err);
+      setStatus(`Mask load failed: ${err.message}`, true);
+    }
+  };
+  reader.onerror = () => setStatus("Mask load failed: file unreadable", true);
+  reader.readAsArrayBuffer(file);
+}
+
+function clearMask() {
+  if (state.maskSourceImage && state.maskSourceImage.close) state.maskSourceImage.close();
+  state.maskSourceImage = null;
+  state.maskName = null;
+  state.maskAlphaCache = null;
+  state.maskCacheW = 0;
+  state.maskCacheH = 0;
+  state.maskApplied = false;
+  if (els.maskName) els.maskName.textContent = "no mask loaded";
+  if (els.maskApply) { els.maskApply.checked = false; els.maskApply.disabled = true; }
+  if (els.maskClear) els.maskClear.disabled = true;
+  setStatus("Mask cleared.");
+  renderOnce();
+}
+
+function rebuildMaskAlphaCache(targetW, targetH) {
+  if (!state.maskSourceImage) return;
+  const c = document.createElement("canvas");
+  c.width = targetW;
+  c.height = targetH;
+  const cx = c.getContext("2d");
+  // Stretch the mask to the canvas size. Users picking a masking image
+  // are responsible for aspect-matching it; otherwise it warps.
+  cx.drawImage(state.maskSourceImage, 0, 0, targetW, targetH);
+  const imgData = cx.getImageData(0, 0, targetW, targetH);
+  const alphas = new Uint8Array(targetW * targetH);
+  // Use the alpha channel of the source. For opaque source images (most
+  // JPEGs and PNGs) this is always 255 — fall back to luminance so a
+  // black-and-white silhouette still works.
+  let anyTransparent = false;
+  for (let i = 0; i < alphas.length; i++) {
+    const a = imgData.data[i * 4 + 3];
+    if (a < 255) anyTransparent = true;
+    alphas[i] = a;
+  }
+  if (!anyTransparent) {
+    // Fully opaque file → use luminance as mask. Bright = visible.
+    for (let i = 0; i < alphas.length; i++) {
+      const r = imgData.data[i * 4];
+      const g = imgData.data[i * 4 + 1];
+      const b = imgData.data[i * 4 + 2];
+      // Rec. 709 luminance.
+      alphas[i] = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+    }
+  }
+  state.maskAlphaCache = alphas;
+  state.maskCacheW = targetW;
+  state.maskCacheH = targetH;
+}
+
+function applyMaskToImageData(imgData) {
+  if (!state.maskApplied || !state.maskSourceImage) return;
+  if (state.maskCacheW !== imgData.width || state.maskCacheH !== imgData.height) {
+    rebuildMaskAlphaCache(imgData.width, imgData.height);
+  }
+  const cache = state.maskAlphaCache;
+  if (!cache) return;
+  const data = imgData.data;
+  const invert = state.maskInvert;
+  for (let i = 0; i < cache.length; i++) {
+    const a = invert ? 255 - cache[i] : cache[i];
+    data[i * 4 + 3] = a;
   }
 }
 
@@ -618,6 +784,13 @@ function renderInMain(params) {
     els.canvas.height = params.height;
   }
   window.MTPerlin.generatePerlinImage(params, ctx);
+  // Apply mask post-hoc on the main-thread path. Extra round-trip through
+  // ImageData but this branch is already the slow fallback.
+  if (state.maskApplied && state.maskSourceImage) {
+    const imgData = ctx.getImageData(0, 0, params.width, params.height);
+    applyMaskToImageData(imgData);
+    ctx.putImageData(imgData, 0, 0);
+  }
   // FPS EMA for the readout
   const now = performance.now();
   if (state.lastFrameTime > 0) {
@@ -641,6 +814,9 @@ function onWorkerMessage(e) {
 
   const data = new Uint8ClampedArray(buffer);
   const imgData = new ImageData(data, width, height);
+  // Apply mask on the noise pixels before putImageData. Mutates imgData
+  // in place — alpha bytes are overwritten with the mask's per-pixel value.
+  applyMaskToImageData(imgData);
   state.currentImage = imgData;
   state.currentImageMeta = { w: width, h: height };
 
@@ -977,6 +1153,7 @@ function downloadWebm() {
 const PARAM_INPUTS = [
   "w", "h", "tileX", "tileY", "sx", "sy", "st", "base", "oct", "pers", "lac",
   "warpStrength", "warpScale",
+  "layer2On", "layer2Sx", "layer2Sy", "layer2Oct", "layer2Base", "layer2Mix",
   "loopDuration", "loopRadius",
   "rs", "gs", "bs", "ri", "gi", "bi", "rgbMulti",
   "hueShift", "hueRange", "sat", "val",
@@ -997,6 +1174,7 @@ function wireEvents() {
     updateGradientPreview();
     schedulePreview();
   });
+  els.layer2Blend.addEventListener("change", schedulePreview);
   els.posterGradient.addEventListener("change", () => {
     updateGradientPreview();
     schedulePreview();
@@ -1048,6 +1226,24 @@ function wireEvents() {
   els.presetFile.addEventListener("change", (e) => {
     const f = e.target.files?.[0];
     if (f) loadPresetFromFile(f);
+  });
+
+  // Mask controls
+  els.btnMaskLoad.addEventListener("click", () => els.maskFile.click());
+  els.maskFile.addEventListener("change", (e) => {
+    const f = e.target.files?.[0];
+    if (f) loadMaskFile(f);
+    // Reset so the same filename can be re-loaded.
+    e.target.value = "";
+  });
+  els.btnMaskClear.addEventListener("click", clearMask);
+  els.maskApply.addEventListener("change", () => {
+    state.maskApplied = els.maskApply.checked;
+    renderOnce();
+  });
+  els.maskInvert.addEventListener("change", () => {
+    state.maskInvert = els.maskInvert.checked;
+    renderOnce();
   });
 
   for (const chip of els.chips) {

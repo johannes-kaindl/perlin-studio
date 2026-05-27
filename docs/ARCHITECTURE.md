@@ -10,13 +10,15 @@ for the broad overview.
 3. [fBm — Fractal Brownian Motion](#fbm--fractal-brownian-motion)
 4. [Domain warping](#domain-warping)
 5. [Tileable noise](#tileable-noise)
-6. [Loop mechanics: circular orbit in 4D](#loop-mechanics-circular-orbit-in-4d)
-7. [Worker pipeline](#worker-pipeline)
-8. [Animation loop](#animation-loop)
-9. [WebM recording](#webm-recording)
-10. [Color modes](#color-modes)
-11. [Smoke tests](#smoke-tests)
-12. [Known edge cases](#known-edge-cases)
+6. [Layer compositing](#layer-compositing)
+7. [Loop mechanics: circular orbit in 4D](#loop-mechanics-circular-orbit-in-4d)
+8. [Worker pipeline](#worker-pipeline)
+9. [Animation loop](#animation-loop)
+10. [WebM recording](#webm-recording)
+11. [Color modes](#color-modes)
+12. [Image mask](#image-mask)
+13. [Smoke tests](#smoke-tests)
+14. [Known edge cases](#known-edge-cases)
 
 ---
 
@@ -258,6 +260,80 @@ the warp scale itself, leaving a sub-cell slip).
 `perlin3(perm, x, y, z)` — the smoke test asserts this across many
 sample points so adding the tile feature can't drift the v0.7
 rendering.
+
+---
+
+## Layer compositing
+
+A second noise field ("Layer 2") can be blended on top of the main
+field with one of six classic blend modes. The maths is in
+`blendLayers(n1, n2, mode)` — a tiny dispatch on string mode names
+that returns a value in `[0, 1]` so the downstream `colorize`
+pipeline is unchanged.
+
+```js
+function blendLayers(n1, n2, mode) {
+  if (mode === "multiply") return n1 * n2;
+  if (mode === "add")      return n1 + n2 > 1 ? 1 : n1 + n2;
+  if (mode === "screen")   return 1 - (1 - n1) * (1 - n2);
+  if (mode === "darken")   return n1 < n2 ? n1 : n2;
+  if (mode === "lighten")  return n1 > n2 ? n1 : n2;
+  if (mode === "difference") return Math.abs(n1 - n2);
+  return n1;  // unknown → fall back to "Layer 2 ignored"
+}
+```
+
+### Render path
+
+When `layer2On && layer2Mix > 0`, the render loop samples the second
+field with its own permutation table:
+
+```js
+const perm2 = makePermutation(layer2Base);
+const n1 = warpedFbm(perm,  x*scaleX,   y*scaleY,   ...);
+const n2 = warpedFbm(perm2, x*l2scaleX, y*l2scaleY, ..., l2oct);
+const blended = blendLayers(n1, n2, l2blend);
+const n = n1 * (1 - mix) + blended * mix;
+```
+
+Both layers share the loop, warp, tile, persistence and lacunarity
+parameters — they're "rendering" parameters, not "field identity"
+ones. Only the spatial scale, octave count and seed differ. A
+separate seed is what makes the second field statistically
+independent; without it Layer 2 is just a scaled echo of Layer 1.
+
+### Cost
+
+When the layer is active, every pixel costs **two** `warpedFbm`
+calls instead of one. On a 384×256 canvas at 30 fps that's ~2.95 M
+extra fbm calls/sec — the worker pipeline absorbs it.
+
+### Restrictions
+
+Layer 2 is skipped (the toggle is honoured but the math is
+bypassed) when:
+
+- `colorMode === "flow"` — the flow stencil already takes three
+  samples per pixel. Adding a second layer would 6× the cost with
+  little visual win (the flow visualisation is about the gradient
+  direction of *one* field).
+- `colorMode === "rgb" && rgbMultiChannel` — same argument: three
+  channel samples already; layer would 6× the cost.
+
+Both restrictions live in `generatePerlinImage` and the worker
+source as `!isFlow && !isMulti` in the `isLayer` predicate. The
+USAGE doc surfaces the restriction in the Layer 2 section hint.
+
+### Smoke guarantees
+
+Three layer-system assertions:
+- `layer2On=false` produces bit-identical output to the un-layered
+  baseline (regression guard — adding the feature can't drift any
+  existing render).
+- `layer2On=true` with `mix=1` actually diverges from the baseline
+  (the new path isn't a silent no-op).
+- `mix=0` short-circuits to the un-layered output even with the
+  toggle on (the linear interpolation actually weights correctly).
 
 ---
 
@@ -608,6 +684,74 @@ constants in modern engines, so it inlines cheaply.
 
 ---
 
+## Image mask
+
+The mask isn't part of the noise pipeline at all — it lives entirely
+on the controller side as a post-process on the rendered `ImageData`.
+That keeps `perlin.js` pure and the worker source unchanged.
+
+### Lifecycle
+
+```
+Load image
+    ↓  FileReader → ArrayBuffer
+    ↓  createImageBitmap(Blob)
+state.maskSourceImage  (ImageBitmap, original dimensions)
+    ↓  drawImage onto temp canvas at (canvas.w, canvas.h)
+    ↓  getImageData → extract alpha (or luminance fallback)
+state.maskAlphaCache   (Uint8Array, canvas-sized)
+
+Each frame:
+worker / main → ImageData (alpha = 255)
+    ↓  applyMaskToImageData
+    │     if (cacheW/H != frame.w/h) rebuild cache
+    │     for each pixel: data[i*4+3] = invert ? 255 - cache[i] : cache[i]
+    ↓
+putImageData on canvas
+```
+
+### Source fallback to luminance
+
+`createImageBitmap` of a JPEG (or fully-opaque PNG) gives every
+pixel alpha = 255 — useless as a mask. The cache builder detects
+this and falls back to Rec. 709 luminance:
+
+```js
+alphas[i] = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+```
+
+So a black-on-white silhouette JPEG works as a mask without the
+user knowing about alpha channels.
+
+### Resolution coupling
+
+Canvas resolution drives the mask resolution. When Width / Height
+change, the cache rebuilds on the next render (`maskCacheW !==
+imgData.width` check inside `applyMaskToImageData`). Source bitmap
+stays at original dimensions in memory; rebuilds are cheap (one
+`drawImage` + one `getImageData` per resolution change).
+
+### Export behaviour
+
+- **PNG**: `canvas.toBlob()` preserves the alpha channel, so the
+  exported PNG has the mask applied as transparency. Drop into an
+  image editor — the noise appears only inside the mask shape.
+- **WebM**: the codec is RGB-only. Masked frames render onto
+  whatever's behind the canvas at recording time. The video itself
+  is not transparent.
+
+### Smoke guarantees
+
+The mask helper is DOM-dependent (it reads/writes `ImageData`), so
+the smoke can't run it directly. Instead the byte arithmetic is
+reproduced inline in the test:
+
+- Mask bytes get copied into the alpha channel.
+- Invert flips bytes via `255 − mask`.
+- RGB channels stay untouched (mask never modifies colour).
+
+---
+
 ## Smoke tests
 
 `scripts/smoke-test.js` runs all the math invariants the project relies
@@ -628,6 +772,9 @@ The current battery (25 assertions across 7 groups):
 | E. colorize range | all four `colorize` helpers stay in `[0, 255]` |
 | F2. Tileable noise | `repeat=0` is bit-identical to no-arg call; tile-X seam closes for perlin3 / perlin4 / fbm3 / **warpedFbm3** (the warp test caught a real bug during development); tile-Y seam closes |
 | G. Render-loop divergence | `rgbMultiChannel=true` and `colorMode='flow'` actually produce different bytes than the baseline RGB path (guards against the new render branches becoming silent no-ops) |
+| H0. Layer blends | Each of the six blend modes (`multiply`, `add`, `screen`, `darken`, `lighten`, `difference`) gives the right algebra at known sample points; unknown mode falls back to `n1` |
+| H1. Layer render path | `layer2On=false` is bit-identical to the un-layered baseline; `layer2On=true, mix=1` diverges; `layer2On=true, mix=0` short-circuits back to the baseline |
+| H. Image mask | Per-pixel alpha modulation matches the byte-arithmetic spec; invert flips via `255 − mask`; RGB channels untouched |
 
 The pattern is "regression guard plus sanity guard" — for every
 feature toggle, one test confirms the **off** state is unchanged

@@ -6,23 +6,52 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-05-27
+
+### Added
+- **Image mask** — load a PNG / JPG / WebP file as a per-pixel mask.
+  PNG alpha is used directly; opaque files fall back to Rec. 709
+  luminance so a black-on-white silhouette also works. The mask is
+  rasterised to canvas resolution on first use and cached. Apply
+  toggle, Invert toggle, Clear button. PNG export keeps the
+  transparency; WebM is RGB-only and renders masked regions onto
+  the canvas background.
+- **Layer compositing** — a second noise field ("Layer 2") with its
+  own scale, octaves, and seed can be blended on top of the main
+  one. Six blend modes: multiply, add, screen, darken, lighten,
+  difference. A mix slider linearly interpolates between Layer 1
+  alone and the full blend. Skipped in flow mode and per-channel
+  RGB mode (both already take 3 samples per pixel; layering would
+  6× the cost).
+- **`composite` preset** — Layer-2 showcase with a slow rolling
+  base and a finer second layer in multiply blend on the `ice`
+  gradient.
+- Six new smoke assertions for layer blends (algebra at known
+  points for each mode), three for the layer render path (off =
+  baseline, on with mix=1 diverges, mix=0 short-circuits), three
+  for the mask byte arithmetic. Total smoke battery: 25 → 39.
+
+### Changed
+- Sidebar renumbered: Layer 2 = 03 (slots between Noise and Warp),
+  Warp = 04, Loop = 05, Color = 06, Mask = 07 (new), Presets = 08,
+  Export = 09.
+- Docs sync: `USAGE.md` gains Layer 2 and Mask sections plus
+  workflow examples. `ARCHITECTURE.md` gains a Layer compositing
+  section (math, render path, restrictions, smoke guarantees) and
+  an Image mask section (lifecycle, luminance fallback, resolution
+  coupling, export behaviour). README features and roadmap updated;
+  GIF export explicitly deferred with rationale.
+
+## [0.10.0] — 2026-05-27
+
 ### Fixed
 - `savePreset` now keeps the `gradient` field in the JSON when the
   active gradient is `Custom …` — previously it stripped the stops
   unconditionally, so custom gradients couldn't actually be saved
-  and restored. Discovered while updating the user guide.
-
-### Changed
-- **Docs sync to v0.10.** `docs/USAGE.md` rewritten from scratch
-  for the current feature set (warp, tile, flow, custom gradient,
-  per-channel noise, theme toggle, 9 presets). `docs/ARCHITECTURE.md`
-  gained dedicated sections on domain warping, tileable noise, and
-  the smoke-test battery, plus updated colour-modes and code-layout
-  blocks. `CONTRIBUTING.md` replaces the "no formal test suite" note
-  with the `node scripts/smoke-test.js` workflow and the manual
-  browser checklist covers the new features.
-
-## [0.10.0] — 2026-05-27
+  and restored. Discovered while updating the user guide. (Strictly
+  this fix shipped in the v0.10.x post-release docs commit, but
+  rolled into v0.11.0's release notes because v0.10 stable users
+  see the fix the moment they pull v0.11.)
 
 ### Added
 - **Tileable noise** — new `Tile X` and `Tile Y` inputs in the
