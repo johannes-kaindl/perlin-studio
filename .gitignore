@@ -19,11 +19,12 @@ yarn-error.log*
 # Logs
 *.log
 
-# Lokale Session-Artefakte
+# Local session artefacts
 .remember/
+.claude/
 .ipynb_checkpoints/
 
-# Vom User generierte Exporte (Beispieldaten landen in docs/examples/)
+# User-generated exports (sample data lives under docs/examples/)
 *.webm
 *.png
 !assets/*.png
