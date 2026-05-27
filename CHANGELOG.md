@@ -6,6 +6,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-05-27
+
+### Fixed
+- **`aurora` built-in preset** now matches the README gallery image
+  (green → cyan → blue → violet). The previous values produced a
+  monotone cyan that diverged from the documented gallery render.
+
+### Changed
+- All README/OG images recompressed with `pngquant --quality=65-90`.
+  Total `assets/*.png` shrunk from ~1.4 MB to ~370 KB with no visible
+  quality loss (Perlin noise compresses well through palette
+  quantisation).
+
 ## [0.6.0] — 2026-05-27
 
 ### Changed

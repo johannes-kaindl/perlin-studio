@@ -113,9 +113,9 @@ const BUILTIN_PRESETS = {
   },
   aurora: {
     width: 384, height: 256,
-    scaleX: 0.012, scaleY: 0.03, scaleT: 0.18,
-    octaves: 4, persistence: 0.55, lacunarity: 2.4, base: 19,
-    colorMode: "hsv", hsvHueShift: 0.45, hsvHueRange: 0.25, hsvSat: 0.9, hsvVal: 1.0,
+    scaleX: 0.009, scaleY: 0.024, scaleT: 0.18,
+    octaves: 5, persistence: 0.6, lacunarity: 2.4, base: 19,
+    colorMode: "hsv", hsvHueShift: 0.30, hsvHueRange: 0.48, hsvSat: 0.88, hsvVal: 1.0,
     ...LOOP_DEFAULTS, loopDuration: 5,
   },
   clouds: {

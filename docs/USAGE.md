@@ -296,7 +296,7 @@ Fields not present keep their current UI value.
 |--------|------|
 | `default` | green, gently rippling default noise (RGB mode) |
 | `lava` | deep red-orange glowing lava flows (`fire` gradient) |
-| `aurora` | cyan-green polar light (HSV, narrow hue range) |
+| `aurora` | green → cyan → blue → violet polar light (HSV) |
 | `clouds` | soft black-and-white clouds (`grayscale` gradient) |
 | `terrain` | banded landscape with a contour-line look (`forest` posterize) |
 | `circuit` | hard-edged cyan/black pattern (3-step `ocean` posterize) |
