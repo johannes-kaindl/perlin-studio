@@ -41,7 +41,7 @@ static webhost.
 ```
 .
 ├── index.html             # UI markup
-├── styles.css             # all styling (dark + light auto)
+├── styles.css             # all styling (dark + light, system-following with toggle override)
 ├── perlin.js              # math/API (noise, color modes, worker source)
 ├── perlin-studio.js       # controller (RAF loop, recording, presets, UI bindings)
 ├── manifest.webmanifest   # PWA manifest (installable)

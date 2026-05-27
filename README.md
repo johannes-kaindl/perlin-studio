@@ -56,6 +56,8 @@ live preview updates after every input.
 - **Preset system** with 6 built-ins and JSON import/export
 - **Worker-accelerated** — main thread stays free, frame-skip without
   drift, wall-clock time as animation basis
+- **Dark + light theme**, follows the OS by default; a sun/moon toggle
+  in the topbar pins an explicit choice across reloads
 
 ## Gallery
 
@@ -152,7 +154,7 @@ animation smooth even at low resolutions.
 ```
 .
 ├── index.html             # UI markup
-├── styles.css             # theme (dark + light auto via prefers-color-scheme)
+├── styles.css             # theme (dark + light, system-following with topbar toggle override)
 ├── perlin.js              # math/API (3D + 4D noise, color modes, worker source)
 ├── perlin-studio.js       # controller (RAF loop, recording, presets, events)
 ├── manifest.webmanifest   # PWA manifest (installable)
