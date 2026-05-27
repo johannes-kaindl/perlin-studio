@@ -14,6 +14,16 @@ Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
   Parameter-Sets im Script.
 - `og:image` und `twitter:image` Meta-Tags zeigen jetzt auf `hero.png` →
   Link-Preview-Karten zeigen das Hero-Bild.
+- `SECURITY.md` mit Threat-Model (clientseitig, kein Backend) und
+  Meldewegen.
+- `.gitea/issue_template/` — strukturierte Bug-Report- und
+  Feature-Request-Forms, plus Config mit Kontaktlinks.
+- `.editorconfig` für konsistente Indentation/Encoding/EOL über IDEs.
+
+### Geändert
+- Forgejo-Actions-Workflow: redundante `if:`-Condition entfernt und
+  Repo-Owner-Interpolation auf `forge.event.repository.owner.username`
+  umgestellt (Wildcard-Matching-Pattern aus der git-pages-action-Doku).
 
 ## [0.4.0] — 2026-05-27
 

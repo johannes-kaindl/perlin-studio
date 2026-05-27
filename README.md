@@ -153,6 +153,9 @@ hält die Animation auch bei niedriger Auflösung flüssig.
 Issues und PRs willkommen. Quickstart für Entwickler:
 **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
+Sicherheitsrelevante Probleme bitte nicht öffentlich melden — siehe
+**[SECURITY.md](SECURITY.md)**.
+
 Für KI-Assistenten (Claude Code etc.) liegt eine Orientierung in
 **[AGENTS.md](AGENTS.md)**.
 

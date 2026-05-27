@@ -55,8 +55,14 @@ auf jedem statischen Webhoster.
 ├── docs/
 │   ├── ARCHITECTURE.md    # technische Doku
 │   └── USAGE.md           # ausführliche Bedienungsanleitung
+├── .editorconfig          # konsistente Indentation/Encoding/EOL
+├── .forgejo/
+│   └── workflows/         # Codeberg Pages Auto-Deploy
+├── .gitea/
+│   └── issue_template/    # Bug-Report + Feature-Request Forms
 ├── README.md              # Einstieg + Quickstart
 ├── CONTRIBUTING.md        # Entwickler-Workflow
+├── SECURITY.md            # Threat-Model + Meldewege
 ├── CHANGELOG.md
 ├── LICENSE                # AGPL-3.0
 └── AGENTS.md              # diese Datei
