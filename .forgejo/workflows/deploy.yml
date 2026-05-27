@@ -1,9 +1,10 @@
-# Mirrort jeden Push auf `main` automatisch auf den `pages`-Branch.
+# Publisht jeden Push auf `main` an Codeberg Pages.
 # Site: https://jkaindl.codeberg.page/perlin-studio/
 #
 # Kein Build-Step nötig — das Repo-Root IST die deploybare Site.
-# Kein Secret nötig — Forgejo stellt `forge.token` mit Push-Rechten bereit,
-# und git-pages/action erkennt es als autorisiert.
+# Kein Secret nötig — Forgejo stellt `forge.token` automatisch bereit,
+# und git-pages/action erkennt es als autorisiert (Wildcard-Domain-
+# Matching: Repo-Name == Pfad-Segment).
 name: Deploy to Codeberg Pages
 
 on:
@@ -14,7 +15,6 @@ on:
 jobs:
   deploy:
     runs-on: codeberg-tiny
-    if: ${{ forge.ref == 'refs/heads/main' }}
     steps:
       - name: Checkout
         uses: https://code.forgejo.org/actions/checkout@v4
@@ -22,6 +22,6 @@ jobs:
       - name: Publish to Codeberg Pages
         uses: https://codeberg.org/git-pages/action@v2
         with:
-          site: https://${{ forge.repository_owner }}.codeberg.page/perlin-studio/
+          site: https://${{ forge.event.repository.owner.username }}.codeberg.page/${{ forge.event.repository.name }}/
           token: ${{ forge.token }}
           source: .
