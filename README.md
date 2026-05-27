@@ -47,13 +47,22 @@ live preview updates after every input.
 
 - **Live preview** of parametric Perlin animations (fBm with octaves,
   persistence, lacunarity, seed)
-- **Four color modes**: RGB (per channel), Gradient (8 presets), HSV,
-  Posterize
+- **Five color modes**: RGB (per channel, with optional per-channel
+  multi-sample for nebula / film-grain looks), Gradient (8 presets +
+  custom stops editor), HSV, Posterize, Flow (renders the noise as a
+  vector field — hue = local gradient direction)
+- **Domain warping** — pre-displaces the sample point by a smoother
+  noise field. Switches Perlin output from "Perlin" to marble veins,
+  ink in water, alien terrain
+- **Tileable** — `Tile X` / `Tile Y` make the noise wrap modulo a
+  configurable cell period, so the output repeats seamlessly as a
+  background texture
 - **Seamless loop** — 4D Perlin on a circular path in `(z, w)`, closes
   mathematically without any "breathing" artifact
 - **WebM export** at arbitrary length/framerate via `MediaRecorder`
 - **PNG snapshot** of the current frame
-- **Preset system** with 6 built-ins and JSON import/export
+- **Preset system** with 9 built-ins (default, lava, aurora, clouds,
+  terrain, circuit, marble, nebula, flow) and JSON import/export
 - **Worker-accelerated** — main thread stays free, frame-skip without
   drift, wall-clock time as animation basis
 - **Dark + light theme**, follows the OS by default; a sun/moon toggle
@@ -190,10 +199,19 @@ AI assistants (Claude Code, etc.) get their orientation in
 
 ## Roadmap
 
-- [ ] **Gradient editor** — define custom color stops instead of presets only
-- [ ] **Tileable noise** — `repeatx`/`repeaty`/`repeatz` like in the Python
-  library, for seamlessly tileable textures
+Shipped since the original list:
+
+- [x] **Gradient editor** — custom color stops (since v0.8.0)
+- [x] **Domain warping** — Inigo-Quilez-style sample-point displacement (v0.8.0)
+- [x] **Per-channel noise** for RGB mode (v0.9.0)
+- [x] **Flow-field colour mode** — render the noise as a vector field (v0.9.0)
+- [x] **Tileable noise** — `Tile X` / `Tile Y` make the output repeat (v0.10.0)
+
+Still on the wishlist:
+
 - [ ] **GIF export** as alternative to WebM (`gif.js`, ~12 KB)
+- [ ] **Reference-image mask** — load a PNG, render noise only inside its alpha
+- [ ] **Layer system** — composite two noise fields with a blend mode
 - [ ] **Obsidian plugin** — `main.ts` with a modal + canvas embed
 - [ ] **Web Component** — embeddable `<perlin-studio>` variant for the homepage
 
