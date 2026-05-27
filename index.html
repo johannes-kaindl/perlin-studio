@@ -6,8 +6,8 @@
   <title>Perlin Studio — parametric 3D/4D Perlin animations in the browser</title>
   <meta name="description" content="Parametric 3D/4D Perlin animations in the browser. Vanilla JS, no dependencies, no build. Worker-accelerated, seamless loop, WebM export.">
   <meta name="author" content="Johannes Kaindl">
-  <meta name="theme-color" content="#0a0a18" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f5f5fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#060709" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)">
 
   <link rel="canonical" href="https://jkaindl.codeberg.page/perlin-studio/">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -30,151 +30,233 @@
   <meta name="twitter:image" content="https://jkaindl.codeberg.page/perlin-studio/assets/hero.png">
 
   <link rel="stylesheet" href="styles.css">
+
+  <script>
+    // FOUC guard: apply persisted theme override before stylesheet paints.
+    // Absence of the key means "follow system" (via prefers-color-scheme).
+    try {
+      var t = localStorage.getItem("perlin-studio:theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
 </head>
 <body>
-  <header>
-    <h1>Perlin Studio</h1>
-    <p class="subtitle">
-      Parametric 3D Perlin animations in the browser. Worker-accelerated,
-      WebM export, presets. <span class="muted">Grown out of the old hobby
-      project <code>_archiv/perlin_noise/</code>.</span>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Perlin Studio home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" width="32" height="32">
+          <rect width="64" height="64" rx="14" fill="#0a0a18"/>
+          <path d="M 6 40 C 14 32, 18 48, 26 40 S 38 24, 46 32 S 56 42, 60 36"
+                stroke="#a878ff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.5"/>
+          <path d="M 6 34 C 14 26, 18 42, 26 34 S 38 18, 46 26 S 56 36, 60 30"
+                stroke="#4ac8d8" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.7"/>
+          <path d="M 6 28 C 14 20, 18 36, 26 28 S 38 12, 46 20 S 56 30, 60 24"
+                stroke="#39ff7a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          <circle cx="6"  cy="28" r="1.8" fill="#39ff7a"/>
+          <circle cx="60" cy="24" r="1.8" fill="#39ff7a"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-eyebrow">Generative · 3D Perlin</span>
+        <h1 class="brand-title">Perlin Studio</h1>
+      </span>
+    </a>
+    <p class="topbar-meta">
+      <span class="chip-mono">vanilla JS</span>
+      <span class="chip-mono">no deps</span>
+      <span class="chip-mono">AGPL-3.0</span>
     </p>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+      <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <circle cx="12" cy="12" r="4" fill="currentColor"/>
+        <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="12" y1="2"  x2="12" y2="5"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="2"  y1="12" x2="5"  y2="12"/>
+          <line x1="19" y1="12" x2="22" y2="12"/>
+          <line x1="4.5"  y1="4.5"  x2="6.7"  y2="6.7"/>
+          <line x1="17.3" y1="17.3" x2="19.5" y2="19.5"/>
+          <line x1="4.5"  y1="19.5" x2="6.7"  y2="17.3"/>
+          <line x1="17.3" y1="6.7"  x2="19.5" y2="4.5"/>
+        </g>
+      </svg>
+      <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M20 14.5 A8 8 0 1 1 9.5 4 A6.5 6.5 0 0 0 20 14.5 Z" fill="currentColor"/>
+      </svg>
+    </button>
   </header>
 
   <main>
     <!-- ============ SIDEBAR ============ -->
-    <aside class="panel sidebar">
-      <h2>Resolution</h2>
-      <div class="grid-2">
-        <label>Width<input type="number" id="p-w" min="4" max="1024" value="256"></label>
-        <label>Height<input type="number" id="p-h" min="4" max="1024" value="256"></label>
-      </div>
+    <aside class="panel sidebar" aria-label="Parameters">
 
-      <h2>Noise</h2>
-      <div class="grid-2">
-        <label>scale x<input type="number" id="p-sx" step="0.005" value="0.02"></label>
-        <label>scale y<input type="number" id="p-sy" step="0.005" value="0.02"></label>
-        <label class="span2">Time scale<input type="number" id="p-st" step="0.01" value="0.15"></label>
-        <label>base (seed)<input type="number" id="p-base" value="0"></label>
-        <label>octaves<input type="number" id="p-oct" min="1" max="10" value="6"></label>
-        <label>persistence<input type="number" id="p-pers" step="0.05" value="0.5"></label>
-        <label class="span2">lacunarity<input type="number" id="p-lac" step="0.1" value="2.0"></label>
-      </div>
-
-      <h2>Loop</h2>
-      <label class="checkbox"><input type="checkbox" id="p-loop" checked>Seamless loop</label>
-      <div class="grid-2" id="loop-controls">
-        <label>Loop duration (sec)<input type="number" id="p-loop-duration" min="0.5" max="60" step="0.5" value="4"></label>
-        <label>Loop radius<input type="number" id="p-loop-radius" min="0" max="4" step="0.05" value="1.0"></label>
-      </div>
-
-      <h2>Color mode</h2>
-      <label>
-        <select id="p-color-mode">
-          <option value="rgb" selected>RGB (per channel)</option>
-          <option value="gradient">Gradient (preset)</option>
-          <option value="hsv">HSV (hue from noise)</option>
-          <option value="posterize">Posterize (steps + gradient)</option>
-        </select>
-      </label>
-
-      <!-- RGB-specific -->
-      <div class="color-section" data-for="rgb">
-        <label>r scale<input type="range" id="p-rs" min="0" max="2" step="0.05" value="0"></label>
-        <label>g scale<input type="range" id="p-gs" min="0" max="2" step="0.05" value="1"></label>
-        <label>b scale<input type="range" id="p-bs" min="0" max="2" step="0.05" value="0"></label>
-        <div class="grid-3 checkbox-row">
-          <label class="checkbox"><input type="checkbox" id="p-ri">r invert</label>
-          <label class="checkbox"><input type="checkbox" id="p-gi" checked>g invert</label>
-          <label class="checkbox"><input type="checkbox" id="p-bi" checked>b invert</label>
+      <section class="ctrl-section">
+        <h2><span class="sec-num">01</span><span class="sec-name">Resolution</span></h2>
+        <div class="grid-2">
+          <label>Width<input type="number" id="p-w" min="4" max="1024" value="256"></label>
+          <label>Height<input type="number" id="p-h" min="4" max="1024" value="256"></label>
         </div>
-      </div>
+      </section>
 
-      <!-- Gradient-specific -->
-      <div class="color-section" data-for="gradient" hidden>
-        <label>Preset
-          <select id="p-gradient-preset">
-            <option value="viridis" selected>Viridis</option>
-            <option value="magma">Magma</option>
-            <option value="fire">Fire</option>
-            <option value="ocean">Ocean</option>
-            <option value="forest">Forest</option>
-            <option value="grayscale">Grayscale</option>
-            <option value="sunset">Sunset</option>
-            <option value="ice">Ice</option>
+      <section class="ctrl-section">
+        <h2><span class="sec-num">02</span><span class="sec-name">Noise</span></h2>
+        <div class="grid-2">
+          <label>scale x<input type="number" id="p-sx" step="0.005" value="0.02"></label>
+          <label>scale y<input type="number" id="p-sy" step="0.005" value="0.02"></label>
+          <label class="span2">Time scale<input type="number" id="p-st" step="0.01" value="0.15"></label>
+          <label>base (seed)<input type="number" id="p-base" value="0"></label>
+          <label>octaves<input type="number" id="p-oct" min="1" max="10" value="6"></label>
+          <label>persistence<input type="number" id="p-pers" step="0.05" value="0.5"></label>
+          <label class="span2">lacunarity<input type="number" id="p-lac" step="0.1" value="2.0"></label>
+        </div>
+      </section>
+
+      <section class="ctrl-section">
+        <h2><span class="sec-num">03</span><span class="sec-name">Loop</span></h2>
+        <label class="checkbox switch-row">
+          <input type="checkbox" id="p-loop" checked>
+          <span class="switch-label">Seamless loop</span>
+        </label>
+        <div class="grid-2" id="loop-controls">
+          <label>Loop duration <span class="unit">sec</span><input type="number" id="p-loop-duration" min="0.5" max="60" step="0.5" value="4"></label>
+          <label>Loop radius<input type="number" id="p-loop-radius" min="0" max="4" step="0.05" value="1.0"></label>
+        </div>
+      </section>
+
+      <section class="ctrl-section">
+        <h2><span class="sec-num">04</span><span class="sec-name">Color mode</span></h2>
+        <label class="select-row">
+          <select id="p-color-mode">
+            <option value="rgb" selected>RGB · per channel</option>
+            <option value="gradient">Gradient · preset</option>
+            <option value="hsv">HSV · hue from noise</option>
+            <option value="posterize">Posterize · steps + gradient</option>
           </select>
         </label>
-        <div class="gradient-preview" id="p-gradient-preview"></div>
-      </div>
 
-      <!-- HSV-specific -->
-      <div class="color-section" data-for="hsv" hidden>
-        <label>hue shift<input type="range" id="p-hue-shift" min="0" max="1" step="0.01" value="0"></label>
-        <label>hue range<input type="range" id="p-hue-range" min="0" max="1" step="0.01" value="0.6"></label>
-        <label>saturation<input type="range" id="p-sat" min="0" max="1" step="0.05" value="0.8"></label>
-        <label>value<input type="range" id="p-val" min="0" max="1" step="0.05" value="1"></label>
-      </div>
+        <!-- RGB-specific -->
+        <div class="color-section" data-for="rgb">
+          <label>r scale<input type="range" id="p-rs" min="0" max="2" step="0.05" value="0"></label>
+          <label>g scale<input type="range" id="p-gs" min="0" max="2" step="0.05" value="1"></label>
+          <label>b scale<input type="range" id="p-bs" min="0" max="2" step="0.05" value="0"></label>
+          <div class="grid-3 checkbox-row">
+            <label class="checkbox"><input type="checkbox" id="p-ri"><span>r invert</span></label>
+            <label class="checkbox"><input type="checkbox" id="p-gi" checked><span>g invert</span></label>
+            <label class="checkbox"><input type="checkbox" id="p-bi" checked><span>b invert</span></label>
+          </div>
+        </div>
 
-      <!-- Posterize-specific -->
-      <div class="color-section" data-for="posterize" hidden>
-        <label>Steps<input type="number" id="p-poster-steps" min="2" max="16" value="5"></label>
-        <label>Gradient preset
-          <select id="p-poster-gradient">
-            <option value="viridis" selected>Viridis</option>
-            <option value="magma">Magma</option>
-            <option value="fire">Fire</option>
-            <option value="ocean">Ocean</option>
-            <option value="forest">Forest</option>
-            <option value="grayscale">Grayscale</option>
-            <option value="sunset">Sunset</option>
-            <option value="ice">Ice</option>
-          </select>
-        </label>
-      </div>
+        <!-- Gradient-specific -->
+        <div class="color-section" data-for="gradient" hidden>
+          <label>Preset
+            <select id="p-gradient-preset">
+              <option value="viridis" selected>Viridis</option>
+              <option value="magma">Magma</option>
+              <option value="fire">Fire</option>
+              <option value="ocean">Ocean</option>
+              <option value="forest">Forest</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sunset">Sunset</option>
+              <option value="ice">Ice</option>
+            </select>
+          </label>
+          <div class="gradient-preview-wrap">
+            <div class="gradient-preview" id="p-gradient-preview"></div>
+            <div class="gradient-ticks" aria-hidden="true">
+              <span>0.0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1.0</span>
+            </div>
+          </div>
+        </div>
 
-      <h2>Presets</h2>
-      <div class="preset-actions">
-        <button id="btn-preset-save">Save</button>
-        <button id="btn-preset-load">Load</button>
-        <input type="file" id="preset-file" accept="application/json,.json" hidden>
-      </div>
-      <div class="preset-builtins">
-        <button class="preset-chip" data-preset="default">default</button>
-        <button class="preset-chip" data-preset="lava">lava</button>
-        <button class="preset-chip" data-preset="aurora">aurora</button>
-        <button class="preset-chip" data-preset="clouds">clouds</button>
-        <button class="preset-chip" data-preset="terrain">terrain</button>
-        <button class="preset-chip" data-preset="circuit">circuit</button>
-      </div>
+        <!-- HSV-specific -->
+        <div class="color-section" data-for="hsv" hidden>
+          <label>hue shift<input type="range" id="p-hue-shift" min="0" max="1" step="0.01" value="0"></label>
+          <label>hue range<input type="range" id="p-hue-range" min="0" max="1" step="0.01" value="0.6"></label>
+          <label>saturation<input type="range" id="p-sat" min="0" max="1" step="0.05" value="0.8"></label>
+          <label>value<input type="range" id="p-val" min="0" max="1" step="0.05" value="1"></label>
+        </div>
 
-      <h2>Export</h2>
-      <div class="export-actions">
-        <button id="btn-png">PNG (current frame)</button>
-        <button id="btn-webm" class="primary">WebM animation</button>
-        <button id="btn-webm-download" hidden disabled>Download WebM</button>
-      </div>
+        <!-- Posterize-specific -->
+        <div class="color-section" data-for="posterize" hidden>
+          <label>Steps<input type="number" id="p-poster-steps" min="2" max="16" value="5"></label>
+          <label>Gradient preset
+            <select id="p-poster-gradient">
+              <option value="viridis" selected>Viridis</option>
+              <option value="magma">Magma</option>
+              <option value="fire">Fire</option>
+              <option value="ocean">Ocean</option>
+              <option value="forest">Forest</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sunset">Sunset</option>
+              <option value="ice">Ice</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="ctrl-section">
+        <h2><span class="sec-num">05</span><span class="sec-name">Presets</span></h2>
+        <div class="preset-actions">
+          <button id="btn-preset-save">Save JSON</button>
+          <button id="btn-preset-load">Load JSON</button>
+          <input type="file" id="preset-file" accept="application/json,.json" hidden>
+        </div>
+        <div class="preset-builtins">
+          <button class="preset-chip" data-preset="default" style="--chip-grad: linear-gradient(90deg,#0b0d11,#39ff7a,#4ac8d8)"><span class="chip-swatch"></span><span class="chip-label">default</span></button>
+          <button class="preset-chip" data-preset="lava" style="--chip-grad: linear-gradient(90deg,#000,#880000,#ff5900,#ffd500,#fffff0)"><span class="chip-swatch"></span><span class="chip-label">lava</span></button>
+          <button class="preset-chip" data-preset="aurora" style="--chip-grad: linear-gradient(90deg,#a878ff,#4ac8d8,#39ff7a,#ffd54a)"><span class="chip-swatch"></span><span class="chip-label">aurora</span></button>
+          <button class="preset-chip" data-preset="clouds" style="--chip-grad: linear-gradient(90deg,#000,#fff)"><span class="chip-swatch"></span><span class="chip-label">clouds</span></button>
+          <button class="preset-chip" data-preset="terrain" style="--chip-grad: linear-gradient(90deg,#192314,#28501e,#508c32,#b4c86e,#f0f5c8)"><span class="chip-swatch"></span><span class="chip-label">terrain</span></button>
+          <button class="preset-chip" data-preset="circuit" style="--chip-grad: linear-gradient(90deg,#030b29,#05386b,#0090b2,#78dcdc)"><span class="chip-swatch"></span><span class="chip-label">circuit</span></button>
+        </div>
+      </section>
+
+      <section class="ctrl-section">
+        <h2><span class="sec-num">06</span><span class="sec-name">Export</span></h2>
+        <div class="export-actions">
+          <button id="btn-png">PNG · current frame</button>
+          <button id="btn-webm" class="primary">WebM animation</button>
+          <button id="btn-webm-download" hidden disabled>Download WebM</button>
+        </div>
+      </section>
+
     </aside>
 
     <!-- ============ MAIN OUTPUT ============ -->
     <section class="panel main">
-      <div class="canvas-wrap" id="canvas-wrap">
-        <canvas id="canvas-output"></canvas>
-        <video id="anim-preview" controls loop></video>
+      <div class="canvas-frame">
+        <div class="frame-tag frame-tag-tl" aria-hidden="true">
+          <span class="tag-label">FRAME</span>
+        </div>
+        <div class="frame-tag frame-tag-tr" aria-hidden="true">
+          <span class="tag-dot"></span>
+          <span class="tag-val">LIVE</span>
+        </div>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="canvas-output"></canvas>
+          <video id="anim-preview" controls loop></video>
+        </div>
       </div>
 
       <div class="transport">
-        <button id="btn-play" class="transport-btn primary" aria-label="Play/Pause">▶</button>
-        <button id="btn-reset-t" class="transport-btn" aria-label="Reset t">⏮</button>
+        <button id="btn-play" class="transport-btn primary" aria-label="Play/Pause" title="Play / Pause (Space)">
+          <span class="play-glyph" aria-hidden="true">▶</span>
+        </button>
+        <button id="btn-reset-t" class="transport-btn" aria-label="Reset t" title="Reset time">⏮</button>
         <label class="t-slider">
-          <span class="t-label"><span id="t-label-name">Loop progress</span> = <span id="t-display">0.00</span></span>
+          <span class="t-label">
+            <span class="t-label-name" id="t-label-name">Loop progress</span>
+            <span class="t-label-eq">=</span>
+            <span class="t-label-val" id="t-display">0.00</span>
+          </span>
           <input type="range" id="p-t" min="0" max="1" step="0.001" value="0">
         </label>
-        <label class="fps-label">
-          fps
+        <label class="num-field fps-label">
+          <span class="num-label">fps</span>
           <input type="number" id="p-fps" min="1" max="60" value="30">
         </label>
-        <label class="frames-label">
-          frames
+        <label class="num-field frames-label">
+          <span class="num-label">frames</span>
           <input type="number" id="p-frames" min="1" max="600" value="120">
         </label>
       </div>
@@ -187,10 +269,16 @@
     </section>
   </main>
 
-  <footer>
+  <footer class="bottombar">
     <small>
-      Vanilla JS, no backend. Worker for Perlin compute, MediaRecorder
-      for animation. Suitable for static hosting.
+      <span class="foot-mono">vanilla JS</span>
+      <span class="sep">·</span>
+      <span>Worker for Perlin compute, MediaRecorder for animation.</span>
+      <span class="sep">·</span>
+      <span>Static-host friendly. Runs from <code>file://</code>.</span>
+    </small>
+    <small class="foot-kbd">
+      <span class="kbd">Space</span> <span class="foot-dim">play/pause</span>
     </small>
   </footer>
 

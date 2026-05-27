@@ -6,10 +6,51 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-27
+
 ### Added
-- `docs/UI-SPEC.md` — design brief for a future UI iteration, written
-  for a design-focused AI agent (full element-ID inventory, hard vs
-  soft constraints, current design tokens). No code change yet.
+- **Theme toggle.** A sun/moon button in the topbar lets users override
+  the OS theme. The default still follows `prefers-color-scheme`; once
+  the toggle is clicked, the explicit choice is persisted to
+  `localStorage` and survives reload. A small inline `<head>` script
+  applies the override before stylesheet paint to avoid a flash of the
+  wrong theme.
+- **New logo.** Three layered Bézier-noise waves (Spectre / Circuit /
+  Phosphor) on a void ground — replaces the previous radial-blob mark.
+  Used inline in the header SVG, in `assets/favicon.svg`, and rendered
+  out to `apple-touch-icon`, `icon-192.png`, `icon-512.png`. PWA install
+  icons shrunk dramatically (icon-512 from ~260 KB to ~24 KB).
+- `docs/UI-SPEC.md` — the design brief that fed the redesign (written
+  for a design-focused AI agent; full element-ID inventory, hard vs
+  soft constraints, current design tokens).
+- `docs/UI-REDESIGN.md` — the designer's rationale for the iteration
+  that landed here (companion to UI-SPEC.md).
+
+### Changed
+- **Major UI refresh — "Signal Chamber" direction.** Full rewrite of
+  `styles.css` (320 → 845 lines) and restructure of `index.html`
+  (200 → 265 lines). Highlights:
+  - Numbered mono-caps section eyebrows (`01 · RESOLUTION`, …) give
+    the sidebar a tool-like, protocol-y rhythm.
+  - Preset chips carry per-preset gradient strips reflecting their
+    signature look (lava = fire ramp, aurora = purple→cyan→green→amber,
+    etc.) — pure CSS, no JS change.
+  - Canvas gets a flat void surface with hairline frame + inner
+    vignette and decorative `FRAME` / `LIVE` corner tags (replaces the
+    transparency-checker background, which fought with the noise output).
+  - Transport bar is one unified strip with mono-typed labels; the
+    t-slider is the visual hero, fps/frames sit right as small numeric
+    stubs. Status line uses a `>` terminal-prompt glyph that flips to
+    `!` on error.
+  - FPS counter becomes a circuit-cyan pill, hidden when empty.
+  - Color sub-sections live inside an inset panel under the colour-mode
+    dropdown.
+  - Light theme reworked to bone (`#f3f0e6`) + ink, with darker accent
+    hues for AA contrast on the warm ground.
+- All JS-managed IDs, classes (`hidden`, `ready`, `active`, `error`,
+  `primary`), `data-preset` values, and `data-for` hooks preserved
+  verbatim — no JS changes were required for the redesign itself.
+  System fonts only (`ui-sans-serif` / `ui-monospace`), no external CDN.
 
 ## [0.6.1] — 2026-05-27
 

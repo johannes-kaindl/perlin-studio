@@ -849,6 +849,38 @@ function wireEvents() {
   }
 }
 
+// ============= THEME TOGGLE =============
+// Default behavior follows the OS via `prefers-color-scheme`. Clicking
+// the toggle sets an explicit override on <html data-theme> and persists
+// it to localStorage. CSS handles both icon and palette swap; this
+// module only manages the attribute, the persistence, and the aria-label.
+const THEME_KEY = "perlin-studio:theme";
+function effectiveTheme() {
+  const forced = document.documentElement.dataset.theme;
+  if (forced === "light" || forced === "dark") return forced;
+  return matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+function syncThemeLabel(btn) {
+  const next = effectiveTheme() === "dark" ? "light" : "dark";
+  btn.setAttribute("aria-label", "Switch to " + next + " theme");
+  btn.setAttribute("title",      "Switch to " + next + " theme");
+}
+function initThemeToggle() {
+  const btn = $("theme-toggle");
+  if (!btn) return;
+  syncThemeLabel(btn);
+  btn.addEventListener("click", () => {
+    const next = effectiveTheme() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    syncThemeLabel(btn);
+  });
+  // Keep the label correct when the OS theme flips and no override is set.
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+    if (!document.documentElement.dataset.theme) syncThemeLabel(btn);
+  });
+}
+
 // ============= INIT =============
 (function init() {
   initWorker();
@@ -856,6 +888,7 @@ function wireEvents() {
   updateGradientPreview();
   updateLoopMode();
   wireEvents();
+  initThemeToggle();
   // Apply and render the first preset
   applyPreset("default");
   setStatus("Ready. Press ▶ or Space to animate.");
