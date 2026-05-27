@@ -6,6 +6,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `docs/UI-SPEC.md` — design brief for a future UI iteration, written
+  for a design-focused AI agent (full element-ID inventory, hard vs
+  soft constraints, current design tokens). No code change yet.
+
 ## [0.6.1] — 2026-05-27
 
 ### Fixed
