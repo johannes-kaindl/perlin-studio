@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 Johannes Kaindl
+# SPDX-License-Identifier: CC-BY-SA-4.0
+name: Feature-Vorschlag
+about: Idee für eine Verbesserung oder ein neues Feature
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bevor du tippst — Perlin Studio ist bewusst **schlank** und hat klare
+        Leitplanken (siehe [`AGENTS.md`](https://codeberg.org/jkaindl/perlin-studio/src/branch/main/AGENTS.md)):
+
+        - **kein** Framework (React/Vue/Svelte)
+        - **kein** Build-Step (Webpack/Vite/esbuild)
+        - **kein** Backend-Service
+        - **keine** externen Dependencies
+
+        Wenn dein Vorschlag eines davon braucht, wird er vermutlich abgelehnt
+        — bitte trotzdem ehrlich öffnen, dann reden wir drüber.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem löst das Feature?
+      description: Was geht heute nicht oder ist umständlich?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Vorgeschlagene Lösung
+      description: Wie würdest du das umsetzen? UI-Skizze, JSON-Preset, Pseudocode — was hilft.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen
+      description: Welche anderen Wege hast du überlegt?
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Was ist betroffen?
+      multiple: true
+      options:
+        - Renderer (perlin-studio.js)
+        - Noise-Backend (perlin.js)
+        - UI (index.html / styles.css)
+        - Worker / Performance
+        - Presets / Export
+        - Dokumentation
+        - Anderes
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vorab-Checks
+      options:
+        - label: Ich habe in [bestehenden Issues](https://codeberg.org/jkaindl/perlin-studio/issues) nach Duplikaten geschaut.
+          required: true
+        - label: Mir ist klar, dass die Architektur-Leitplanken aus AGENTS.md gelten.
+          required: true

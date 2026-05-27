@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Johannes Kaindl
+# SPDX-License-Identifier: CC-BY-SA-4.0
+blank_issues_enabled: true
+contact_links:
+  - name: Sicherheits-Meldung
+    url: https://codeberg.org/jkaindl/perlin-studio/src/branch/main/SECURITY.md
+    about: Sicherheitsrelevante Probleme bitte nicht öffentlich melden — siehe SECURITY.md.
+  - name: Live-Demo
+    url: https://jkaindl.codeberg.page/perlin-studio/
+    about: Vor dem Issue erstmal die Live-Version ausprobieren.
