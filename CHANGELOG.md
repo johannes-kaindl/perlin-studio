@@ -6,6 +6,21 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `scripts/smoke-test.js` — math invariants for `perlin.js`. Covers
+  permutation determinism, `perlin3`/`perlin4` value range, loop
+  identity at `progress=0` vs `progress=1` (bytewise and bit-exact at
+  the float level), Z/W axis independence, and `colorize` range. The
+  Forgejo deploy workflow now gates on it, so a regression in any of
+  these stops the site from being republished.
+
+### Changed
+- PWA / address-bar `theme-color` meta tag now tracks the theme toggle
+  too. Previously the two static `prefers-color-scheme`-keyed metas
+  fell out of sync with explicit light/dark overrides on PWA install.
+  Single tag, kept in sync by the inline `<head>` FOUC script and by
+  `initThemeToggle`.
+
 ## [0.7.0] — 2026-05-27
 
 ### Added

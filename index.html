@@ -6,8 +6,7 @@
   <title>Perlin Studio — parametric 3D/4D Perlin animations in the browser</title>
   <meta name="description" content="Parametric 3D/4D Perlin animations in the browser. Vanilla JS, no dependencies, no build. Worker-accelerated, seamless loop, WebM export.">
   <meta name="author" content="Johannes Kaindl">
-  <meta name="theme-color" content="#060709" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f4f1e8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" id="meta-theme-color" content="#060709">
 
   <link rel="canonical" href="https://jkaindl.codeberg.page/perlin-studio/">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -32,12 +31,21 @@
   <link rel="stylesheet" href="styles.css">
 
   <script>
-    // FOUC guard: apply persisted theme override before stylesheet paints.
-    // Absence of the key means "follow system" (via prefers-color-scheme).
-    try {
-      var t = localStorage.getItem("perlin-studio:theme");
-      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-    } catch (e) {}
+    // FOUC guard: apply persisted theme override before stylesheet paints,
+    // and sync the PWA / address-bar theme-color meta so the OS chrome
+    // matches from the very first frame.
+    (function () {
+      var THEME_BG = { dark: "#060709", light: "#f3f0e6" };
+      var stored = null;
+      try { stored = localStorage.getItem("perlin-studio:theme"); } catch (e) {}
+      if (stored === "light" || stored === "dark") {
+        document.documentElement.dataset.theme = stored;
+      }
+      var effective = stored ||
+        (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      var meta = document.getElementById("meta-theme-color");
+      if (meta) meta.setAttribute("content", THEME_BG[effective]);
+    })();
   </script>
 </head>
 <body>

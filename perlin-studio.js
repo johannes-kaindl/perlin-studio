@@ -853,31 +853,37 @@ function wireEvents() {
 // Default behavior follows the OS via `prefers-color-scheme`. Clicking
 // the toggle sets an explicit override on <html data-theme> and persists
 // it to localStorage. CSS handles both icon and palette swap; this
-// module only manages the attribute, the persistence, and the aria-label.
+// module manages the attribute, the persistence, the aria-label, and
+// the PWA / address-bar theme-color meta tag (the initial paint of
+// which is handled by the inline <head> script for FOUC-free start).
 const THEME_KEY = "perlin-studio:theme";
+const THEME_BG = { dark: "#060709", light: "#f3f0e6" };
 function effectiveTheme() {
   const forced = document.documentElement.dataset.theme;
   if (forced === "light" || forced === "dark") return forced;
   return matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
-function syncThemeLabel(btn) {
-  const next = effectiveTheme() === "dark" ? "light" : "dark";
+function syncThemeChrome(btn) {
+  const eff = effectiveTheme();
+  const next = eff === "dark" ? "light" : "dark";
   btn.setAttribute("aria-label", "Switch to " + next + " theme");
   btn.setAttribute("title",      "Switch to " + next + " theme");
+  const meta = $("meta-theme-color");
+  if (meta) meta.setAttribute("content", THEME_BG[eff]);
 }
 function initThemeToggle() {
   const btn = $("theme-toggle");
   if (!btn) return;
-  syncThemeLabel(btn);
+  syncThemeChrome(btn);
   btn.addEventListener("click", () => {
     const next = effectiveTheme() === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    syncThemeLabel(btn);
+    syncThemeChrome(btn);
   });
-  // Keep the label correct when the OS theme flips and no override is set.
+  // Keep the chrome correct when the OS theme flips and no override is set.
   matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
-    if (!document.documentElement.dataset.theme) syncThemeLabel(btn);
+    if (!document.documentElement.dataset.theme) syncThemeChrome(btn);
   });
 }
 

@@ -25,6 +25,13 @@ jobs:
       - name: Checkout
         uses: https://code.forgejo.org/actions/checkout@v4
 
+      # Math smoke tests gate the deploy. perlin.js has documented bug
+      # classes (loop-endpoint float-rounding, Z/W axis swap) that look
+      # visually normal until a loop stops closing — better to fail the
+      # workflow than ship a broken animation.
+      - name: Smoke test
+        run: node scripts/smoke-test.js
+
       - name: Publish to Codeberg Pages
         uses: https://codeberg.org/git-pages/action@v2
         with:

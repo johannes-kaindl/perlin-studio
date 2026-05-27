@@ -50,7 +50,8 @@ static webhost.
 │                          #   + legacy default-atlas.webp for the archive)
 ├── scripts/
 │   ├── render-readme-images.js  # renders assets/*.png from perlin.js
-│   └── render-readme-videos.js  # renders docs/examples/*.webm (Node → ffmpeg)
+│   ├── render-readme-videos.js  # renders docs/examples/*.webm (Node → ffmpeg)
+│   └── smoke-test.js            # math invariants for perlin.js, gates CI deploy
 ├── _archiv/               # historical predecessors (READ-ONLY!)
 │   ├── perlin_noise/      # Python original
 │   ├── texturizer.ipynb   # Texturizer notebook
@@ -95,16 +96,23 @@ snapshot is preserved), never edited or deleted.
 
 ### Tests
 
-There is **no test suite**. Instead:
+There is **no full test suite**. Instead:
 
 1. **Syntax check both JS files** after every change:
    ```bash
    node --check perlin.js && node --check perlin-studio.js
    ```
-2. **Math sanity** for Perlin changes — write a temporary Node script,
-   set `global.window = {}`, require `perlin.js`, check the expected
-   properties (reproducibility, value range, loop identity). See
-   historical examples in the commit history.
+2. **Math smoke tests** for Perlin changes:
+   ```bash
+   node scripts/smoke-test.js
+   ```
+   Covers permutation determinism, value range of `perlin3`/`perlin4`,
+   loop identity at `progress=0` vs `progress=1` (both bytewise and
+   bit-exact at the float level), Z/W axis independence, and
+   `colorize` range. The Forgejo deploy workflow gates on this — if
+   smoke tests fail, the site does not get republished. For deeper
+   investigations the same pattern (`global.window = {}` + require
+   `perlin.js`) works for ad-hoc scripts.
 3. **Manual browser test** — `python3 -m http.server` and click around.
 
 Sandbox note: the permission setup may forbid starting an HTTP server
