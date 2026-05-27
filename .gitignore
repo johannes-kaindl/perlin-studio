@@ -26,6 +26,7 @@ yarn-error.log*
 # Vom User generierte Exporte (Beispieldaten landen in docs/examples/)
 *.webm
 *.png
+!assets/*.png
 !docs/examples/**/*.png
 !docs/examples/**/*.webm
 

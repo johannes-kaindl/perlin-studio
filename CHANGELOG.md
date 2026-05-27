@@ -6,6 +6,15 @@ Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt
+- README-Showcase: Hero-Bild (Lava-Preset) + Galerie mit 4 Beispielen
+  (Aurora, Ocean, Terrain, Circuit) — alle mit dem Tool selbst gerendert.
+- `scripts/render-readme-images.js` — pur Node (zlib + crc32) PNG-Encoder,
+  nutzt das echte `perlin.js`-Modul. Reproduzierbar via dokumentierten
+  Parameter-Sets im Script.
+- `og:image` und `twitter:image` Meta-Tags zeigen jetzt auf `hero.png` →
+  Link-Preview-Karten zeigen das Hero-Bild.
+
 ## [0.4.0] — 2026-05-27
 
 ### Hinzugefügt

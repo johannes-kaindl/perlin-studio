@@ -15,6 +15,12 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://jkaindl.codeberg.page/perlin-studio/">
+    <img src="assets/hero.png" alt="Perlin Studio — Lava-Preset, 1200×630" width="100%">
+  </a>
+</p>
+
 Aus zwei alten Hobbyprojekten (`_archiv/texturizer.ipynb` Anfang 2023 +
 `_archiv/perlin_noise/` Mai 2023) zu einem fokussierten Browser-Tool
 zusammengewachsen. Geeignet für statisches Hosting, Embedding auf der
@@ -50,6 +56,30 @@ den Reglern — die Live-Vorschau aktualisiert sich nach jedem Input.
 - **Preset-System** mit 6 Builtin-Presets und JSON-Import/Export
 - **Worker-beschleunigt** — Main-Thread bleibt frei, Frame-Skip ohne Drift,
   Wall-Clock-Zeit als Animation-Basis
+
+## Galerie
+
+Alle vier Bilder sind mit dem Tool selbst gerendert, jeweils ein einzelnes
+Frame aus dem 4D-Loop. Reproduzierbar via Seed (`base`) + Parameter.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/gallery-aurora.png" alt="Aurora — HSV-Modus mit Grün-Cyan-Blau-Spanne" width="100%"></td>
+    <td width="50%"><img src="assets/gallery-ocean.png" alt="Ocean-Gradient — fließende Cyan-Wolken" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Aurora</b> · HSV-Modus, scaleY ≫ scaleX → horizontale Bänder</sub></td>
+    <td align="center"><sub><b>Ocean</b> · Gradient, 6 Oktaven für weiche, organische Strömung</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/gallery-terrain.png" alt="Terrain — Posterize mit Forest-Gradient (Höhenlinien-Look)" width="100%"></td>
+    <td width="50%"><img src="assets/gallery-circuit.png" alt="Circuit — Posterize 4-stufig mit Sunset-Gradient" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Terrain</b> · Posterize-Modus mit 7 Stufen → Höhenkarten-Look</sub></td>
+    <td align="center"><sub><b>Circuit</b> · Posterize 4-stufig, hohe Lacunarity → harte Kanten</sub></td>
+  </tr>
+</table>
 
 ## Bedienung
 
