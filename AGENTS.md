@@ -43,7 +43,8 @@ auf jedem statischen Webhoster.
 ├── styles.css             # gesamtes Styling (Dark + Light auto)
 ├── perlin.js              # math/api (Noise, Color-Modi, Worker-Source)
 ├── perlin-studio.js       # Controller (RAF-Loop, Recording, Presets, UI-Bindings)
-├── assets/                # statische Assets (aktuell leer)
+├── assets/                # statische Assets (favicon.svg + legacy
+│                          #   default-atlas.webp fürs Archiv)
 ├── _archiv/               # historische Vorgänger (READ-ONLY!)
 │   ├── perlin_noise/      # Python-Original
 │   ├── texturizer.ipynb   # Texturizer-Notebook

@@ -6,19 +6,30 @@ Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-27
+
 ### Hinzugefügt
+- Open-Source-Veröffentlichung auf Codeberg:
+  <https://codeberg.org/jkaindl/perlin-studio>, live unter
+  <https://jkaindl.codeberg.page/perlin-studio/>.
 - Open-Source-Basisdateien: `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`,
   `AGENTS.md`, `CHANGELOG.md`, `.gitignore`.
 - `docs/ARCHITECTURE.md` und `docs/USAGE.md` mit detaillierter technischer
   und bedienungsorientierter Dokumentation.
 - JSDoc-Blöcke an den öffentlichen API-Funktionen in `perlin.js` und
   `perlin-studio.js`.
-- Veröffentlichung auf Codeberg: <https://codeberg.org/jkaindl/perlin-studio>,
-  live unter <https://jkaindl.codeberg.page/perlin-studio/>.
+- `.forgejo/workflows/deploy.yml` — Forgejo-Actions-Workflow, der jeden
+  Push auf `main` automatisch auf den `pages`-Branch mirrort.
+- `assets/favicon.svg` — SVG-Favicon in den Akzentfarben (Cyan/Violett/Grün).
+- `<head>`-Meta-Tags in `index.html`: `description`, Open-Graph,
+  Twitter-Card, `canonical`, `theme-color` — für Link-Preview-Karten
+  bei Social-Sharing.
 
 ### Geändert
-- Lizenz von MIT auf **GNU AGPL-3.0** umgestellt (Konsistenz mit anderen
-  Repos des Autors, Network-Use-Copyleft).
+- Lizenz von MIT auf **GNU AGPL-3.0** umgestellt — Konsistenz mit anderen
+  Repos des Autors; Network-Use-Copyleft passt zum web-deployten Tool.
+- README/AGENTS/CONTRIBUTING entsprechend der neuen Lizenz angepasst,
+  Codeberg-Launch-Badge hinzugefügt.
 
 ## [0.3.0] — 2026-05-20
 
