@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Johannes Kaindl
 # SPDX-License-Identifier: CC-BY-SA-4.0
-name: Bug-Report
-about: Etwas funktioniert nicht wie erwartet
+name: Bug report
+about: Something isn't working as expected
 title: "[Bug] "
 labels:
   - bug
@@ -9,47 +9,47 @@ body:
   - type: markdown
     attributes:
       value: |
-        Danke fürs Melden. Bitte halte den Report so konkret wie möglich —
-        je besser ich es reproduzieren kann, desto schneller geht der Fix.
+        Thanks for filing this. Please keep the report as concrete as
+        possible — the easier it is to reproduce, the faster the fix.
 
-        **Sicherheitsrelevante Probleme** bitte nicht hier — siehe
+        **Security-relevant issues** don't belong here — see
         [`SECURITY.md`](https://codeberg.org/jkaindl/perlin-studio/src/branch/main/SECURITY.md).
   - type: textarea
     id: what-happened
     attributes:
-      label: Was ist passiert?
-      description: Eine kurze, präzise Beschreibung des Problems.
-      placeholder: WebM-Export bricht nach ~30 Sekunden ohne Fehlermeldung ab.
+      label: What happened?
+      description: A short, precise description of the problem.
+      placeholder: WebM export aborts after ~30 seconds with no error.
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: Reproduktion
-      description: Welche Schritte führen zuverlässig zum Fehler?
+      label: Reproduction
+      description: Which steps reliably trigger the bug?
       placeholder: |
-        1. App geöffnet auf https://jkaindl.codeberg.page/perlin-studio/
-        2. Preset „Lava" ausgewählt
-        3. „Export WebM" geklickt, 60s gewartet
-        4. Download-Datei ist 0 Byte
+        1. Opened the app at https://jkaindl.codeberg.page/perlin-studio/
+        2. Selected the "Lava" preset
+        3. Clicked "Export WebM", waited 60s
+        4. Downloaded file is 0 bytes
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Erwartetes Verhalten
-      placeholder: WebM mit voller Länge wird heruntergeladen.
+      label: Expected behaviour
+      placeholder: A WebM at the full length gets downloaded.
     validations:
       required: true
   - type: dropdown
     id: surface
     attributes:
-      label: Welche Oberfläche?
+      label: Which surface?
       options:
-        - Web (Codeberg-Pages-Live-Demo)
-        - Web (lokal via index.html / python http.server)
-        - WebM-Export
-        - Andere / weiß nicht
+        - Web (Codeberg Pages live demo)
+        - Web (local via index.html / python http.server)
+        - WebM export
+        - Other / not sure
     validations:
       required: true
   - type: input
@@ -60,20 +60,20 @@ body:
   - type: input
     id: preset
     attributes:
-      label: Preset (falls relevant)
+      label: Preset (if relevant)
       placeholder: Lava, Aurora, Caustics, …
   - type: textarea
     id: console
     attributes:
-      label: Browser-Konsole / Logs
-      description: Fehler aus DevTools-Konsole, falls vorhanden.
+      label: Browser console / logs
+      description: Errors from the DevTools console, if any.
       render: shell
   - type: checkboxes
     id: checks
     attributes:
-      label: Vorab-Checks
+      label: Pre-flight checks
       options:
-        - label: Ich habe in [bestehenden Issues](https://codeberg.org/jkaindl/perlin-studio/issues) nach Duplikaten geschaut.
+        - label: I checked [existing issues](https://codeberg.org/jkaindl/perlin-studio/issues) for duplicates.
           required: true
-        - label: Es handelt sich nicht um ein Sicherheitsproblem (sonst → SECURITY.md).
+        - label: This is not a security issue (otherwise → SECURITY.md).
           required: true

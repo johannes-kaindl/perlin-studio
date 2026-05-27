@@ -1,34 +1,34 @@
 /**
- * perlin.js — Ken Perlins „Improved Noise" in 3D und 4D, fBm und Farb-Modi.
+ * perlin.js — Ken Perlin's "Improved Noise" in 3D and 4D, fBm, and color modes.
  *
- * Vanilla JS, keine Abhängigkeiten. Eine IIFE exportiert nach `window.MTPerlin`.
- * Das gesamte Modul ist außerdem als String unter `MTPerlin.WORKER_SOURCE`
- * verfügbar, sodass es 1:1 in einen Web Worker (Blob-URL) geladen werden kann
- * — wichtig für die fließende Animation im Studio.
+ * Vanilla JS, no dependencies. An IIFE exports to `window.MTPerlin`.
+ * The whole module is also available as a string under `MTPerlin.WORKER_SOURCE`,
+ * so it can be loaded 1:1 into a Web Worker (Blob URL) — essential for the
+ * smooth animation in the studio.
  *
- * Öffentliche API (`window.MTPerlin`):
- *   - `makePermutation(base)` → Uint8Array(512) — seedete Permutation
- *   - `perlin3(perm, x, y, z)` → Wert in ca. [-1, 1]
- *   - `perlin4(perm, x, y, z, w)` → Wert in ca. [-1, 1]
- *   - `fbm3(perm, x, y, z, octaves, persistence, lacunarity)` → Wert in [0, 1]
- *   - `fbm4(perm, x, y, z, w, octaves, persistence, lacunarity)` → Wert in [0, 1]
- *   - `generatePerlinImage(params, ctx)` rendert via 3D/4D-Pfad ins Canvas-Ctx
+ * Public API (`window.MTPerlin`):
+ *   - `makePermutation(base)` → Uint8Array(512) — seeded permutation
+ *   - `perlin3(perm, x, y, z)` → value in roughly [-1, 1]
+ *   - `perlin4(perm, x, y, z, w)` → value in roughly [-1, 1]
+ *   - `fbm3(perm, x, y, z, octaves, persistence, lacunarity)` → value in [0, 1]
+ *   - `fbm4(perm, x, y, z, w, octaves, persistence, lacunarity)` → value in [0, 1]
+ *   - `generatePerlinImage(params, ctx)` renders via the 3D/4D path into a canvas ctx
  *   - `colorize(noiseValue, params)` → `[r, g, b]` in 0–255
- *   - `WORKER_SOURCE` — kompletter Modul-Code als String für Inline-Worker
+ *   - `WORKER_SOURCE` — full module code as a string for inline workers
  *
- * Farb-Modi (`params.colorMode`):
- *   - `"rgb"`       pro Kanal Scale + Invert (Default, wie Python-Original)
- *   - `"gradient"`  Color-Stops `[{pos:0..1, color:[r,g,b]}, ...]` linear interpoliert
- *   - `"hsv"`       Noise → Hue, hsvSat/hsvVal als Konstante
- *   - `"posterize"` Noise auf N Stufen quantisiert, dann auf Gradient gemappt
+ * Color modes (`params.colorMode`):
+ *   - `"rgb"`       per-channel scale + invert (default, like the Python original)
+ *   - `"gradient"`  color stops `[{pos:0..1, color:[r,g,b]}, ...]`, linearly interpolated
+ *   - `"hsv"`       noise → hue, hsvSat/hsvVal as constants
+ *   - `"posterize"` noise quantised to N steps, then mapped onto a gradient
  *
- * Animations-Loop (`params.loop = true`):
- *   Statt linear durch die Zeit-Achse zu laufen, wird im 4D-Noise
- *   `(z, w) = (cos(α)·r, sin(α)·r)` auf einer Kreisbahn durchlaufen.
- *   Nach einer vollen Umdrehung (α = 2π) sind z, w wieder identisch
- *   zum Start → mathematisch nahtloser Loop.
+ * Animation loop (`params.loop = true`):
+ *   Instead of running linearly through the time axis, the 4D noise traces a
+ *   circular orbit in `(z, w) = (cos(α)·r, sin(α)·r)`. After one full
+ *   revolution (α = 2π), z and w match the starting position
+ *   → a mathematically seamless loop.
  *
- * @license MIT
+ * @license AGPL-3.0-or-later
  */
 (function () {
   "use strict";
@@ -50,14 +50,14 @@
   ];
 
   /**
-   * Erzeugt eine seedete Permutationstabelle für Perlin-Noise.
-   * Verschiebt die klassische `BASE_PERM` deterministisch um `base` Schritte,
-   * sodass jeder ganzzahlige Seed eine andere Rauschausprägung liefert.
-   * Die Tabelle wird verdoppelt (512 Einträge), damit `perm[i + 1]`-Lookups
-   * ohne Modulo auskommen — schneller im inneren Render-Loop.
+   * Builds a seeded permutation table for Perlin noise.
+   * Shifts the classic `BASE_PERM` deterministically by `base` steps so every
+   * integer seed produces a distinct noise field. The table is duplicated
+   * (512 entries) so `perm[i + 1]` lookups avoid a modulo — faster in the
+   * inner render loop.
    *
-   * @param {number} base  Seed (beliebige ganze Zahl)
-   * @returns {Uint8Array} 512 Bytes Permutationstabelle
+   * @param {number} base  Seed (any integer)
+   * @returns {Uint8Array} 512 bytes, the permutation table
    */
   function makePermutation(base) {
     const offset = ((base | 0) % 256 + 256) % 256;
@@ -67,8 +67,8 @@
     return perm;
   }
 
-  // Ken Perlins „Fade"-Polynom 6t⁵ − 15t⁴ + 10t³: erzwingt C²-Stetigkeit
-  // an Gitterpunkten (erste und zweite Ableitung sind dort 0).
+  // Ken Perlin's "fade" polynomial 6t⁵ − 15t⁴ + 10t³: enforces C² continuity
+  // at grid points (first and second derivative are zero there).
 
   function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
   function lerp(a, b, t) { return a + t * (b - a); }
@@ -80,15 +80,15 @@
   }
 
   /**
-   * 3D-Perlin-Noise (Improved Noise, Ken Perlin 2002).
-   * Wertebereich ca. `[-0.88, 0.88]`. An Gitterpunkten (ganze Koordinaten)
-   * exakt 0 — das ist by design, keine Bug.
+   * 3D Perlin noise (Improved Noise, Ken Perlin 2002).
+   * Value range roughly `[-0.88, 0.88]`. At grid points (integer
+   * coordinates) it's exactly 0 — by design, not a bug.
    *
-   * @param {Uint8Array} perm  Permutation aus `makePermutation`
-   * @param {number} x  Koordinate (beliebig)
+   * @param {Uint8Array} perm  Permutation from `makePermutation`
+   * @param {number} x  Coordinate (arbitrary)
    * @param {number} y
    * @param {number} z
-   * @returns {number}  Noise-Wert in ca. `[-1, 1]`
+   * @returns {number}  Noise value in roughly `[-1, 1]`
    */
   function perlin3(perm, x, y, z) {
     const X = Math.floor(x) & 255;
@@ -116,18 +116,18 @@
   }
 
   /**
-   * fBm (Fractal Brownian Motion) auf Basis von `perlin3`.
-   * Summiert mehrere Oktaven mit jeweils höherer Frequenz und kleinerer
-   * Amplitude. Normalisiert auf `[0, 1]`.
+   * fBm (Fractal Brownian Motion) on top of `perlin3`.
+   * Sums several octaves with progressively higher frequency and smaller
+   * amplitude. Normalised to `[0, 1]`.
    *
    * @param {Uint8Array} perm
    * @param {number} x
    * @param {number} y
    * @param {number} z
-   * @param {number} octaves      Anzahl Oktaven (1–10 sinnvoll)
-   * @param {number} persistence  Amplitudenfaktor pro Oktave (0.5 = Standard)
-   * @param {number} lacunarity   Frequenzfaktor pro Oktave (2.0 = Standard)
-   * @returns {number} Wert in `[0, 1]`
+   * @param {number} octaves      Octave count (1–10 is sensible)
+   * @param {number} persistence  Amplitude factor per octave (0.5 = standard)
+   * @param {number} lacunarity   Frequency factor per octave (2.0 = standard)
+   * @returns {number} Value in `[0, 1]`
    */
   function fbm3(perm, x, y, z, octaves, persistence, lacunarity) {
     let amp = 1, freq = 1, sum = 0, norm = 0;
@@ -141,13 +141,12 @@
     return (n + 1) * 0.5;
   }
 
-  // ---------- 4D NOISE (für loopbare Animation) ----------
-  // 32 4D-Gradient-Vektoren aus Ken Perlins Improved-Noise-Referenz (Java).
-  // Jeder Eckpunkt eines 4D-Hyperwürfels (16 Stk.) bekommt per Hash einen
-  // dieser Gradienten zugewiesen; das Skalarprodukt mit dem Offset-Vektor
-  // gibt den Beitrag dieser Ecke. Eine kreisförmige Bahn in (z, w) ergibt
-  // einen perfekt nahtlosen Loop, weil cos/sin nach 2π zur Startposition
-  // zurückkehren.
+  // ---------- 4D NOISE (for loopable animation) ----------
+  // 32 4D gradient vectors from Ken Perlin's Improved Noise reference (Java).
+  // Each of the 16 corners of a 4D hypercube gets one of these gradients via
+  // a hash; the dot product with the offset vector gives that corner's
+  // contribution. A circular path in (z, w) yields a perfectly seamless loop
+  // because cos/sin return to the starting position after 2π.
   const GRAD4 = [
     [0,1,1,1],  [0,1,1,-1],  [0,1,-1,1],  [0,1,-1,-1],
     [0,-1,1,1], [0,-1,1,-1], [0,-1,-1,1], [0,-1,-1,-1],
@@ -165,16 +164,16 @@
   }
 
   /**
-   * 4D-Perlin-Noise. Identisch in der Idee zu `perlin3`, aber mit 16 Hyperwürfel-
-   * Eckpunkten und 4-fach verschachteltem Lerp. Wird im Studio nur für den
-   * Loop-Modus genutzt: eine Kreisbahn in `(z, w)` ist nahtlos schließbar.
+   * 4D Perlin noise. Same idea as `perlin3`, but with 16 hypercube corners
+   * and a 4-deep nested lerp. The studio only uses it for loop mode: a
+   * circular orbit in `(z, w)` closes seamlessly.
    *
    * @param {Uint8Array} perm
    * @param {number} x
    * @param {number} y
    * @param {number} z
    * @param {number} w
-   * @returns {number} Noise-Wert in ca. `[-1, 1]`
+   * @returns {number} Noise value in roughly `[-1, 1]`
    */
   function perlin4(perm, x, y, z, w) {
     const X = Math.floor(x) & 255;
@@ -184,7 +183,7 @@
     x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z); w -= Math.floor(w);
     const u = fade(x), v = fade(y), s = fade(z), tt = fade(w);
 
-    // Hash-Baum entlang X → Y → Z → W. Suffixe A/B = "low/high"-Seite je Achse.
+    // Hash tree along X → Y → Z → W. A/B suffixes = "low/high" side per axis.
     const A   = perm[X] + Y;
     const B   = perm[X + 1] + Y;
     const AA  = perm[A] + Z;
@@ -196,12 +195,12 @@
     const BAA = perm[BA] + W,     BAB = perm[BA + 1] + W;
     const BBA = perm[BB] + W,     BBB = perm[BB + 1] + W;
 
-    // 16 Eckpunkte → 4-fache Lerp-Verschachtelung.
-    // Hash-Konvention: AAB = Z-shift (perm[AA+1]+W), AAA+1 = W-shift (perm[AA]+W+1).
-    // → Offsets müssen passend gewählt werden: AAB nutzt z-1, AAA+1 nutzt w-1.
-    // Lerp-Reihenfolge von innen nach außen: u (X) → v (Y) → s (Z) → tt (W).
+    // 16 corners → 4-deep nested lerp.
+    // Hash convention: AAB = Z shift (perm[AA+1]+W), AAA+1 = W shift (perm[AA]+W+1).
+    // → Offsets must line up: AAB uses z-1, AAA+1 uses w-1.
+    // Lerp order from inside out: u (X) → v (Y) → s (Z) → tt (W).
     return lerp(
-      // W-low Hälfte
+      // W-low half
       lerp(
         // Z-low
         lerp(
@@ -209,7 +208,7 @@
           lerp(grad4(perm[ABA],     x,     y - 1, z,     w), grad4(perm[BBA],     x - 1, y - 1, z,     w),     u),
           v
         ),
-        // Z-high  (AAB = perm[AA+1]+W ist Z-shift → offset z-1, w bleibt)
+        // Z-high  (AAB = perm[AA+1]+W is a Z shift → offset z-1, w stays)
         lerp(
           lerp(grad4(perm[AAB],     x,     y,     z - 1, w), grad4(perm[BAB],     x - 1, y,     z - 1, w),     u),
           lerp(grad4(perm[ABB],     x,     y - 1, z - 1, w), grad4(perm[BBB],     x - 1, y - 1, z - 1, w),     u),
@@ -217,7 +216,7 @@
         ),
         s
       ),
-      // W-high Hälfte  (AAA+1 ist W-shift → offset w-1, z bleibt)
+      // W-high half  (AAA+1 is a W shift → offset w-1, z stays)
       lerp(
         // Z-low
         lerp(
@@ -225,7 +224,7 @@
           lerp(grad4(perm[ABA + 1], x,     y - 1, z,     w - 1), grad4(perm[BBA + 1], x - 1, y - 1, z,     w - 1), u),
           v
         ),
-        // Z-high  (AAB+1 = (Z-shift)+1 = Z- und W-shift kombiniert → offset z-1, w-1)
+        // Z-high  (AAB+1 = (Z shift)+1 = Z and W shift combined → offset z-1, w-1)
         lerp(
           lerp(grad4(perm[AAB + 1], x,     y,     z - 1, w - 1), grad4(perm[BAB + 1], x - 1, y,     z - 1, w - 1), u),
           lerp(grad4(perm[ABB + 1], x,     y - 1, z - 1, w - 1), grad4(perm[BBB + 1], x - 1, y - 1, z - 1, w - 1), u),
@@ -237,7 +236,7 @@
     );
   }
 
-  /** fBm auf Basis von `perlin4`. Wertebereich `[0, 1]`. */
+  /** fBm on top of `perlin4`. Value range `[0, 1]`. */
   function fbm4(perm, x, y, z, w, octaves, persistence, lacunarity) {
     let amp = 1, freq = 1, sum = 0, norm = 0;
     for (let o = 0; o < octaves; o++) {
@@ -254,8 +253,8 @@
 
   function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
-  // Lineare Interpolation in einer Gradient-Stop-Liste.
-  // stops: [{pos: 0..1, color: [r,g,b]}, ...] sortiert nach pos.
+  // Linear interpolation over a gradient-stop list.
+  // stops: [{pos: 0..1, color: [r,g,b]}, ...] sorted by pos.
   function gradientLookup(stops, t) {
     t = clamp01(t);
     if (stops.length === 0) return [0, 0, 0];
@@ -299,10 +298,10 @@
   }
 
   /**
-   * Mappt einen Noise-Wert auf RGB. Verzweigt nach `params.colorMode`.
+   * Maps a noise value to RGB. Branches on `params.colorMode`.
    *
-   * @param {number} n  Noise-Wert in `[0, 1]`
-   * @param {Object} p  Studio-Parameter (s. Modul-Header für Farb-Modi)
+   * @param {number} n  Noise value in `[0, 1]`
+   * @param {Object} p  Studio parameters (see the module header for color modes)
    * @returns {[number, number, number]}  RGB in 0–255
    */
   function colorize(n, p) {
@@ -333,13 +332,13 @@
   }
 
   /**
-   * Rendert ein Perlin-Bild in einen 2D-Canvas-Context. Verzweigt intern
-   * zwischen 3D-Pfad (`params.loop = false`) und 4D-Pfad (Loop).
+   * Renders a Perlin image into a 2D canvas context. Internally branches
+   * between the 3D path (`params.loop = false`) and the 4D path (loop).
    *
-   * Synchron — für Animationen sollte der Worker via `WORKER_SOURCE`
-   * verwendet werden, sonst blockiert der Main-Thread.
+   * Synchronous — for animations use the worker via `WORKER_SOURCE`,
+   * otherwise the main thread blocks.
    *
-   * @param {Object} params  Studio-Parameter (s. Modul-Header)
+   * @param {Object} params  Studio parameters (see the module header)
    * @param {CanvasRenderingContext2D} ctx
    */
   function generatePerlinImage(params, ctx) {
@@ -355,10 +354,11 @@
     const data = img.data;
 
     if (loop) {
-      // Loop-Modus: (z, w) durchlaufen einen Kreis im 4D-Noise. Modulo 1
-      // sichert ab, dass progress=1 exakt wie progress=0 berechnet wird —
-      // Math.sin(2π) ist sonst Float-mäßig ≈ -2.4e-16 und Math.floor davon
-      // wirft den Hash auf -1, was als 255 maskiert wird → komplett anderes Bild.
+      // Loop mode: (z, w) trace a circle in 4D noise. Modulo 1 ensures that
+      // progress=1 is computed exactly like progress=0 —
+      // Math.sin(2π) is otherwise ~ -2.4e-16 as a float, and Math.floor of
+      // that pushes the hash to -1, masked to 255 → a completely different
+      // image.
       const radius = (loopRadius || 1) * (scaleT || 1);
       const safeProgress = ((loopProgress || 0) % 1 + 1) % 1;
       const alpha = safeProgress * Math.PI * 2;
@@ -387,8 +387,8 @@
   }
 
   // ---------- WORKER SOURCE ----------
-  // Wird vom Main-Thread als Blob-URL geladen, damit der Worker auch unter
-  // file:// funktioniert. Self-contained Kopie der Kernfunktionen.
+  // Loaded by the main thread as a Blob URL so the worker also runs under
+  // file://. Self-contained copy of the core functions.
   const WORKER_SOURCE = `
     const BASE_PERM = ${JSON.stringify(BASE_PERM)};
     const GRAD4 = ${JSON.stringify(GRAD4)};
@@ -440,7 +440,7 @@
         }
       }
 
-      // Transferable ArrayBuffer — zero-copy zurück zum Main-Thread.
+      // Transferable ArrayBuffer — zero-copy back to the main thread.
       self.postMessage({ id, width, height, buffer: buf.buffer }, [buf.buffer]);
     };
   `;

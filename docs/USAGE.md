@@ -1,47 +1,47 @@
-# Bedienungsanleitung
+# User guide
 
-Ausführliche Erklärung aller UI-Elemente und Parameter. Für den schnellen
-Einstieg siehe [README](../README.md), für die Technik dahinter
+Detailed explanation of every UI element and parameter. For the quick
+start see [README](../README.md); for the tech behind the curtain see
 [ARCHITECTURE](ARCHITECTURE.md).
 
-## Inhalt
+## Contents
 
-1. [UI-Übersicht](#ui-übersicht)
-2. [Auflösung](#auflösung)
-3. [Rauschen](#rauschen)
+1. [UI overview](#ui-overview)
+2. [Resolution](#resolution)
+3. [Noise](#noise)
 4. [Loop](#loop)
-5. [Farb-Modus](#farb-modus)
+5. [Color mode](#color-mode)
 6. [Presets](#presets)
 7. [Export](#export)
-8. [Transport-Leiste](#transport-leiste)
-9. [Tipps und Workflows](#tipps-und-workflows)
+8. [Transport bar](#transport-bar)
+9. [Tips and workflows](#tips-and-workflows)
 
 ---
 
-## UI-Übersicht
+## UI overview
 
 ```
 ┌────────────────────────────────┬───────────────────────────────────┐
 │ SIDEBAR                        │ MAIN OUTPUT                       │
 │                                │                                   │
-│  Auflösung                     │  ┌─────────────────────────────┐  │
-│   Breite, Höhe                 │  │                             │  │
-│                                │  │   Live-Vorschau-Canvas      │  │
-│  Rauschen                      │  │                             │  │
+│  Resolution                    │  ┌─────────────────────────────┐  │
+│   Width, Height                │  │                             │  │
+│                                │  │   Live preview canvas       │  │
+│  Noise                         │  │                             │  │
 │   scale x, scale y,            │  │                             │  │
-│   Wabern-Geschwindigkeit,      │  └─────────────────────────────┘  │
+│   Time scale,                  │  └─────────────────────────────┘  │
 │   base, octaves, persistence,  │                                   │
 │   lacunarity                   │  ▶  ⏮   ━━●━━━━━ t=0.42  fps 30   │
 │                                │                            f 120  │
 │  Loop                          │                                   │
-│   ☑ Nahtloser Loop              │  Status: …                  fps   │
-│   Dauer, Radius                │  ────────────────────             │
+│   ☑ Seamless loop              │  Status: …                  fps   │
+│   Duration, Radius             │  ────────────────────             │
 │                                │                                   │
-│  Farb-Modus                    │                                   │
-│   Dropdown + Mode-Inputs       │                                   │
+│  Color mode                    │                                   │
+│   Dropdown + mode inputs       │                                   │
 │                                │                                   │
 │  Presets                       │                                   │
-│   Speichern | Laden            │                                   │
+│   Save | Load                  │                                   │
 │   [Chip] [Chip] [Chip] …       │                                   │
 │                                │                                   │
 │  Export                        │                                   │
@@ -51,225 +51,223 @@ Einstieg siehe [README](../README.md), für die Technik dahinter
 
 ---
 
-## Auflösung
+## Resolution
 
-| Parameter | Bereich | Default | Wirkung |
-|-----------|---------|---------|---------|
-| **Breite** | 4–1024 | 256 | Pixel-Breite des Canvas |
-| **Höhe**   | 4–1024 | 256 | Pixel-Höhe des Canvas |
+| Parameter | Range | Default | Effect |
+|-----------|-------|---------|--------|
+| **Width**  | 4–1024 | 256 | Canvas pixel width |
+| **Height** | 4–1024 | 256 | Canvas pixel height |
 
-**Praktische Empfehlung:**
-- 128–256 für Live-Spielerei mit Parametern
-- 384–512 für hochwertigen Export
-- 768+ rechnet pro Frame spürbar länger — der Worker bleibt schnell genug
-  für die Vorschau, aber die Animation könnte unter 30 fps fallen
+**Practical advice:**
+- 128–256 for live parameter tweaking
+- 384–512 for higher-quality export
+- 768+ takes noticeably longer per frame — the worker stays fast enough
+  for previewing, but animation might drop below 30 fps
 
-Aspekt: das Canvas zeigt das Bild gestreckt auf die Container-Breite,
-deshalb beeinflusst das Verhältnis Breite/Höhe die Anzeige.
+Aspect: the canvas is stretched to fit the container width, so the
+width/height ratio affects display.
 
 ---
 
-## Rauschen
+## Noise
 
 ### `scale x`, `scale y`
 
-Pixel-zu-Noise-Skalierung in den Raum-Achsen.
+Pixel-to-noise scaling on the spatial axes.
 
-| Wert | Effekt |
-|------|--------|
-| 0.005 | sehr grobe Strukturen, wenig Details |
-| 0.02 | mittlere Wolken (Default) |
-| 0.05 | feine, dichtere Strukturen |
-| 0.1+ | quasi-rauschiges Pattern |
+| Value | Effect |
+|-------|--------|
+| 0.005 | very coarse, low detail |
+| 0.02 | medium clouds (default) |
+| 0.05 | fine, denser structures |
+| 0.1+ | quasi-noisy pattern |
 
-Unterschiedliche x/y geben gestreckte Strukturen (gut für Aurora-Bänder
-oder horizontale Wellen).
+Different x/y values give stretched structures (great for aurora bands
+or horizontal waves).
 
-### `Wabern-Geschwindigkeit` (intern: `scaleT`)
+### `Time scale` (internal: `scaleT`)
 
-Skaliert die Zeit-Achse des Noise.
+Scales the time axis of the noise.
 
-| Wert | Effekt |
-|------|--------|
-| 0.05 | extrem langsames, fast statisches Wabern |
-| 0.15 | sanftes Wabern (Default) |
-| 0.3 | sichtbare Bewegung |
-| 0.5+ | hektisches Flackern (vermutlich zu schnell für „natürlich") |
+| Value | Effect |
+|-------|--------|
+| 0.05 | extremely slow, almost static ripple |
+| 0.15 | gentle ripple (default) |
+| 0.3 | visible motion |
+| 0.5+ | hectic flicker (likely too fast to feel "natural") |
 
-**Faustregel**: ähnlich klein wie `scale x` / `scale y`. Default 0.15 ist
-ein guter Startwert für 30-fps-Animationen.
+**Rule of thumb**: similar in size to `scale x` / `scale y`. The 0.15
+default is a good starting point for 30-fps animations.
 
-### `base` (Seed)
+### `base` (seed)
 
-Ganze Zahl (auch negativ). Verschiebt die Permutationstabelle
-deterministisch. Verschiedene Seeds → komplett unterschiedliche Muster
-bei gleichen sonstigen Parametern. Gut zum „Würfeln", wenn dir das
-aktuelle Muster nicht gefällt.
+An integer (can be negative). Shifts the permutation table
+deterministically. Different seeds → completely different patterns
+under otherwise identical parameters. Useful for "rolling the dice"
+when you don't like the current pattern.
 
 ### `octaves`
 
-Anzahl der fBm-Frequenz-Stufen. 1–10.
+Number of fBm frequency levels. 1–10.
 
-| Wert | Effekt |
-|------|--------|
-| 1 | reine glatte Wolken, keine Details |
-| 3 | sanfte Strukturen mit etwas Variation |
-| 6 | klassischer fBm-Look (Default) |
-| 8+ | sehr feine Details, ggf. rauschig |
+| Value | Effect |
+|-------|--------|
+| 1 | pure smooth clouds, no detail |
+| 3 | soft structures with some variation |
+| 6 | classic fBm look (default) |
+| 8+ | very fine detail, possibly noisy |
 
-**Performance**: jeder zusätzliche Octave verdoppelt etwa die Frequenz
-und somit die nötige Sampling-Dichte — pro Octave linear mehr
-Rechenzeit.
+**Performance**: each extra octave roughly doubles the frequency and
+therefore the required sampling density — linear in compute time.
 
 ### `persistence`
 
-Amplitudenfaktor zwischen Oktaven, 0–2. Default 0.5.
+Amplitude factor between octaves, 0–2. Default 0.5.
 
-| Wert | Effekt |
-|------|--------|
-| 0.3 | obere Oktaven sehr schwach → glatte, wolkige Strukturen |
-| 0.5 | klassisch (Default) |
-| 0.7 | obere Oktaven prominenter → raues Terrain |
-| 1.0 | alle Oktaven gleich stark → sehr rauschig |
+| Value | Effect |
+|-------|--------|
+| 0.3 | upper octaves very weak → smooth, cloud-like structures |
+| 0.5 | classic (default) |
+| 0.7 | upper octaves prominent → rough terrain |
+| 1.0 | all octaves equally strong → very noisy |
 
 ### `lacunarity`
 
-Frequenzfaktor zwischen Oktaven, 1–8. Default 2.0.
+Frequency factor between octaves, 1–8. Default 2.0.
 
-| Wert | Effekt |
-|------|--------|
-| 1.5 | selbstähnliche, „organische" Strukturen |
-| 2.0 | klassisch (Default) |
-| 3.0+ | stark unterschiedliche Detailebenen, fast „elektrisch" |
+| Value | Effect |
+|-------|--------|
+| 1.5 | self-similar, "organic" structures |
+| 2.0 | classic (default) |
+| 3.0+ | strongly differing detail levels, almost "electric" |
 
-`circuit`-Preset nutzt `lacunarity = 3.0` für den charakteristischen
-Schaltkreis-artigen Look.
+The `circuit` preset uses `lacunarity = 3.0` for its characteristic
+circuit-board look.
 
 ---
 
 ## Loop
 
-### `Nahtloser Loop` (Checkbox, Default an)
+### `Seamless loop` (checkbox, default on)
 
-Schaltet zwischen zwei Animations-Modi um:
+Switches between two animation modes:
 
-- **Aktiviert (Loop-Modus)**: 4D-Perlin auf einer Kreisbahn. Nach
-  `Loop-Dauer` Sekunden schließt die Animation nahtlos zurück zum Start.
-- **Deaktiviert (Linear-Modus)**: 3D-Perlin mit linearer Zeit. Die
-  Animation wabert sanft, ist aber nicht loopbar (am Ende des
-  WebM-Exports gibt es einen sichtbaren Sprung).
+- **On (loop mode)**: 4D Perlin on a circular orbit. After `Loop
+  duration` seconds the animation closes seamlessly back to the start.
+- **Off (linear mode)**: 3D Perlin with linear time. The animation
+  ripples gently but is not loopable (there's a visible jump at the
+  end of WebM export).
 
-### `Loop-Dauer (Sek)`
+### `Loop duration (sec)`
 
-Wie lange ein Loop dauert. 0.5–60 Sekunden, Default 4.
+How long a loop lasts. 0.5–60 seconds, default 4.
 
-Empfehlungen:
-- 2–4 Sek für „atmende" GIF-artige Loops
-- 6–10 Sek für entspannte Hintergrund-Animationen
-- 15+ Sek wenn der Loop kaum als solcher wahrnehmbar sein soll
+Suggestions:
+- 2–4 sec for "breathing" GIF-style loops
+- 6–10 sec for relaxed background animations
+- 15+ sec when the loop should barely be perceivable as one
 
-### `Loop-Radius`
+### `Loop radius`
 
-Wie weit das Bild über eine volle Umdrehung im Noise-Space „reist". 0–4,
-Default 1.0.
+How far the image "travels" in noise space over one full revolution.
+0–4, default 1.0.
 
-| Wert | Effekt |
-|------|--------|
-| 0.2 | sehr subtile Bewegung, fast statisch |
-| 0.5 | leichtes Wabern |
-| 1.0 | spürbare Animation (Default) |
-| 2.0+ | starke Veränderung, ggf. schon Detail-Diskontinuität in hohen Oktaven |
+| Value | Effect |
+|-------|--------|
+| 0.2 | very subtle motion, near-static |
+| 0.5 | light ripple |
+| 1.0 | visible animation (default) |
+| 2.0+ | strong change, may show detail-level discontinuities at high octaves |
 
-**Vorsicht** bei großen Werten + hohen Oktaven: Loop-Radius wird intern
-mit der Frequenz jeder Oktave multipliziert. Bei `loopRadius = 2`,
-`octaves = 8`, `lacunarity = 2` ist die Kreisbahn im höchsten Octave
-schon 256 Cells groß — der Loop ist mathematisch trotzdem nahtlos, sieht
-aber unruhig aus.
+**Watch out** with large values + high octaves: `loopRadius` is multiplied
+internally by each octave's frequency. With `loopRadius = 2`, `octaves =
+8`, `lacunarity = 2`, the circle in the highest octave already covers
+256 cells — the loop is still mathematically seamless but looks
+restless.
 
 ---
 
-## Farb-Modus
+## Color mode
 
-Dropdown wählt zwischen vier Modi, jeder mit eigenen Reglern.
+The dropdown picks one of four modes, each with its own controls.
 
-### RGB (pro Kanal)
+### RGB (per channel)
 
 ```
-r scale | g scale | b scale  (jeweils 0–2 Slider)
-r invert | g invert | b invert  (jeweils Checkbox)
+r scale | g scale | b scale  (each a 0–2 slider)
+r invert | g invert | b invert  (each a checkbox)
 ```
 
-Drei unabhängige Kanäle. Jeder Kanal:
-- **Scale** multipliziert den Noise-Wert (0 = Kanal aus, 1 = voll, 2 =
-  überbelichtet)
-- **Invert** dreht den Wert um (`1 - n` statt `n`)
+Three independent channels. Each channel:
+- **Scale** multiplies the noise value (0 = channel off, 1 = full,
+  2 = overexposed)
+- **Invert** flips the value (`1 - n` instead of `n`)
 
-**Beispiele:**
-- nur grün, normal:  `r=0, g=1, b=0, invert: -, g, -`
-- Magenta: `r=1, g=0, b=1, all invert off`
-- Gelb-auf-Schwarz: `r=1, g=1, b=0`
+**Examples:**
+- pure green, normal:  `r=0, g=1, b=0, invert: -, g, -`
+- magenta: `r=1, g=0, b=1, all invert off`
+- yellow-on-black: `r=1, g=1, b=0`
 
-### Gradient (Preset)
+### Gradient (preset)
 
-Wählt eine von acht vordefinierten Farb-Maps:
+Pick one of eight predefined color maps:
 
-| Name | Charakter |
+| Name | Character |
 |------|-----------|
-| Viridis | Wissenschaftlich, Lila → Gelb |
-| Magma | Schwarz → Magenta → Gelb |
-| Fire | Schwarz → Rot → Orange → Weiß |
-| Ocean | Tiefblau → Hellblau → Weiß |
-| Forest | Dunkelgrün → Hellgrün → Beige |
-| Grayscale | Schwarz → Weiß |
-| Sunset | Dunkellila → Orange → Cream |
-| Ice | Tiefblau → Eisblau → Weiß |
+| Viridis | scientific, purple → yellow |
+| Magma | black → magenta → yellow |
+| Fire | black → red → orange → white |
+| Ocean | deep blue → light blue → white |
+| Forest | dark green → light green → beige |
+| Grayscale | black → white |
+| Sunset | dark purple → orange → cream |
+| Ice | deep blue → ice blue → white |
 
-Die kleine Leiste unter dem Dropdown zeigt eine Vorschau des Gradienten.
+The small bar under the dropdown previews the gradient.
 
-### HSV (Hue aus Noise)
-
-```
-hue shift   (0–1)  — Verschiebung des Farbtons
-hue range   (0–1)  — Bandbreite des Farbtons im Bild
-saturation  (0–1)  — Sättigung (konstant)
-value       (0–1)  — Helligkeit (konstant)
-```
-
-Der Noise-Wert wird nur auf den Farbton gemappt. Sättigung und
-Helligkeit sind konstant über das ganze Bild → ergibt gleichmäßig
-gesättigte, „neon-artige" Looks.
-
-**Beispiele:**
-- Aurora: `shift=0.45, range=0.25, sat=0.9, val=1.0` (Türkis → Grün)
-- Plasma: `shift=0, range=1, sat=1, val=1` (volles Regenbogenspektrum)
-- Sepia-Tönung: `shift=0.08, range=0.1, sat=0.6, val=0.9`
-
-### Posterize (Stufen + Gradient)
+### HSV (hue from noise)
 
 ```
-Stufen           (2–16) — Anzahl diskreter Farbstufen
-Gradient-Preset  — eine der acht Farb-Maps
+hue shift   (0–1)  — hue offset
+hue range   (0–1)  — hue bandwidth across the image
+saturation  (0–1)  — saturation (constant)
+value       (0–1)  — value/brightness (constant)
 ```
 
-Der Noise wird auf N gleich große Stufen quantisiert (`floor(n · N) /
-(N-1)`), dann auf den Gradient gemappt. Ergibt cartoon-artige
-Stufenfarben, gut für Terrain-Höhenkarten oder stilistische Effekte.
+The noise value drives the hue only. Saturation and value are constant
+across the image → produces evenly saturated, "neon" looks.
+
+**Examples:**
+- Aurora: `shift=0.30, range=0.48, sat=0.88, val=1.0` (cyan-blue-purple)
+- Plasma: `shift=0, range=1, sat=1, val=1` (full rainbow spectrum)
+- Sepia tone: `shift=0.08, range=0.1, sat=0.6, val=0.9`
+
+### Posterize (steps + gradient)
+
+```
+Steps            (2–16) — number of discrete color levels
+Gradient preset  — one of the eight color maps
+```
+
+The noise is quantised to N equal steps (`floor(n · N) / (N-1)`), then
+mapped onto the gradient. Yields cartoon-like banding — great for
+terrain height maps and stylised effects.
 
 ---
 
 ## Presets
 
-### Speichern
+### Save
 
-Lädt den aktuellen Parameter-Stand als JSON herunter
+Downloads the current parameter state as JSON
 (`perlin-preset-<timestamp>.json`).
 
-### Laden
+### Load
 
-Lädt eine zuvor gespeicherte JSON-Datei oder eine selbst geschriebene.
-Ungültige JSONs erzeugen eine Fehlermeldung in der Statusleiste.
+Loads a previously saved JSON file (or one you wrote yourself). Invalid
+JSON produces an error in the status bar.
 
-JSON-Struktur (Beispiel):
+JSON shape (example):
 ```json
 {
   "width": 384,
@@ -290,102 +288,102 @@ JSON-Struktur (Beispiel):
 }
 ```
 
-Nicht enthaltene Felder behalten ihren aktuellen UI-Wert.
+Fields not present keep their current UI value.
 
-### Builtin-Presets (Chips)
+### Built-in presets (chips)
 
 | Preset | Look |
 |--------|------|
-| `default` | grünes, sanft waberndes Standardrauschen (RGB-Modus) |
-| `lava` | tiefrot-orange-glühende Lava-Strömungen (Gradient `fire`) |
-| `aurora` | Türkis-grünes Polarlicht (HSV, kleiner Hue-Range) |
-| `clouds` | weiche Schwarz-Weiß-Wolken (Gradient `grayscale`) |
-| `terrain` | gestufte Landschaft mit Höhenlinien-Look (Posterize `forest`) |
-| `circuit` | hartkantiges Cyan/Black-Muster (Posterize 3-Stufen `ocean`) |
+| `default` | green, gently rippling default noise (RGB mode) |
+| `lava` | deep red-orange glowing lava flows (`fire` gradient) |
+| `aurora` | cyan-green polar light (HSV, narrow hue range) |
+| `clouds` | soft black-and-white clouds (`grayscale` gradient) |
+| `terrain` | banded landscape with a contour-line look (`forest` posterize) |
+| `circuit` | hard-edged cyan/black pattern (3-step `ocean` posterize) |
 
-Klick auf einen Chip lädt das Preset sofort und rendert es.
+Clicking a chip loads the preset immediately and renders it.
 
 ---
 
 ## Export
 
-### PNG (aktuelles Bild)
+### PNG (current frame)
 
-Speichert den aktuell sichtbaren Frame als PNG. Dateiname:
-`perlin-<timestamp>.png`. Auflösung entspricht den Canvas-Maßen.
+Saves the currently visible frame as PNG. Filename:
+`perlin-<timestamp>.png`. Resolution matches the canvas.
 
-### WebM-Animation
+### WebM animation
 
-Rendert `frames` Frames bei `fps` fps und exportiert als WebM (VP9 wenn
-möglich, sonst VP8). Während der Aufnahme:
-- Buttons sind disabled
-- Eine Progress-Bar zeigt den Fortschritt
-- Statuszeile zeigt den aktuellen Frame
+Renders `frames` frames at `fps` fps and exports as WebM (VP9 when
+available, VP8 otherwise). While recording:
+- Buttons are disabled
+- A progress bar shows progress
+- The status line shows the current frame
 
-Nach Abschluss erscheint statt des Canvas ein `<video>`-Element mit
-Vorschau. Der **WebM herunterladen**-Button wird sichtbar. Dateiname:
+When done, the canvas is replaced by a `<video>` preview. The
+**Download WebM** button becomes visible. Filename:
 `perlin-animation-<timestamp>.webm`.
 
-**Loop-an + WebM**: exakt `frames` Frames pro Loop, perfekt schließend.
-**Loop-aus + WebM**: linear durch die Zeit, am Ende des Videos springt
-das Bild beim Replay zurück.
+**Loop on + WebM**: exactly `frames` frames per loop, closes perfectly.
+**Loop off + WebM**: linear through time, the video snaps back when
+replayed.
 
-### Empfohlene Export-Einstellungen
+### Recommended export settings
 
-| Use-Case | frames | fps | Dauer | Loop |
-|----------|--------|-----|-------|------|
-| Social-Media-Snippet | 90 | 30 | 3 s | an |
-| Website-Header-Loop | 180 | 30 | 6 s | an |
-| Hintergrund-Video lang | 600 | 24 | 25 s | aus |
-| Test/Vorschau | 30 | 15 | 2 s | beides |
+| Use case | frames | fps | Duration | Loop |
+|----------|--------|-----|----------|------|
+| Social media snippet | 90 | 30 | 3 s | on |
+| Website header loop | 180 | 30 | 6 s | on |
+| Long background video | 600 | 24 | 25 s | off |
+| Test / preview | 30 | 15 | 2 s | either |
 
-WebM-Dateien sind etwa 50–500 KB für kurze Loops bei moderater Auflösung.
-
----
-
-## Transport-Leiste
-
-| Bedienelement | Funktion |
-|---------------|----------|
-| **▶** / **⏸** | Play/Pause der Live-Animation. Alternative: **Leertaste** |
-| **⏮** | Slider zurück auf 0 (`t = 0` oder `loopProgress = 0`) |
-| **t-Slider** | Scrubbing: Range hängt vom Loop-Modus ab |
-| **fps** (1–60) | Export-Framerate; im Live-Modus rendert die App so schnell wie möglich |
-| **frames** (1–600) | Anzahl der Frames beim WebM-Export |
-
-Rechts vom Status: live FPS-Counter (während Play).
+WebM files are roughly 50–500 KB for short loops at moderate resolution.
 
 ---
 
-## Tipps und Workflows
+## Transport bar
 
-### „Ich will einen Hintergrund-Loop für meine Homepage"
-1. `clouds` oder `aurora` Preset laden
-2. `loopDuration` auf 6–10 Sek
-3. Breite/Höhe an dein Layout anpassen (z. B. 1280×360 für ein Banner)
-4. WebM exportieren, fps=24, frames=144 (= 6 Sek)
-5. Im HTML: `<video autoplay muted loop playsinline>`
+| Control | Function |
+|---------|----------|
+| **▶** / **⏸** | Play/pause the live animation. Alternative: **Space** |
+| **⏮** | Slider back to 0 (`t = 0` or `loopProgress = 0`) |
+| **t slider** | Scrubbing; range depends on loop mode |
+| **fps** (1–60) | Export framerate; in live mode the app renders as fast as it can |
+| **frames** (1–600) | Frame count for WebM export |
 
-### „Ich will eine generative Textur für ein Spiel"
-1. `terrain` oder `circuit` Preset
-2. Loop ausschalten (für ein Standbild reicht das)
-3. Auflösung auf die Zielgröße (512 oder 1024)
-4. PNG-Export
+Right of the status line: live FPS counter (during play).
 
-### „Ich teste verschiedene Seeds"
-1. Bei `base` herumklicken (Pfeile rauf/runter)
-2. Live-Vorschau aktualisiert sich sofort
-3. Wenn was gefällt: Preset speichern als JSON
+---
 
-### „Mein Browser ist langsam"
-- Auflösung reduzieren (128 oder 192)
-- Octaves reduzieren (3–4 reichen oft)
-- Im Status sehen, ob „(main)" angezeigt wird — dann läuft der
-  Main-Thread-Fallback, was deutlich langsamer als Worker ist (manche
-  Safari unter `file://`). Lokalen HTTP-Server starten:
+## Tips and workflows
+
+### "I want a background loop for my homepage"
+1. Load the `clouds` or `aurora` preset
+2. Set `Loop duration` to 6–10 sec
+3. Adjust width/height to your layout (e.g. 1280×360 for a banner)
+4. Export WebM, fps=24, frames=144 (= 6 sec)
+5. In HTML: `<video autoplay muted loop playsinline>`
+
+### "I want a generative texture for a game"
+1. `terrain` or `circuit` preset
+2. Turn the loop off (a single frame is enough)
+3. Resolution to the target size (512 or 1024)
+4. PNG export
+
+### "I'm testing different seeds"
+1. Click around in `base` (up/down arrows)
+2. Live preview updates immediately
+3. Like what you see? Save it as a JSON preset.
+
+### "My browser is slow"
+- Lower the resolution (128 or 192)
+- Lower the octaves (3–4 is often enough)
+- Check the status for "(main)" — if shown, the main-thread fallback is
+  active and is significantly slower than the worker (some Safari
+  versions under `file://`). Start a local HTTP server:
   `python3 -m http.server 8000`.
 
-### „Ich will eigene Gradients"
-Aktuell nur Code-seitig: in `perlin-studio.js` das `GRADIENTS`-Objekt
-erweitern und einen `<option>`-Eintrag in `index.html` hinzufügen.
-Custom-Gradient-Editor steht auf der [Roadmap](../README.md#roadmap).
+### "I want custom gradients"
+Code-side only for now: extend the `GRADIENTS` object in
+`perlin-studio.js` and add an `<option>` in `index.html`. A custom
+gradient editor is on the [roadmap](../README.md#roadmap).

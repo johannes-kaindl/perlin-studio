@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Johannes Kaindl
 # SPDX-License-Identifier: CC-BY-SA-4.0
-name: Feature-Vorschlag
-about: Idee für eine Verbesserung oder ein neues Feature
+name: Feature request
+about: An idea for an improvement or a new feature
 title: "[Feature] "
 labels:
   - enhancement
@@ -9,54 +9,54 @@ body:
   - type: markdown
     attributes:
       value: |
-        Bevor du tippst — Perlin Studio ist bewusst **schlank** und hat klare
-        Leitplanken (siehe [`AGENTS.md`](https://codeberg.org/jkaindl/perlin-studio/src/branch/main/AGENTS.md)):
+        Before you type — Perlin Studio is deliberately **lean** and has
+        clear guardrails (see [`AGENTS.md`](https://codeberg.org/jkaindl/perlin-studio/src/branch/main/AGENTS.md)):
 
-        - **kein** Framework (React/Vue/Svelte)
-        - **kein** Build-Step (Webpack/Vite/esbuild)
-        - **kein** Backend-Service
-        - **keine** externen Dependencies
+        - **no** framework (React/Vue/Svelte)
+        - **no** build step (Webpack/Vite/esbuild)
+        - **no** backend service
+        - **no** external dependencies
 
-        Wenn dein Vorschlag eines davon braucht, wird er vermutlich abgelehnt
-        — bitte trotzdem ehrlich öffnen, dann reden wir drüber.
+        If your proposal needs one of those it will likely be declined
+        — but please file it anyway so we can talk about it.
   - type: textarea
     id: problem
     attributes:
-      label: Welches Problem löst das Feature?
-      description: Was geht heute nicht oder ist umständlich?
+      label: What problem does this solve?
+      description: What's currently impossible or awkward?
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Vorgeschlagene Lösung
-      description: Wie würdest du das umsetzen? UI-Skizze, JSON-Preset, Pseudocode — was hilft.
+      label: Proposed solution
+      description: How would you implement it? UI sketch, JSON preset, pseudocode — whatever helps.
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternativen
-      description: Welche anderen Wege hast du überlegt?
+      label: Alternatives
+      description: Other paths you considered?
   - type: dropdown
     id: scope
     attributes:
-      label: Was ist betroffen?
+      label: What's affected?
       multiple: true
       options:
         - Renderer (perlin-studio.js)
-        - Noise-Backend (perlin.js)
+        - Noise backend (perlin.js)
         - UI (index.html / styles.css)
-        - Worker / Performance
-        - Presets / Export
-        - Dokumentation
-        - Anderes
+        - Worker / performance
+        - Presets / export
+        - Documentation
+        - Other
   - type: checkboxes
     id: checks
     attributes:
-      label: Vorab-Checks
+      label: Pre-flight checks
       options:
-        - label: Ich habe in [bestehenden Issues](https://codeberg.org/jkaindl/perlin-studio/issues) nach Duplikaten geschaut.
+        - label: I checked [existing issues](https://codeberg.org/jkaindl/perlin-studio/issues) for duplicates.
           required: true
-        - label: Mir ist klar, dass die Architektur-Leitplanken aus AGENTS.md gelten.
+        - label: I understand the architectural guardrails from AGENTS.md.
           required: true

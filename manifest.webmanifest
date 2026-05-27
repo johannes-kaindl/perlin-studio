@@ -1,8 +1,8 @@
 {
   "name": "Perlin Studio",
   "short_name": "Perlin Studio",
-  "description": "Parametrische 3D/4D-Perlin-Animationen im Browser. Vanilla JS, nahtloser Loop, WebM-Export.",
-  "lang": "de",
+  "description": "Parametric 3D/4D Perlin animations in the browser. Vanilla JS, seamless loop, WebM export.",
+  "lang": "en",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",

@@ -1,11 +1,11 @@
-// Rendert die docs/examples/*.webm Loops via dem echten perlin.js und
-// pipet RGB-Frames an ffmpeg (libvpx-vp9). Mathematisch nahtlos:
-// loopProgress geht von 0 bis (N-1)/N, ffmpeg-output mit `<video loop>`
-// schließt zum Start zurück → perfekter Loop.
+// Renders the docs/examples/*.webm loops using the actual perlin.js and
+// pipes RGB frames to ffmpeg (libvpx-vp9). Mathematically seamless:
+// loopProgress goes from 0 to (N-1)/N; ffmpeg output played with
+// `<video loop>` snaps back to the start → perfect loop.
 //
 //   node scripts/render-readme-videos.js
 //
-// Voraussetzung: ffmpeg im PATH (`brew install ffmpeg`).
+// Requires ffmpeg on PATH (`brew install ffmpeg`).
 "use strict";
 
 const fs = require("fs");
@@ -17,7 +17,7 @@ global.window = {};
 require(path.join(REPO, "perlin.js"));
 const { makePermutation, fbm4, colorize } = global.window.MTPerlin;
 
-// Gradient-Definitionen (Copy aus perlin-studio.js).
+// Gradient definitions (copy from perlin-studio.js).
 const GRADIENTS = {
   fire: [
     { pos: 0.0, color: [0, 0, 0] },
@@ -62,7 +62,7 @@ function renderFrame(params) {
   return buf;
 }
 
-// Encodet eine Sequenz von RGB-Frames als VP9-WebM via ffmpeg.
+// Encodes a sequence of RGB frames into a VP9 WebM via ffmpeg.
 function encodeWebm(width, height, fps, frames, outPath) {
   return new Promise((resolve, reject) => {
     const ff = spawn("ffmpeg", [
@@ -105,7 +105,7 @@ function encodeWebm(width, height, fps, frames, outPath) {
 const OUTDIR = path.join(REPO, "docs", "examples");
 fs.mkdirSync(OUTDIR, { recursive: true });
 
-const W = 480, H = 270, FPS = 24, FRAMES = 60; // 2.5s Loop
+const W = 480, H = 270, FPS = 24, FRAMES = 60; // 2.5s loop
 
 const JOBS = [
   {
@@ -154,7 +154,7 @@ const JOBS = [
     await encodeWebm(W, H, FPS, frames, outPath);
     const stat = fs.statSync(outPath);
     const kb = (stat.size / 1024).toFixed(1);
-    console.log(`✓ ${job.out.padEnd(22)} ${FRAMES} Frames  ${kb} KB  render ${tRender - t0}ms  encode ${Date.now() - tRender}ms`);
+    console.log(`✓ ${job.out.padEnd(22)} ${FRAMES} frames  ${kb} KB  render ${tRender - t0}ms  encode ${Date.now() - tRender}ms`);
   }
-  console.log("alle Loops geschrieben →", OUTDIR);
+  console.log("all loops written →", OUTDIR);
 })().catch((e) => { console.error(e); process.exit(1); });

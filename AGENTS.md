@@ -1,163 +1,168 @@
-# AGENTS.md — Kontext für KI-Agents
+# AGENTS.md — context for AI agents
 
-Diese Datei richtet sich an KI-Assistenten (Claude Code, Cursor, Aider, …),
-die an diesem Repo arbeiten. Wer als Mensch beiträgt, findet relevante
-Informationen in [`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md)
-und [`docs/`](docs/).
+This file is aimed at AI assistants (Claude Code, Cursor, Aider, …) that
+work on this repo. Humans contributing here will find what they need in
+[`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and
+[`docs/`](docs/).
 
 ## TL;DR
 
-**Perlin Studio** ist ein single-page Browser-Tool für parametrische 3D/4D-
-Perlin-Animationen. Vanilla JS, keine Dependencies, kein Backend, kein
-Build-Step. Funktioniert per Doppelklick auf `index.html` (`file://`) und
-auf jedem statischen Webhoster.
+**Perlin Studio** is a single-page browser tool for parametric 3D/4D
+Perlin animations. Vanilla JS, no dependencies, no backend, no build
+step. Works by double-clicking `index.html` (`file://`) and on any
+static webhost.
 
-## Wichtige Konventionen
+## Important conventions
 
-### Sprache
-- **Code-Kommentare und User-facing Strings: Deutsch**, ebenso die
-  Commit-Messages und PR-Beschreibungen.
-- Code-Bezeichner bleiben **Englisch** (`fbm3`, `loopProgress`, `colorize`).
-- Mathematische Begriffe (Octaves, Persistence, Lacunarity, fBm) bleiben in
-  ihrer Standardform.
-- Ä/Ö/Ü/ß werden korrekt geschrieben — nie `ae`/`oe`/`ue`/`ss`.
+### Language
 
-### Stil
-- **Keine Dependencies** dazunehmen ohne expliziten Anlass.
-  Begründung: das Tool soll statisch deploybar und als Web-Component
-  embeddbar bleiben. Eine 12-KB-Library für ein Feature ist ok, aber
-  bitte vorab mit dem Maintainer diskutieren.
-- **Keine Tooling-Migration** (TypeScript, Bundler, Framework) ohne Diskussion.
-  Vanilla-JS-Konstanz ist ein Feature.
-- Defensive Programmierung **nicht** an internen Boundaries — nur an
-  externen (User-Input, File-Upload). Trust internal data flow.
-- Kommentare erklären das **Warum**, nicht das *Was*. Code muss ohne
-  Kommentare lesbar sein; Kommentare adressieren Non-Obvious, Edge-Cases,
-  Math-Hintergrund.
-- Keine Emojis in Code/Doku, außer der User fragt explizit danach.
+- **Everything is English**: UI strings, code comments, identifiers,
+  commit messages, PR descriptions, issue templates, docs. Matches the
+  rest of the author's Codeberg repos.
+- Math terms (Octaves, Persistence, Lacunarity, fBm) keep their standard
+  form.
 
-### Datei-Layout
+### Style
+
+- **No dependencies** without a specific reason. Rationale: the tool
+  must stay statically deployable and embeddable as a Web Component.
+  A 12-KB library for one feature is OK, but discuss with the
+  maintainer first.
+- **No tooling migration** (TypeScript, bundler, framework) without
+  discussion. Vanilla-JS constancy is a feature.
+- Defensive programming **only at external boundaries** (user input,
+  file upload). Trust internal data flow.
+- Comments explain **why**, not *what*. Code should be readable without
+  comments; comments cover the non-obvious, edge cases, math background.
+- No emojis in code/docs unless the user explicitly asks.
+
+### File layout
+
 ```
 .
-├── index.html             # UI-Markup
-├── styles.css             # gesamtes Styling (Dark + Light auto)
-├── perlin.js              # math/api (Noise, Color-Modi, Worker-Source)
-├── perlin-studio.js       # Controller (RAF-Loop, Recording, Presets, UI-Bindings)
-├── manifest.webmanifest   # PWA-Manifest (Installierbarkeit)
-├── assets/                # statische Assets (favicon.svg, icon-{192,512}.png,
+├── index.html             # UI markup
+├── styles.css             # all styling (dark + light auto)
+├── perlin.js              # math/API (noise, color modes, worker source)
+├── perlin-studio.js       # controller (RAF loop, recording, presets, UI bindings)
+├── manifest.webmanifest   # PWA manifest (installable)
+├── assets/                # static assets (favicon.svg, icon-{192,512}.png,
 │                          #   apple-touch-icon.png, hero.png, gallery-*.png
-│                          #   + legacy default-atlas.webp fürs Archiv)
+│                          #   + legacy default-atlas.webp for the archive)
 ├── scripts/
-│   ├── render-readme-images.js  # rendert assets/*.png aus perlin.js
-│   └── render-readme-videos.js  # rendert docs/examples/*.webm (Node → ffmpeg)
-├── _archiv/               # historische Vorgänger (READ-ONLY!)
-│   ├── perlin_noise/      # Python-Original
-│   ├── texturizer.ipynb   # Texturizer-Notebook
-│   └── old_texturizer_combined/   # erste Browser-Version
+│   ├── render-readme-images.js  # renders assets/*.png from perlin.js
+│   └── render-readme-videos.js  # renders docs/examples/*.webm (Node → ffmpeg)
+├── _archiv/               # historical predecessors (READ-ONLY!)
+│   ├── perlin_noise/      # Python original
+│   ├── texturizer.ipynb   # Texturizer notebook
+│   └── old_texturizer_combined/   # first browser version
 ├── docs/
-│   ├── ARCHITECTURE.md    # technische Doku
-│   ├── USAGE.md           # ausführliche Bedienungsanleitung
-│   └── examples/          # gerenderte WebM-Loops (für README + Einbettung)
-├── .editorconfig          # konsistente Indentation/Encoding/EOL
+│   ├── ARCHITECTURE.md    # technical docs
+│   ├── USAGE.md           # full user guide
+│   └── examples/          # rendered WebM loops (for README + embedding)
+├── .editorconfig          # consistent indentation/encoding/EOL
 ├── .forgejo/
-│   └── workflows/         # Codeberg Pages Auto-Deploy
+│   └── workflows/         # Codeberg Pages auto-deploy
 ├── .gitea/
-│   └── issue_template/    # Bug-Report + Feature-Request Forms
-├── README.md              # Einstieg + Quickstart
-├── CONTRIBUTING.md        # Entwickler-Workflow
-├── SECURITY.md            # Threat-Model + Meldewege
+│   └── issue_template/    # bug report + feature request forms
+├── README.md              # quickstart + entry point
+├── CONTRIBUTING.md        # developer workflow
+├── SECURITY.md            # threat model + reporting
 ├── CHANGELOG.md
 ├── LICENSE                # AGPL-3.0
-└── AGENTS.md              # diese Datei
+└── AGENTS.md              # this file
 ```
 
-**`_archiv/` ist tabu für aktive Änderungen.** Diese Dateien dokumentieren
-die Projekt-Genese und dürfen nur ergänzt werden (z. B. wenn weiterer
-Snapshot dazukommt), nicht editiert oder gelöscht.
+**`_archiv/` is off-limits for active changes.** These files document
+the project's genealogy and may only be added to (e.g. when another
+snapshot is preserved), never edited or deleted.
 
-## Glossar
+## Glossary
 
-| Begriff | Bedeutung |
-|---------|-----------|
-| **fBm** | Fractal Brownian Motion — Summe von Perlin-Oktaven mit fallender Amplitude und steigender Frequenz |
-| **Oktave** | Eine Frequenz-Stufe in fBm. Mehr Oktaven = mehr Detail, mehr Rechenzeit |
-| **Persistence** | Amplitudenfaktor zwischen Oktaven (typisch 0.5) |
-| **Lacunarity** | Frequenzfaktor zwischen Oktaven (typisch 2.0) |
-| **scaleT** | Im UI **„Wabern-Geschwindigkeit"** — skaliert die Zeit-Achse des Noise. Default 0.15 |
-| **loop** | Wenn `true`: 4D-Pfad mit Kreisbahn in `(z, w)`. Wenn `false`: 3D-Pfad mit linearem `t` |
-| **loopProgress** | Aktuelle Position auf der Kreisbahn in `[0, 1)`. Wird zu `α = 2π·progress` |
-| **loopRadius** | Wie weit sich das Bild über eine volle Umdrehung bewegt |
-| **safeProgress** | `((p % 1) + 1) % 1` — sichert die Loop-Identität gegen Float-Rundung von `Math.sin(2π)` |
-| **Worker-Source** | Der komplette `perlin.js`-Code als String in `MTPerlin.WORKER_SOURCE`. Wird in einen Inline-Blob-Worker geladen — `file://`-kompatibel |
+| Term | Meaning |
+|------|---------|
+| **fBm** | Fractal Brownian Motion — sum of Perlin octaves with decreasing amplitude and increasing frequency |
+| **Octave** | A frequency level in fBm. More octaves = more detail, more compute |
+| **Persistence** | Amplitude factor between octaves (typically 0.5) |
+| **Lacunarity** | Frequency factor between octaves (typically 2.0) |
+| **scaleT** | UI label **"Time scale"** — scales the time axis of the noise. Default 0.15 |
+| **loop** | When `true`: 4D path with a circular orbit in `(z, w)`. When `false`: 3D path with linear `t` |
+| **loopProgress** | Current position on the circular orbit in `[0, 1)`. Becomes `α = 2π·progress` |
+| **loopRadius** | How far the image travels over one full rotation |
+| **safeProgress** | `((p % 1) + 1) % 1` — protects the loop identity against the float-rounding of `Math.sin(2π)` |
+| **Worker source** | The full `perlin.js` code as a string in `MTPerlin.WORKER_SOURCE`. Loaded into an inline Blob worker — `file://`-compatible |
 
-## Workflow-Hinweise
+## Workflow notes
 
 ### Tests
-Es gibt **keine Test-Suite**. Stattdessen:
 
-1. **Syntax-Check beider JS-Dateien** nach jeder Änderung:
+There is **no test suite**. Instead:
+
+1. **Syntax check both JS files** after every change:
    ```bash
    node --check perlin.js && node --check perlin-studio.js
    ```
-2. **Math-Sanity** für Perlin-Änderungen — temporäres Node-Script anlegen,
-   `global.window = {}` setzen, `perlin.js` requiren, gegen erwartete
-   Eigenschaften prüfen (Reproduzierbarkeit, Wertebereich, Loop-Identität).
-   Siehe historische Beispiele in der Commit-History.
-3. **Manueller Browser-Test** — `python3 -m http.server` und durchklicken.
+2. **Math sanity** for Perlin changes — write a temporary Node script,
+   set `global.window = {}`, require `perlin.js`, check the expected
+   properties (reproducibility, value range, loop identity). See
+   historical examples in the commit history.
+3. **Manual browser test** — `python3 -m http.server` and click around.
 
-Sandbox-Hinweis: Die Permission-Konfiguration verbietet evtl. das Starten
-eines HTTP-Servers aus `/Users/Shared/`. Bei Blocker den User auffordern,
-selbst zu testen.
+Sandbox note: the permission setup may forbid starting an HTTP server
+from `/Users/Shared/`. If you hit that, ask the user to test it themselves.
 
-### Häufige Fallstricke
+### Common pitfalls
 
-#### Math-Bug-Klasse 1: Float-Rundung bei Loop-Endpunkten
-`Math.sin(2π)` ist nicht `0`, sondern ca. `-2.4e-16`. `Math.floor(-1.7e-16)`
-ist `-1`, was im Hash-Lookup auf `255` maskiert — das ergibt ein
-*komplett anderes* Bild. Lösung: `safeProgress = ((p % 1) + 1) % 1`.
+#### Math bug class 1: float rounding at loop endpoints
 
-#### Math-Bug-Klasse 2: Z/W-Achsen-Vertauschung in `perlin4`
-Im 4D-Hash-Baum sind `AAB` und `AAA+1` unterschiedliche Konstrukte:
-`AAB = perm[AA+1]+W` ist ein **Z-Shift**, `AAA+1 = perm[AA]+W+1` ist ein
-**W-Shift**. Die Offsets müssen passen: `AAB` nutzt `z-1`, `AAA+1` nutzt
-`w-1`. Die äußere Lerp ist über `tt` (W), nicht `s` (Z).
+`Math.sin(2π)` is not `0` but about `-2.4e-16`. `Math.floor(-1.7e-16)`
+is `-1`, which masks to `255` in the hash lookup — a *completely
+different* image. Fix: `safeProgress = ((p % 1) + 1) % 1`.
 
-#### Animation-Bug: zu schneller `t`-Fortschritt
-Die initiale Implementierung hatte `t += fps` pro Sekunde — Faktor 30× zu
-schnell. Korrekt ist `t += 1` pro Sekunde, und `scaleT` skaliert das im
-Noise-Space. So ist pro Frame der Schritt ~`scaleT / fps` ≈ 0.005 — sanftes
-Wabern statt Flackern.
+#### Math bug class 2: Z/W axis swap in `perlin4`
 
-#### Worker-CSP
-Unter `file://` blockieren manche Browser den Worker. Der Code fällt
-automatisch auf Main-Thread-Rendering zurück (siehe `initWorker` /
-`renderInMain`). Beim Debuggen darauf achten, ob FPS-Counter
-„(main)" anzeigt — dann läuft der Fallback.
+In the 4D hash tree, `AAB` and `AAA+1` are different constructs:
+`AAB = perm[AA+1]+W` is a **Z shift**, `AAA+1 = perm[AA]+W+1` is a
+**W shift**. The offsets must line up: `AAB` uses `z-1`, `AAA+1` uses
+`w-1`. The outer lerp is over `tt` (W), not `s` (Z).
 
-### Kommunikationsmuster mit Worker
-- **Frames niemals stauen.** `requestFrame` skippt, wenn `state.workerBusy`
-  noch `true` ist. Für Aufnahmen gibt es `renderFrameAndWait`, das via
-  `state.pendingResolves` synchronisiert.
-- **Transferable verwenden.** `postMessage({ ..., buffer: buf.buffer }, [buf.buffer])`
-  → zero-copy zurück.
+#### Animation bug: `t` progress too fast
 
-## Wenn du etwas änderst
+The initial implementation had `t += fps` per second — 30× too fast.
+The correct version is `t += 1` per second, and `scaleT` scales that
+in noise space. So the per-frame step is ~`scaleT / fps` ≈ 0.005 —
+a soft ripple instead of a flicker.
 
-1. **Auf den Fluss achten.** Performance-Tweaks in `perlin3`/`perlin4`
-   nicht ohne Sanity-Checks committen. Subtile Math-Bugs sehen visuell
-   normal aus, bis der Loop nicht mehr schließt oder kanten flackern.
-2. **UI-Strings deutsch lassen.** Auch in neuen Buttons/Sektionen.
-3. **`CHANGELOG.md` updaten** für jedes nutzersichtbare Feature/Fix.
-4. **Keine Kosmetik in `_archiv/`.**
+#### Worker CSP
 
-## Erweiterungs-Roadmap (nice-to-have)
+Under `file://`, some browsers block the worker. The code automatically
+falls back to main-thread rendering (see `initWorker` / `renderInMain`).
+While debugging, watch whether the FPS counter says "(main)" — if so,
+the fallback is active.
 
-Siehe `README.md` Abschnitt **Roadmap**. Bei Interesse an einem dieser
-Punkte — vorher mit Maintainer kurz abstimmen, damit Scope und Approach
-gleich klar sind:
+### Worker communication patterns
 
-- Gradient-Editor (eigene Color Stops)
-- Tileable Noise (`repeatx`/`repeaty`/`repeatz`)
-- GIF-Export (`gif.js`, ~12 KB)
-- Obsidian-Plugin-Port
-- Web-Component-Variante
+- **Never queue frames.** `requestFrame` skips if `state.workerBusy`
+  is still `true`. Recordings use `renderFrameAndWait`, which
+  synchronizes via `state.pendingResolves`.
+- **Use transferables.** `postMessage({ ..., buffer: buf.buffer }, [buf.buffer])`
+  → zero-copy back.
+
+## When you change something
+
+1. **Mind the flow.** Don't commit performance tweaks in `perlin3`/`perlin4`
+   without sanity checks. Subtle math bugs look visually normal until
+   the loop stops closing or edges start flickering.
+2. **Keep UI strings English.** Including any new buttons/sections.
+3. **Update `CHANGELOG.md`** for every user-visible feature/fix.
+4. **No cosmetic changes in `_archiv/`.**
+
+## Extension roadmap (nice-to-have)
+
+See `README.md` section **Roadmap**. If you're interested in any of
+these, sync with the maintainer first so scope and approach are clear:
+
+- Gradient editor (custom color stops)
+- Tileable noise (`repeatx`/`repeaty`/`repeatz`)
+- GIF export (`gif.js`, ~12 KB)
+- Obsidian plugin port
+- Web Component variant

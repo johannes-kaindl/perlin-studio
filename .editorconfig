@@ -1,5 +1,5 @@
 # .editorconfig — https://editorconfig.org
-# Hält Indentation, Encoding und Line-Endings konsistent über IDEs hinweg.
+# Keeps indentation, encoding, and line endings consistent across editors.
 
 root = true
 
@@ -21,7 +21,7 @@ indent_size = 2
 
 [*.md]
 indent_size = 2
-# Markdown nutzt manchmal zwei trailing spaces für harten Zeilenumbruch.
+# Markdown sometimes uses two trailing spaces for a hard line break.
 trim_trailing_whitespace = false
 
 [*.sh]

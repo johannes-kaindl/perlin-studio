@@ -1,23 +1,23 @@
-// Rendert die README-Showcase-Bilder (assets/hero.png + gallery-*.png) via
-// dem echten perlin.js-Modul aus diesem Repo. PNG-Encoding pur Node
-// (zlib + crc32), keine externen Dependencies.
+// Renders the README showcase images (assets/hero.png + gallery-*.png) using
+// the actual perlin.js module from this repo. PNG encoding is pure Node
+// (zlib + crc32), no external dependencies.
 //
 //   node scripts/render-readme-images.js
 //
-// Schreibt nach assets/ — überschreibt vorhandene PNGs.
+// Writes into assets/ — overwrites existing PNGs.
 "use strict";
 
 const fs = require("fs");
 const zlib = require("zlib");
 const path = require("path");
 
-// perlin.js exportiert via window.MTPerlin — Sandbox bauen wie in AGENTS.md.
+// perlin.js exports via window.MTPerlin — build the sandbox as in AGENTS.md.
 const REPO = path.resolve(__dirname, "..");
 global.window = {};
 require(path.join(REPO, "perlin.js"));
 const { makePermutation, fbm3, fbm4, colorize } = global.window.MTPerlin;
 
-// ---------- Gradients (Copy aus perlin-studio.js, damit Renderer self-contained) ----------
+// ---------- Gradients (copy from perlin-studio.js so the renderer is self-contained) ----------
 const GRADIENTS = {
   fire: [
     { pos: 0.0, color: [0, 0, 0] },
@@ -53,7 +53,7 @@ const GRADIENTS = {
   ],
 };
 
-// ---------- Frame rendern (Loop-Modus mit gewähltem Progress) ----------
+// ---------- Render one frame (loop mode at the chosen progress) ----------
 function renderFrame(params) {
   const { width, height, scaleX, scaleY, scaleT,
           octaves, persistence, lacunarity, base,
@@ -83,8 +83,8 @@ function renderFrame(params) {
   return buf;
 }
 
-// ---------- PNG-Encoder (pur Node) ----------
-// CRC32-Tabelle nach PNG-Spec (Annex D, IEEE 802.3 polynomial).
+// ---------- PNG encoder (pure Node) ----------
+// CRC32 table per the PNG spec (Annex D, IEEE 802.3 polynomial).
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -107,7 +107,7 @@ function chunk(type, data) {
   return Buffer.concat([len, typeBuf, data, crc]);
 }
 function encodePng(width, height, rgb) {
-  // IHDR: width, height, bitdepth=8, colortype=2 (RGB), compression=0, filter=0, interlace=0
+  // IHDR: width, height, bit depth=8, colour type=2 (RGB), compression=0, filter=0, interlace=0
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
@@ -117,7 +117,7 @@ function encodePng(width, height, rgb) {
   ihdr.writeUInt8(0, 11);    // filter
   ihdr.writeUInt8(0, 12);    // interlace
 
-  // Scanlines mit Filter-Byte 0 (None) prefixen
+  // Prefix each scanline with filter byte 0 (None)
   const stride = width * 3;
   const filtered = Buffer.alloc(height * (stride + 1));
   for (let y = 0; y < height; y++) {
@@ -135,12 +135,12 @@ function encodePng(width, height, rgb) {
   ]);
 }
 
-// ---------- Render-Jobs ----------
+// ---------- Render jobs ----------
 const ASSETS = path.join(REPO, "assets");
 const LOOP_DEFAULTS = { loopRadius: 1.0, scaleT: 0.15 };
 
 const JOBS = [
-  // Hero / OG-Image — Lava-Variante, breit
+  // Hero / OG image — Lava variant, wide
   {
     out: "hero.png",
     params: {
@@ -196,7 +196,7 @@ const JOBS = [
 ];
 
 if (!fs.existsSync(ASSETS)) {
-  console.error("assets/ nicht gefunden:", ASSETS);
+  console.error("assets/ not found:", ASSETS);
   process.exit(1);
 }
 
@@ -210,4 +210,4 @@ for (const job of JOBS) {
   const kb = (png.length / 1024).toFixed(1);
   console.log(`✓ ${job.out.padEnd(28)} ${job.params.width}×${job.params.height}  ${kb} KB  ${t1 - t0} ms`);
 }
-console.log("alle Bilder geschrieben →", ASSETS);
+console.log("all images written →", ASSETS);

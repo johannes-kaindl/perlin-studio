@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: CC-BY-SA-4.0
 blank_issues_enabled: true
 contact_links:
-  - name: Sicherheits-Meldung
+  - name: Security report
     url: https://codeberg.org/jkaindl/perlin-studio/src/branch/main/SECURITY.md
-    about: Sicherheitsrelevante Probleme bitte nicht öffentlich melden — siehe SECURITY.md.
-  - name: Live-Demo
+    about: Please don't report security issues publicly — see SECURITY.md.
+  - name: Live demo
     url: https://jkaindl.codeberg.page/perlin-studio/
-    about: Vor dem Issue erstmal die Live-Version ausprobieren.
+    about: Try the live version before filing an issue.

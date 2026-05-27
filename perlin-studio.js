@@ -1,35 +1,35 @@
 /**
- * perlin-studio.js — Main-Thread-Controller des Perlin Studios.
+ * perlin-studio.js — main-thread controller of Perlin Studio.
  *
- * Bindet UI, Worker, RAF-Loop, Preset-System und WebM-Recorder zusammen.
- * Reines Vanilla-JS, keine Abhängigkeiten außer `perlin.js`.
+ * Ties the UI, worker, RAF loop, preset system, and WebM recorder together.
+ * Pure vanilla JS, no dependencies other than `perlin.js`.
  *
- * Architektur für fließende Animation:
+ * Architecture for smooth animation:
  *
- *     Main-Thread:        Worker:
+ *     Main thread:        Worker:
  *       ┌─────────┐         ┌──────────┐
- *       │ RAF-    │ params  │ Perlin   │
- *       │ Loop    │────────▶│ + Color  │
+ *       │ RAF     │ params  │ Perlin   │
+ *       │ loop    │────────▶│ + color  │
  *       │         │         │          │
- *       │ putImg  │◀────────│ ImageData│   (Transferable, zero-copy)
+ *       │ putImg  │◀────────│ ImageData│   (transferable, zero-copy)
  *       └─────────┘         └──────────┘
  *
- * Nur ein Frame ist gleichzeitig im Worker — kein Stau. Wenn die Berechnung
- * langsamer als die Display-Refresh-Rate ist, wird einfach das fertige Frame
- * gezeichnet, sobald es kommt. Wall-Clock-Zeit treibt die Animation, nicht
- * der Frame-Index → konsistente Geschwindigkeit unabhängig von der Last.
+ * Only one frame is in flight in the worker at a time — no queue. If the
+ * computation is slower than the display refresh rate, the finished frame
+ * is simply drawn whenever it arrives. Wall-clock time drives the
+ * animation, not the frame index → consistent speed regardless of load.
  *
- * Datenfluss:
- *   1. UI-Input/Slider/Preset → `gatherParams()` baut Plain-Object
+ * Data flow:
+ *   1. UI input / slider / preset → `gatherParams()` builds a plain object
  *   2. `requestFrame(params)` → `worker.postMessage({id, params})`
- *   3. Worker rechnet `fbm3`/`fbm4` + `colorize`, postet `ArrayBuffer` zurück
- *   4. `onWorkerMessage` baut `ImageData` und macht `putImageData` auf das Canvas
+ *   3. The worker computes `fbm3`/`fbm4` + `colorize`, posts an `ArrayBuffer` back
+ *   4. `onWorkerMessage` builds `ImageData` and calls `putImageData` on the canvas
  *
- * Für WebM-Aufnahme wird `renderFrameAndWait` (synchron) genutzt, damit jedes
- * Frame im `MediaRecorder`-Stream landet — die normale Skip-Logik würde
- * Frames droppen.
+ * For WebM recording, `renderFrameAndWait` (synchronous) is used so every
+ * frame lands in the `MediaRecorder` stream — the normal skip logic would
+ * drop frames.
  *
- * @license MIT
+ * @license AGPL-3.0-or-later
  */
 
 // ============= GRADIENTS =============
@@ -89,9 +89,9 @@ const GRADIENTS = {
 };
 
 // ============= BUILTIN PRESETS =============
-// Alle Presets nutzen Loop default-an mit niedrigem scaleT für sanftes Wabern.
-// Loop-Radius = 1 gibt einen voll umrundeten Kreis im Noise-Space; scaleT
-// skaliert diesen, sodass der Loop in einer Cell-Größe stattfindet.
+// All presets default to loop=on with a small scaleT for a gentle ripple.
+// loopRadius = 1 traces a full circle in noise space; scaleT shrinks it so
+// the loop stays within a single cell-sized region.
 const LOOP_DEFAULTS = { loop: true, loopDuration: 4, loopRadius: 1.0 };
 
 const BUILTIN_PRESETS = {
@@ -146,14 +146,14 @@ const state = {
   worker: null,
   workerBusy: false,
   workerJobId: 0,
-  latestJobId: 0,     // höchste angeforderte Job-ID; ältere Antworten werden ignoriert
-  currentImage: null, // letzte ImageData zum erneuten Zeichnen
+  latestJobId: 0,     // highest requested job id; older replies are ignored
+  currentImage: null, // last ImageData for redrawing
   currentImageMeta: { w: 0, h: 0 },
 
   playing: false,
   rafHandle: 0,
   lastFrameTime: 0,
-  fpsEMA: 0,          // exponentielles Glättungsmittel für FPS-Anzeige
+  fpsEMA: 0,          // exponentially smoothed mean for the FPS readout
   framesRendered: 0,
 
   recording: false,
@@ -162,13 +162,13 @@ const state = {
   recorder: null,
 
   currentParams: null,
-  pendingResolves: [],  // [{id, resolve}] — Promises die auf ein bestimmtes Frame warten
+  pendingResolves: [],  // [{id, resolve}] — promises waiting on a specific frame
 };
 
 // ============= DOM =============
 const $ = (id) => document.getElementById(id);
 const els = {
-  // Resolution / Noise
+  // Resolution / noise
   w: $("p-w"), h: $("p-h"),
   sx: $("p-sx"), sy: $("p-sy"), st: $("p-st"),
   base: $("p-base"), oct: $("p-oct"), pers: $("p-pers"), lac: $("p-lac"),
@@ -227,12 +227,12 @@ const els = {
 };
 
 // ============= UTIL =============
-/** Parse + Clamp eines Inputs zu Integer; bei NaN/leer → Fallback. */
+/** Parse + clamp an input to an integer; on NaN/empty → fallback. */
 function clampInt(value, lo, hi, fallback) {
   const n = parseInt(value, 10);
   return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
 }
-/** Parse + Clamp eines Inputs zu Float; bei NaN/leer → Fallback. */
+/** Parse + clamp an input to a float; on NaN/empty → fallback. */
 function clampFloat(value, lo, hi, fallback) {
   const n = parseFloat(value);
   return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
@@ -253,12 +253,12 @@ function setProgress(pct) {
 
 // ============= PARAMS COLLECT =============
 /**
- * Liest den aktuellen UI-Zustand und baut ein Plain-Object, das sowohl an
- * `generatePerlinImage` (synchron) als auch via `postMessage` an den Worker
- * geht. Alle Felder werden über `clampInt`/`clampFloat` validiert und mit
- * Default-Fallbacks versehen — der Worker braucht keine weitere Validierung.
+ * Reads the current UI state and builds a plain object that goes to either
+ * `generatePerlinImage` (synchronous) or to the worker via `postMessage`.
+ * Every field is validated via `clampInt`/`clampFloat` with default
+ * fallbacks — the worker needs no further validation.
  *
- * @returns {Object} Studio-Parameter (s. `perlin.js` Modul-Header)
+ * @returns {Object} Studio parameters (see the `perlin.js` module header)
  */
 function gatherParams() {
   const colorMode = els.colorMode.value;
@@ -304,11 +304,11 @@ function gatherParams() {
 
 // ============= APPLY PARAMS (preset → UI) =============
 /**
- * Umkehr-Operation zu `gatherParams`: schreibt einen Parameter-Snapshot
- * zurück in die UI-Inputs. Wird von Builtin-Presets und JSON-Import genutzt.
- * Felder ohne Wert im Snapshot bleiben unverändert.
+ * Inverse of `gatherParams`: writes a parameter snapshot back into the UI
+ * inputs. Used by built-in presets and JSON import. Fields absent from the
+ * snapshot are left unchanged.
  *
- * @param {Object} p  Parameter-Snapshot (kann unvollständig sein)
+ * @param {Object} p  Parameter snapshot (may be partial)
  */
 function applyParamsToUi(p) {
   if (p.width != null) els.w.value = p.width;
@@ -356,9 +356,9 @@ function updateColorSections() {
   }
 }
 
-// Loop-Mode wechselt das Verhalten des t-Sliders:
-// Loop=an  → Slider ist Loop-Progress [0, 1)
-// Loop=aus → Slider ist freie Zeitkoordinate [-200, 2000]
+// Loop mode changes the behaviour of the t slider:
+// loop=on  → slider is loop progress in [0, 1)
+// loop=off → slider is a free time coordinate in [-200, 2000]
 function updateLoopMode() {
   const isLoop = els.loop.checked;
   els.loopControls.style.display = isLoop ? "" : "none";
@@ -366,7 +366,7 @@ function updateLoopMode() {
     els.t.min = "0";
     els.t.max = "1";
     els.t.step = "0.001";
-    els.tLabelName.textContent = "Loop-Fortschritt";
+    els.tLabelName.textContent = "Loop progress";
     if (parseFloat(els.t.value) > 1 || parseFloat(els.t.value) < 0) els.t.value = "0";
   } else {
     els.t.min = "-200";
@@ -388,10 +388,10 @@ function updateGradientPreview() {
   els.gradientPreview.style.background = `linear-gradient(to right, ${css})`;
 }
 
-// ============= WORKER (mit Main-Thread-Fallback) =============
+// ============= WORKER (with main-thread fallback) =============
 function initWorker() {
   if (!window.MTPerlin || !window.MTPerlin.WORKER_SOURCE) {
-    setStatus("Perlin-Modul nicht geladen.", true);
+    setStatus("Perlin module not loaded.", true);
     return;
   }
   try {
@@ -400,16 +400,16 @@ function initWorker() {
     state.worker = new Worker(url);
     state.worker.onmessage = onWorkerMessage;
     state.worker.onerror = (e) => {
-      console.warn("Worker-Fehler — wechsle auf Main-Thread-Rendering.", e);
+      console.warn("Worker error — falling back to main-thread rendering.", e);
       state.worker = null;
     };
   } catch (e) {
-    console.warn("Worker konnte nicht gestartet werden — Main-Thread-Fallback.", e);
+    console.warn("Worker couldn't start — main-thread fallback.", e);
     state.worker = null;
   }
 }
 
-// Synchroner Fallback: rendert direkt in den Output-Canvas.
+// Synchronous fallback: renders directly into the output canvas.
 function renderInMain(params) {
   const ctx = els.canvas.getContext("2d");
   if (els.canvas.width !== params.width || els.canvas.height !== params.height) {
@@ -417,7 +417,7 @@ function renderInMain(params) {
     els.canvas.height = params.height;
   }
   window.MTPerlin.generatePerlinImage(params, ctx);
-  // FPS-EMA für die Anzeige
+  // FPS EMA for the readout
   const now = performance.now();
   if (state.lastFrameTime > 0) {
     const dt = now - state.lastFrameTime;
@@ -432,9 +432,9 @@ function onWorkerMessage(e) {
   const { id, width, height, buffer } = e.data;
   state.workerBusy = false;
 
-  // Veraltete Jobs (z. B. nach Parameter-Wechsel) ignorieren.
+  // Drop stale jobs (e.g. after a parameter change).
   if (id < state.latestJobId) {
-    // Buffer kann verworfen werden — wir wollen nur das neueste Frame.
+    // Buffer can be discarded — we only want the newest frame.
     return;
   }
 
@@ -443,14 +443,14 @@ function onWorkerMessage(e) {
   state.currentImage = imgData;
   state.currentImageMeta = { w: width, h: height };
 
-  // Canvas-Größe anpassen, falls geändert.
+  // Adjust the canvas size if it changed.
   if (els.canvas.width !== width || els.canvas.height !== height) {
     els.canvas.width = width;
     els.canvas.height = height;
   }
   els.canvas.getContext("2d").putImageData(imgData, 0, 0);
 
-  // FPS messen (Wall-Clock-Zeit zwischen abgeschlossenen Frames).
+  // Measure FPS (wall-clock time between completed frames).
   const now = performance.now();
   if (state.lastFrameTime > 0) {
     const dt = now - state.lastFrameTime;
@@ -463,7 +463,7 @@ function onWorkerMessage(e) {
   state.lastFrameTime = now;
   state.framesRendered++;
 
-  // Auf dieses Frame wartende Promises auflösen.
+  // Resolve any promises waiting on this frame.
   for (let i = state.pendingResolves.length - 1; i >= 0; i--) {
     if (state.pendingResolves[i].id === id) {
       state.pendingResolves[i].resolve();
@@ -473,11 +473,11 @@ function onWorkerMessage(e) {
 }
 
 /**
- * Stößt einen neuen Frame-Render an. Skippt, wenn der Worker noch beschäftigt
- * ist (kein Frame-Stau, keine Drift). Ohne Worker rendert es synchron im
- * Main-Thread (Fallback z. B. unter Safari/`file://`).
+ * Kicks off a new frame render. Skips if the worker is still busy (no
+ * frame queue, no drift). With no worker available, renders synchronously
+ * on the main thread (fallback e.g. for Safari under `file://`).
  *
- * @param {Object} params  Aus `gatherParams()`
+ * @param {Object} params  From `gatherParams()`
  */
 function requestFrame(params) {
   state.currentParams = params;
@@ -500,9 +500,9 @@ function setTValue(v) {
   els.tDisplay.textContent = v.toFixed(2);
 }
 
-// Slider-Wert je nach Mode in params eintragen:
-// Loop=an  → loopProgress = slider
-// Loop=aus → t = slider
+// Write the slider value into params depending on the mode:
+// loop=on  → loopProgress = slider
+// loop=off → t = slider
 function applySliderTo(params) {
   const v = getTValue();
   if (params.loop) {
@@ -522,12 +522,12 @@ function renderOnce() {
 
 let livePreviewTimer = 0;
 function schedulePreview() {
-  if (state.playing) return; // im Play-Modus rendert die Loop sowieso
+  if (state.playing) return; // in play mode the loop renders anyway
   clearTimeout(livePreviewTimer);
   livePreviewTimer = setTimeout(renderOnce, 20);
 }
 
-// Animation: Wall-Clock-Zeit treibt entweder Loop-Progress (Loop=an) oder t (Loop=aus).
+// Animation: wall-clock time drives either loopProgress (loop=on) or t (loop=off).
 let animStartTime = 0;
 let animStartSlider = 0;
 
@@ -537,15 +537,15 @@ function rafTick(now) {
   const params = gatherParams();
 
   if (params.loop) {
-    // Loop-Progress läuft in `loopDuration` Sekunden einmal durch [0, 1).
-    // Modulo sichert nahtlosen Wraparound nach jedem Loop.
+    // Loop progress traverses [0, 1) once every `loopDuration` seconds.
+    // Modulo ensures a seamless wraparound after each loop.
     const progress = ((animStartSlider + elapsedSec / params.loopDuration) % 1 + 1) % 1;
     setTValue(progress);
     params.loopProgress = progress;
     params.t = 0;
   } else {
-    // Linear: 1 t-Einheit pro Sekunde. scaleT skaliert im Noise-Space,
-    // sodass bei scaleT=0.15 und fps=30 ein Frame ~0.005 weiter geht — sanftes Wabern.
+    // Linear: 1 t unit per second. scaleT scales it in noise space, so with
+    // scaleT=0.15 and fps=30 a frame advances ~0.005 — a soft ripple.
     const tNow = animStartSlider + elapsedSec;
     setTValue(tNow);
     params.t = tNow;
@@ -584,12 +584,12 @@ function applyPreset(name) {
   applyParamsToUi(preset);
   setTValue(0);
   renderOnce();
-  setStatus(`Preset „${name}" geladen.`);
+  setStatus(`Preset "${name}" loaded.`);
 }
 
 function savePreset() {
   const params = gatherParams();
-  // Gradient-Stops-Liste nicht in Datei serialisieren — Name reicht.
+  // Don't serialise the gradient stops list — the name is enough.
   if (params.gradient) delete params.gradient;
   params.t = getTValue();
   const json = JSON.stringify(params, null, 2);
@@ -598,7 +598,7 @@ function savePreset() {
   a.download = `perlin-preset-${Date.now()}.json`;
   a.href = URL.createObjectURL(blob);
   a.click();
-  setStatus("Preset gespeichert.");
+  setStatus("Preset saved.");
 }
 
 function loadPresetFromFile(file) {
@@ -609,9 +609,9 @@ function loadPresetFromFile(file) {
       applyParamsToUi(data);
       if (data.t != null) setTValue(data.t);
       renderOnce();
-      setStatus(`Preset geladen: ${file.name}`);
+      setStatus(`Preset loaded: ${file.name}`);
     } catch (err) {
-      setStatus(`Preset-Fehler: ${err.message}`, true);
+      setStatus(`Preset error: ${err.message}`, true);
     }
   };
   reader.readAsText(file);
@@ -620,7 +620,7 @@ function loadPresetFromFile(file) {
 // ============= EXPORT =============
 function exportPng() {
   if (!els.canvas.width) {
-    setStatus("Erst ein Bild rendern.", true);
+    setStatus("Render an image first.", true);
     return;
   }
   const a = document.createElement("a");
@@ -638,17 +638,17 @@ function chooseRecorderMime() {
 }
 
 /**
- * Baut die Parameter für ein einzelnes Frame der Aufnahme.
- * Loop-Modus: `progress = i / totalFrames` in `[0, 1)` — Frame `totalFrames`
- * wäre progress=1 und identisch zu progress=0, wird daher nicht gerendert.
- * Linear: `t = i / fps` (konsistent mit Live: 1 t-Einheit pro Sekunde).
+ * Builds the parameters for a single recording frame.
+ * Loop mode: `progress = i / totalFrames` in `[0, 1)` — frame `totalFrames`
+ * would have progress=1 (== progress=0) and is therefore not rendered.
+ * Linear: `t = i / fps` (consistent with live: 1 t unit per second).
  *
- * @param {Object} base         Snapshot aus `gatherParams()` zu Aufnahme-Start
- * @param {number} startSlider  t- bzw. progress-Wert beim Aufnahmestart
- * @param {number} frameIndex   0-basierter Frame-Zähler
+ * @param {Object} base         Snapshot from `gatherParams()` at recording start
+ * @param {number} startSlider  t / progress value at recording start
+ * @param {number} frameIndex   0-based frame index
  * @param {number} totalFrames
  * @param {number} fps
- * @returns {Object} Frame-spezifische Parameter
+ * @returns {Object} Frame-specific parameters
  */
 function paramsForRecordingFrame(base, startSlider, frameIndex, totalFrames, fps) {
   const params = { ...base };
@@ -663,9 +663,9 @@ function paramsForRecordingFrame(base, startSlider, frameIndex, totalFrames, fps
 }
 
 /**
- * Initialisiert einen `MediaRecorder` auf dem Output-Canvas. Bevorzugt
- * `captureStream(0)` + `track.requestFrame()` (exakte Frame-Kontrolle);
- * fallback auf `captureStream(fps)` mit Browser-internem Timing.
+ * Initialises a `MediaRecorder` on the output canvas. Prefers
+ * `captureStream(0)` + `track.requestFrame()` (exact frame control);
+ * falls back to `captureStream(fps)` with browser-driven timing.
  *
  * @param {string} mime
  * @param {number} fps
@@ -687,14 +687,14 @@ function setupRecorder(mime, fps) {
 }
 
 /**
- * Nimmt eine WebM-Animation auf. Pausiert die Live-Animation, rendert
- * deterministisch Frame für Frame synchron im Worker, gibt am Ende den Blob
- * zurück und zeigt ihn als `<video>` im Output an.
+ * Records a WebM animation. Pauses the live animation, deterministically
+ * renders one frame after the other synchronously in the worker, returns
+ * the blob at the end, and displays it as a `<video>` in the output.
  */
 async function recordWebm() {
   if (state.recording) return;
   const mime = chooseRecorderMime();
-  if (!mime) { setStatus("Dein Browser unterstützt keinen WebM-Recorder.", true); return; }
+  if (!mime) { setStatus("Your browser doesn't support a WebM recorder.", true); return; }
 
   const wasPlaying = state.playing;
   if (wasPlaying) pause();
@@ -711,8 +711,8 @@ async function recordWebm() {
   els.btnWebm.disabled = true;
   setProgress(0);
 
-  // Frame-Delay sichert ab, dass `captureStream` den Canvas-Stand sieht;
-  // ohne Pause können Browser Frames vor dem Repaint capturen.
+  // The frame delay ensures `captureStream` sees the canvas state; without a
+  // pause some browsers capture before the repaint.
   const frameDelayMs = 1000 / fps;
 
   try {
@@ -721,10 +721,10 @@ async function recordWebm() {
       await renderFrameAndWait(params);
       if (canRequestFrame) track.requestFrame();
       setProgress(Math.round(((i + 1) / totalFrames) * 100));
-      setStatus(`Aufnahme: Frame ${i + 1}/${totalFrames}${params.loop ? " (Loop)" : ""}`);
+      setStatus(`Recording: frame ${i + 1}/${totalFrames}${params.loop ? " (loop)" : ""}`);
       await new Promise(r => setTimeout(r, frameDelayMs));
     }
-    // Tail-Frame, damit der Stream das letzte Bild definitiv aufnimmt.
+    // Tail frame so the stream definitely captures the last image.
     if (canRequestFrame) track.requestFrame();
     await new Promise(r => setTimeout(r, frameDelayMs));
   } finally {
@@ -742,12 +742,12 @@ async function recordWebm() {
   els.canvas.classList.add("hidden");
   els.btnWebmDownload.hidden = false;
   els.btnWebmDownload.disabled = false;
-  setStatus(`Animation fertig — ${totalFrames} Frames @ ${fps} fps, ${(blob.size / 1024).toFixed(1)} KB.`);
+  setStatus(`Animation done — ${totalFrames} frames @ ${fps} fps, ${(blob.size / 1024).toFixed(1)} KB.`);
 
   if (wasPlaying) play();
 }
 
-// Frame synchron warten (für Recording — jedes Frame muss sicher fertig sein).
+// Wait for a frame synchronously (for recording — every frame must finish).
 function renderFrameAndWait(params) {
   if (!state.worker) {
     renderInMain(params);
@@ -804,10 +804,10 @@ function wireEvents() {
 
   els.loop.addEventListener("change", () => {
     updateLoopMode();
-    // Beim Mode-Wechsel den Slider sinnvoll resetten und neu rendern.
+    // On a mode change, reset the slider sensibly and re-render.
     setTValue(0);
     if (state.playing) {
-      // Auch die laufende Animation auf den neuen Modus umstellen.
+      // Also re-anchor the running animation to the new mode.
       animStartTime = performance.now();
       animStartSlider = 0;
     }
@@ -817,7 +817,7 @@ function wireEvents() {
   els.btnPlay.addEventListener("click", togglePlay);
   els.btnResetT.addEventListener("click", () => { setTValue(0); renderOnce(); });
 
-  // Space = Play/Pause (außer in Inputs)
+  // Space = play/pause (except when typing in an input)
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
       e.preventDefault();
@@ -829,7 +829,7 @@ function wireEvents() {
   els.btnWebm.addEventListener("click", () => {
     recordWebm().catch((err) => {
       console.error(err);
-      setStatus(`WebM-Fehler: ${err.message}`, true);
+      setStatus(`WebM error: ${err.message}`, true);
       state.recording = false;
       els.btnWebm.disabled = false;
       setProgress(null);
@@ -856,7 +856,7 @@ function wireEvents() {
   updateGradientPreview();
   updateLoopMode();
   wireEvents();
-  // Erstes Preset anwenden + rendern
+  // Apply and render the first preset
   applyPreset("default");
-  setStatus("Bereit. Drücke ▶ oder Space für Animation.");
+  setStatus("Ready. Press ▶ or Space to animate.");
 })();

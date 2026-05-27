@@ -1,10 +1,10 @@
-# Publisht jeden Push auf `main` an Codeberg Pages.
+# Publishes every push on `main` to Codeberg Pages.
 # Site: https://jkaindl.codeberg.page/perlin-studio/
 #
-# Kein Build-Step nötig — das Repo-Root IST die deploybare Site.
-# Kein Secret nötig — Forgejo stellt `forge.token` automatisch bereit,
-# und git-pages/action erkennt es als autorisiert (Wildcard-Domain-
-# Matching: Repo-Name == Pfad-Segment).
+# No build step needed — the repo root IS the deployable site.
+# No secret needed — Forgejo provides `forge.token` automatically and
+# git-pages/action recognises it as authorised (wildcard-domain matching:
+# repo name == path segment).
 name: Deploy to Codeberg Pages
 
 on:
@@ -12,9 +12,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Bei schnellen Push-Sequenzen läuft immer nur der jüngste Deploy.
-# Frühere noch laufende Deploys werden abgebrochen — vermeidet
-# Race-Conditions auf Codeberg Pages.
+# On fast push sequences only the newest deploy runs. Older in-flight
+# deploys get cancelled — avoids race conditions on Codeberg Pages.
 concurrency:
   group: pages
   cancel-in-progress: true

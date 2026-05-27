@@ -1,97 +1,95 @@
-# Architektur
+# Architecture
 
-Tiefergehende technische Dokumentation. Lies zuerst die
-[README](../README.md) für den groben Überblick.
+In-depth technical documentation. Read the [README](../README.md) first
+for the broad overview.
 
-## Inhalt
+## Contents
 
-1. [Code-Layout](#code-layout)
-2. [Math: Perlin-Noise in 3D und 4D](#math-perlin-noise-in-3d-und-4d)
+1. [Code layout](#code-layout)
+2. [Math: Perlin noise in 3D and 4D](#math-perlin-noise-in-3d-and-4d)
 3. [fBm — Fractal Brownian Motion](#fbm--fractal-brownian-motion)
-4. [Loop-Mechanik: Kreisbahn in 4D](#loop-mechanik-kreisbahn-in-4d)
-5. [Worker-Pipeline](#worker-pipeline)
-6. [Animation-Loop](#animation-loop)
-7. [WebM-Recording](#webm-recording)
-8. [Farb-Modi](#farb-modi)
-9. [Bekannte Edge-Cases](#bekannte-edge-cases)
+4. [Loop mechanics: circular orbit in 4D](#loop-mechanics-circular-orbit-in-4d)
+5. [Worker pipeline](#worker-pipeline)
+6. [Animation loop](#animation-loop)
+7. [WebM recording](#webm-recording)
+8. [Color modes](#color-modes)
+9. [Known edge cases](#known-edge-cases)
 
 ---
 
-## Code-Layout
+## Code layout
 
-Zwei JS-Dateien teilen sich die Verantwortung:
+Two JS files share the responsibility:
 
 ```
 perlin.js                    perlin-studio.js
-├── Math (perlin3, perlin4)  ├── DOM-Bindings
-├── fBm (fbm3, fbm4)         ├── Worker-Setup + Fallback
-├── colorize()               ├── RAF-Loop (Play/Pause)
-├── generatePerlinImage()    ├── Recording (MediaRecorder)
-└── WORKER_SOURCE (String)   └── Preset-System (Builtin + JSON)
+├── Math (perlin3, perlin4)  ├── DOM bindings
+├── fBm (fbm3, fbm4)         ├── worker setup + fallback
+├── colorize()               ├── RAF loop (play/pause)
+├── generatePerlinImage()    ├── recording (MediaRecorder)
+└── WORKER_SOURCE (string)   └── preset system (built-in + JSON)
 ```
 
-`perlin.js` ist **reine Funktion** — keine Globals, keine DOM-Zugriffe.
-Eine IIFE exportiert nach `window.MTPerlin`. Die gesamte Modul-Logik ist
-zusätzlich als String unter `MTPerlin.WORKER_SOURCE` verfügbar; daraus
-wird im Studio ein Blob-Worker gebaut. Das ist wichtig, damit der Worker
-auch unter `file://` läuft (manche Browser blockieren externe Worker-URLs).
+`perlin.js` is **pure** — no globals, no DOM access. An IIFE exports
+to `window.MTPerlin`. The entire module logic is also available as a
+string in `MTPerlin.WORKER_SOURCE`; that's what the studio uses to
+build a Blob worker. Important so the worker also runs under `file://`
+(some browsers block external worker URLs).
 
-`perlin-studio.js` ist der **Controller** — er liest UI-Zustand, schickt
-Frames an den Worker, zeichnet die Antworten auf das Canvas, treibt die
-Animation und exportiert WebM.
+`perlin-studio.js` is the **controller** — it reads UI state, sends
+frames to the worker, draws responses onto the canvas, drives the
+animation, and exports WebM.
 
 ---
 
-## Math: Perlin-Noise in 3D und 4D
+## Math: Perlin noise in 3D and 4D
 
 ### Improved Noise (Ken Perlin, 2002)
 
-Die Standard-Variante mit:
-- Permutationstabelle der Größe 256, verdoppelt auf 512 für Lookup ohne
-  Modulo
-- `fade(t) = 6t⁵ − 15t⁴ + 10t³` — erzwingt C²-Stetigkeit
-- Gradient-Funktion mit 12 (3D) bzw. 32 (4D) Standard-Vektoren
+The standard variant with:
+- Permutation table of size 256, duplicated to 512 for lookup without modulo
+- `fade(t) = 6t⁵ − 15t⁴ + 10t³` — enforces C² continuity
+- Gradient function with 12 (3D) or 32 (4D) standard vectors
 
-### Werte-Eigenschaften
+### Value properties
 
-- **An Gitterpunkten** (ganze Koordinaten) → exakt 0. Das ist kein Bug,
-  sondern Definition: am Eckpunkt verschwindet der Beitrag aller
-  Gradienten.
-- **Wertebereich** ca. `[-0.88, 0.88]` für `perlin3`, `[-1.08, 1.08]` für
-  `perlin4` (4D-Gradienten sind länger im Mittel).
-- **Stetigkeit**: C² überall, dank `fade`-Polynom.
+- **On grid points** (integer coordinates) → exactly 0. Not a bug —
+  that's the definition: every gradient contribution vanishes at the
+  corner.
+- **Value range** roughly `[-0.88, 0.88]` for `perlin3`, `[-1.08, 1.08]`
+  for `perlin4` (4D gradients are longer on average).
+- **Continuity**: C² everywhere thanks to the `fade` polynomial.
 
-### Permutation-Seeding
+### Permutation seeding
 
-`makePermutation(base)` verschiebt die fixe Standard-Permutation um
+`makePermutation(base)` shifts the fixed standard permutation by
 `base mod 256`:
 
 ```js
 for (let i = 0; i < 256; i++) perm[i] = BASE_PERM[(i + offset) & 255];
 ```
 
-Damit ist jeder ganzzahlige Seed reproduzierbar und gibt visuell
-unterschiedliche Muster. **Nicht** kryptografisch zufällig.
+Every integer seed is reproducible and produces visually distinct
+patterns. **Not** cryptographically random.
 
-### 4D-Hash-Konvention
+### 4D hash convention
 
-Im 4D-Code haben die 16 Hyperwürfel-Eckpunkte konsistente Namen:
+In the 4D code the 16 hypercube corners follow a consistent naming:
 
 ```
-AAAA = (X,   Y,   Z,   W  ) → perm[AAA]      mit offset (x,   y,   z,   w  )
-AAAB = (X,   Y,   Z,   W+1) → perm[AAA + 1]  mit offset (x,   y,   z,   w-1)
-AABA = (X,   Y,   Z+1, W  ) → perm[AAB]      mit offset (x,   y,   z-1, w  )
-AABB = (X,   Y,   Z+1, W+1) → perm[AAB + 1]  mit offset (x,   y,   z-1, w-1)
+AAAA = (X,   Y,   Z,   W  ) → perm[AAA]      with offset (x,   y,   z,   w  )
+AAAB = (X,   Y,   Z,   W+1) → perm[AAA + 1]  with offset (x,   y,   z,   w-1)
+AABA = (X,   Y,   Z+1, W  ) → perm[AAB]      with offset (x,   y,   z-1, w  )
+AABB = (X,   Y,   Z+1, W+1) → perm[AAB + 1]  with offset (x,   y,   z-1, w-1)
 ...
 ```
 
-Wichtig: `AAB = perm[AA+1]+W` ist ein **Z-Shift**, während `AAA+1` ein
-**W-Shift** ist. Die Offsets bei `grad4(...)` müssen entsprechend passen
-— sonst entsteht eine Diskontinuität bei `w ≈ 0` (Sign-Flip in
-`Math.floor`).
+Important: `AAB = perm[AA+1]+W` is a **Z shift**, while `AAA+1` is a
+**W shift**. The offsets in `grad4(...)` must line up — otherwise you
+get a discontinuity at `w ≈ 0` (sign flip in `Math.floor`).
 
-Die Lerp-Reihenfolge von innen nach außen ist `u (X) → v (Y) → s (Z) →
-tt (W)`. Die äußerste Lerp ist über die W-Achse, die mittlere über Z.
+The lerp order from inside out is `u (X) → v (Y) → s (Z) → tt (W)`.
+The outermost lerp is over the W axis, the middle one over Z.
 
 ---
 
@@ -99,31 +97,30 @@ tt (W)`. Die äußerste Lerp ist über die W-Achse, die mittlere über Z.
 
 ```
 fBm(x, y, z) = Σ amp_i · perlin3(x · freq_i, y · freq_i, z · freq_i)
-                normalisiert durch Σ amp_i
-                und gemappt auf [0, 1]
+               normalised by Σ amp_i
+               and mapped to [0, 1]
 
-mit  amp_i  = persistence^i
-     freq_i = lacunarity^i
-     i = 0 .. octaves-1
+with  amp_i  = persistence^i
+      freq_i = lacunarity^i
+      i = 0 .. octaves-1
 ```
 
-- **`octaves`** — Anzahl Frequenz-Stufen. Mehr = mehr Detail, mehr
-  Rechenzeit (linear).
-- **`persistence`** — Amplitudenfaktor pro Oktave. Klein (0.3) ⇒ glatte
-  Wolken; groß (0.7) ⇒ raues Terrain.
-- **`lacunarity`** — Frequenzfaktor pro Oktave. Klein (1.5) ⇒
-  selbstähnliche Strukturen; groß (3.0) ⇒ stark variierte Detailebenen.
+- **`octaves`** — number of frequency levels. More = more detail, more
+  compute (linear).
+- **`persistence`** — amplitude factor per octave. Small (0.3) ⇒ smooth
+  clouds; large (0.7) ⇒ rough terrain.
+- **`lacunarity`** — frequency factor per octave. Small (1.5) ⇒
+  self-similar structures; large (3.0) ⇒ widely varied detail levels.
 
-Normalisierung auf `[0, 1]` macht die nachfolgende Farb-Berechnung
-einfacher: `colorize(n)` nimmt immer Werte in diesem Bereich.
+Normalising to `[0, 1]` keeps the downstream color computation simple:
+`colorize(n)` always takes values in that range.
 
 ---
 
-## Loop-Mechanik: Kreisbahn in 4D
+## Loop mechanics: circular orbit in 4D
 
-Linearer `t`-Fortschritt ist nicht loopbar — am Ende der Animation springt
-das Bild zurück. Klassischer Trick: **Zwei zusätzliche Koordinaten
-durchlaufen einen Kreis im Noise-Space**.
+Linear `t` progress is not loopable — at the end the image snaps back.
+Classic trick: **two extra coordinates trace a circle in noise space**.
 
 ```
 α = loopProgress · 2π
@@ -132,51 +129,51 @@ w = sin(α) · loopRadius · scaleT
 output = fbm4(perm, x·scaleX, y·scaleY, z, w, octaves, ...)
 ```
 
-Bei `loopProgress = 0` ist `(z, w) = (loopRadius·scaleT, 0)`.
-Bei `loopProgress = 1` ist `α = 2π` und `(cos, sin) = (1, 0)` — exakt der
-Startwert. → mathematisch nahtlos.
+At `loopProgress = 0`, `(z, w) = (loopRadius·scaleT, 0)`.
+At `loopProgress = 1`, `α = 2π` and `(cos, sin) = (1, 0)` — exactly the
+starting value. → mathematically seamless.
 
-### Float-Sicherung: `safeProgress`
+### Float safety: `safeProgress`
 
-`Math.sin(2 * Math.PI)` ist nicht exakt `0`, sondern ca. `-2.4·10⁻¹⁶`.
-`Math.floor(-1.7·10⁻¹⁶)` ist `-1`, was nach `& 255` als `255` indexiert —
-ein völlig anderer Hash, also ein **komplett anderes Bild** an genau dem
-einen Loop-Endpunkt.
+`Math.sin(2 * Math.PI)` is not exactly `0` but about `-2.4·10⁻¹⁶`.
+`Math.floor(-1.7·10⁻¹⁶)` is `-1`, which `& 255` indexes as `255` — a
+totally different hash, i.e. a **completely different image** at that
+one loop endpoint.
 
-Lösung:
+Fix:
 ```js
 const safeProgress = ((p % 1) + 1) % 1;
 ```
 
-→ `progress = 1` und `progress = 0` produzieren `α = 0` (exakt), nicht
-`α = 2π` (mit Rundungsfehler). In der Praxis rendert die App ohnehin nie
-Frame `progress = 1` (der RAF-Loop wrappt mit `% 1` vorher), aber der
-manuelle Slider und Test-Code könnten den Edge-Case treffen.
+→ `progress = 1` and `progress = 0` produce `α = 0` (exact), not
+`α = 2π` (with rounding error). In practice the app never renders
+`progress = 1` (the RAF loop wraps with `% 1` first), but a manual
+slider or test code could hit the edge case.
 
-### `loopRadius` und Detail-Frequenzen
+### `loopRadius` and detail frequencies
 
-Der Kreis hat im höchsten fBm-Octave Radius `loopRadius · scaleT ·
-lacunarity^(octaves-1)`. Mit Default `loopRadius=1`, `scaleT=0.15`,
-`octaves=6`, `lacunarity=2` ist das `1 · 0.15 · 32 = 4.8` — der Kreis
-durchläuft 4.8 Perlin-Zellen im höchsten Detail.
+In the highest fBm octave the circle has radius `loopRadius · scaleT ·
+lacunarity^(octaves-1)`. With defaults `loopRadius=1`, `scaleT=0.15`,
+`octaves=6`, `lacunarity=2`, that's `1 · 0.15 · 32 = 4.8` — the circle
+traverses 4.8 Perlin cells in the finest detail.
 
-Pro Frame ist der Schritt entsprechend klein: `(2π/totalFrames) ·
-loopRadius · scaleT` im Basis-Octave, multipliziert mit der
-Detail-Frequenz im höchsten Octave. Bei 120 Frames pro Loop ≈ 0.005 pro
-Frame im Basis-Octave — sanftes Wabern.
+The per-frame step is correspondingly small: `(2π/totalFrames) ·
+loopRadius · scaleT` in the base octave, multiplied by the detail
+frequency in the highest octave. At 120 frames per loop ≈ 0.005 per
+frame in the base octave — a soft ripple.
 
 ---
 
-## Worker-Pipeline
+## Worker pipeline
 
-### Aufbau
+### Setup
 
 ```
-Main-Thread                     Web Worker (Inline-Blob)
+Main thread                     Web Worker (inline Blob)
 ┌─────────────────────┐         ┌─────────────────────┐
 │ initWorker()        │ blob:// │ const BASE_PERM=... │
 │   new Worker(blob)  │────────▶│ const GRAD4=...     │
-│                     │         │ (Funktionen aus     │
+│                     │         │ (functions from     │
 │                     │         │  perlin.js via      │
 │                     │         │  .toString())       │
 │                     │         │                     │
@@ -193,22 +190,22 @@ Main-Thread                     Web Worker (Inline-Blob)
 └─────────────────────┘         └─────────────────────┘
 ```
 
-### Idle-Tracking
+### Idle tracking
 
 ```js
 function requestFrame(params) {
-  if (state.workerBusy) return;   // skip, kein Stau
+  if (state.workerBusy) return;   // skip, no queue
   state.workerBusy = true;
   state.latestJobId = ++state.workerJobId;
   worker.postMessage({ id: state.workerJobId, params });
 }
 ```
 
-Während der Worker rechnet, werden weitere `requestFrame`-Aufrufe
-verworfen. Das verhindert Latenz-Aufbau, wenn die Berechnung langsamer
-ist als die Display-Refresh-Rate.
+While the worker computes, further `requestFrame` calls are dropped.
+This avoids latency buildup when computation is slower than the display
+refresh rate.
 
-### Veraltete Antworten ignorieren
+### Ignoring stale replies
 
 ```js
 function onWorkerMessage(e) {
@@ -217,37 +214,37 @@ function onWorkerMessage(e) {
 }
 ```
 
-Wenn der User schneller die Parameter ändert als der Worker rechnet,
-treffen alte Frame-Antworten ein, nachdem schon ein neuer Job angefordert
-wurde. Diese werden verworfen, um Flackern zu vermeiden.
+If the user changes parameters faster than the worker computes, older
+frame responses arrive after a newer job has been requested. Those are
+dropped to avoid flicker.
 
-### Transferable für zero-copy
+### Transferables for zero-copy
 
 ```js
 self.postMessage({ id, width, height, buffer: buf.buffer }, [buf.buffer]);
 ```
 
-Der zweite Parameter ist die **Transferable-Liste**: der `ArrayBuffer`
-wird *übertragen* statt kopiert. Der Worker verliert die Eigentümerschaft
-am Buffer, der Main-Thread bekommt sie sofort. Das spart bei 256×256
-ca. 256 KB pro Frame an Kopier-Aufwand.
+The second argument is the **transferable list**: the `ArrayBuffer` is
+*transferred* instead of copied. The worker loses ownership; the main
+thread gets it instantly. At 256×256 this saves roughly 256 KB of
+copying per frame.
 
-### Main-Thread-Fallback
+### Main-thread fallback
 
-`initWorker()` umschließt die Worker-Erzeugung in `try/catch`. Schlägt sie
-fehl (manche Safari-Versionen unter `file://`), bleibt `state.worker =
-null` und `requestFrame` ruft synchron `renderInMain(params)` auf — das
-nutzt `generatePerlinImage` direkt aus `perlin.js`.
+`initWorker()` wraps worker creation in `try/catch`. If it fails (some
+Safari versions under `file://`), `state.worker = null` and
+`requestFrame` calls `renderInMain(params)` synchronously — that uses
+`generatePerlinImage` directly from `perlin.js`.
 
-Erkennbar: FPS-Counter zeigt `... fps (main)`.
+Tell-tale: the FPS counter shows `... fps (main)`.
 
 ---
 
-## Animation-Loop
+## Animation loop
 
-### Wall-Clock-Zeit als Basis
+### Wall-clock time as the basis
 
-Statt mit `frameIndex` zu rechnen, koppelt die Animation an
+Instead of counting `frameIndex`, animation is anchored to
 `performance.now()`:
 
 ```js
@@ -263,90 +260,89 @@ function rafTick(now) {
 }
 ```
 
-Egal ob der Browser 60 fps oder nur 15 fps rendert — die Animation läuft
-genauso schnell „weiter". Bei niedriger Framerate gibt es größere
-Sprünge zwischen den Frames, aber die Geschwindigkeit ist konsistent.
+Whether the browser renders at 60 fps or only 15 fps — the animation
+"continues" at the same wall-clock pace. At lower framerates there are
+larger jumps between frames, but the perceived speed stays the same.
 
-### Slider-Modus-Switch
+### Slider mode switch
 
-Der `t`-Slider hat zwei Modi:
-- **Loop-an**: Range `[0, 1]` step `0.001` — zeigt den `loopProgress`
-- **Loop-aus**: Range `[-200, 2000]` step `0.01` — zeigt die freie
-  Zeitkoordinate
+The `t` slider has two modes:
+- **Loop on**: range `[0, 1]` step `0.001` — displays `loopProgress`
+- **Loop off**: range `[-200, 2000]` step `0.01` — displays free time
 
-`updateLoopMode()` schaltet zwischen den Modi um, passt min/max/step und
-das Label an.
+`updateLoopMode()` switches between the modes, adjusts min/max/step
+and the label.
 
-### Live-Vorschau (ohne Play)
+### Live preview (no play)
 
-`schedulePreview()` wird bei jedem Parameter-Input aufgerufen und
-debounced (`setTimeout` 20 ms). Im Play-Modus ist `schedulePreview` ein
-No-Op — die RAF-Loop rendert sowieso.
+`schedulePreview()` runs on every parameter input, debounced
+(`setTimeout` 20 ms). In play mode `schedulePreview` is a no-op — the
+RAF loop renders anyway.
 
 ---
 
-## WebM-Recording
+## WebM recording
 
 ### Pipeline
 
 ```
 1. recordWebm():
-   - pause() falls Live-Animation läuft
-   - canvas.captureStream(0) — manueller Modus, wenn `track.requestFrame` da
-     sonst captureStream(fps) — Browser tickt selbst
-   - MediaRecorder mit VP9 (Fallback VP8)
+   - pause() if live animation is running
+   - canvas.captureStream(0) — manual mode if `track.requestFrame` exists
+     otherwise captureStream(fps) — browser ticks itself
+   - MediaRecorder with VP9 (fallback VP8)
 
-2. Pro Frame i in [0, totalFrames):
+2. For each frame i in [0, totalFrames):
    - params = paramsForRecordingFrame(...)
-   - await renderFrameAndWait(params) — synchron auf Worker warten
-   - track.requestFrame() — Frame in den Stream pushen
-   - setTimeout(frameDelayMs) — Browser-Repaint sicherstellen
+   - await renderFrameAndWait(params) — block on worker
+   - track.requestFrame() — push frame into stream
+   - setTimeout(frameDelayMs) — ensure browser repaint
 
 3. recorder.stop() + await onstop:
    - chunks → Blob → <video>.src = URL.createObjectURL(blob)
-   - btnWebmDownload aktivieren
+   - enable btnWebmDownload
 ```
 
-### Loop-an: exakt N Frames pro Loop
+### Loop on: exactly N frames per loop
 
 ```js
 params.loopProgress = (startSlider + i / totalFrames) % 1;
 ```
 
-Frame `i = 0` hat `progress = startSlider`. Frame `i = totalFrames - 1`
-hat `progress = startSlider + (N-1)/N`. Frame `N` würde `progress =
-startSlider` wieder ergeben — und wird nicht gerendert, weil der Player
-zurück zum ersten Frame springt.
+Frame `i = 0` has `progress = startSlider`. Frame `i = totalFrames - 1`
+has `progress = startSlider + (N-1)/N`. Frame `N` would be `progress =
+startSlider` again — and isn't rendered, because the player jumps back
+to the first frame.
 
-→ Die exportierte WebM ist exakt ein Loop, sauber schließend.
+→ The exported WebM is exactly one loop, closing cleanly.
 
-### Loop-aus: konsistent mit Live
+### Loop off: consistent with live
 
 ```js
 params.t = startSlider + i / fps;
 ```
 
-Live-Animation läuft mit `t += elapsedSec`. Bei `fps = 30` ist 1 Frame
-= 1/30 Sekunde = `t += 1/30`. Damit ist die Recording-Geschwindigkeit
-exakt gleich der Live-Geschwindigkeit.
+Live animation runs with `t += elapsedSec`. At `fps = 30`, one frame
+= 1/30 second = `t += 1/30`. Recording speed matches the live speed
+exactly.
 
-### Codec-Auswahl
+### Codec selection
 
-`chooseRecorderMime()` probiert in dieser Reihenfolge:
-1. `video/webm;codecs=vp9` — beste Qualität, in Chrome/Edge sicher
-2. `video/webm;codecs=vp8` — Firefox-kompatibel
-3. `video/webm` — Browser-Default
+`chooseRecorderMime()` tries in this order:
+1. `video/webm;codecs=vp9` — best quality, safe in Chrome/Edge
+2. `video/webm;codecs=vp8` — Firefox-compatible
+3. `video/webm` — browser default
 
-Wenn keine Variante unterstützt wird, bricht die Aufnahme mit Fehler ab.
+If none is supported, recording aborts with an error.
 
 ---
 
-## Farb-Modi
+## Color modes
 
-`colorize(n, params)` mappt einen Noise-Wert `n ∈ [0, 1]` auf RGB. Vier
-Varianten:
+`colorize(n, params)` maps a noise value `n ∈ [0, 1]` to RGB. Four
+variants:
 
-### `rgb` — Pro Kanal
+### `rgb` — per channel
 
 ```
 r = (rInvert ? 1-n : n) · rScale  · 255
@@ -354,68 +350,66 @@ g = (gInvert ? 1-n : n) · gScale  · 255
 b = (bInvert ? 1-n : n) · bScale  · 255
 ```
 
-Drei Slider pro Kanal, drei Invert-Toggles. Identisch zur Python-Original-
-Implementation.
+Three sliders per channel, three invert toggles. Identical to the
+Python original.
 
-### `gradient` — Color Stops
+### `gradient` — color stops
 
-`gradientLookup(stops, n)` interpoliert linear in einer Liste von Stops:
+`gradientLookup(stops, n)` linearly interpolates over a stops list:
 ```js
 [{ pos: 0.0, color: [68, 1, 84] },
  { pos: 0.5, color: [33, 145, 140] },
  { pos: 1.0, color: [253, 231, 37] }]
 ```
 
-Acht vordefinierte Maps: `viridis`, `magma`, `fire`, `ocean`, `forest`,
+Eight predefined maps: `viridis`, `magma`, `fire`, `ocean`, `forest`,
 `grayscale`, `sunset`, `ice`.
 
-### `hsv` — Hue aus Noise
+### `hsv` — hue from noise
 
 ```
 hue = (hsvHueShift + n · hsvHueRange) % 1
 output = hsvToRgb(hue, hsvSat, hsvVal)
 ```
 
-Saturation und Value sind konstant, nur der Hue variiert. Gut für
-Aurora-, Plasma- und Spektral-Effekte.
+Saturation and value are constant, only the hue varies. Good for
+aurora, plasma, and spectral effects.
 
-### `posterize` — N Stufen + Gradient
+### `posterize` — N steps + gradient
 
 ```
 quantized = floor(n · steps) / (steps - 1)
 output = gradientLookup(palette, quantized)
 ```
 
-Reduziert den Noise auf wenige diskrete Stufen, ergibt cartoon-artige
-Effekte. Gut für Terrain-Höhenkarten und Stilisierung.
+Reduces the noise to a few discrete levels, yielding cartoon-like
+effects. Great for terrain height maps and stylisation.
 
 ---
 
-## Bekannte Edge-Cases
+## Known edge cases
 
-### Worker-Auflösungswechsel
+### Worker resolution change
 
-Bei Auflösungs-Änderungen (Width/Height geändert) kann ein Worker-Frame
-in alter Auflösung zurückkommen, nachdem das Canvas schon resized wurde.
-`onWorkerMessage` setzt `canvas.width = width` und
-`canvas.height = height`, bevor `putImageData` aufgerufen wird — kein
-Crash, kein verzerrtes Bild.
+When resolution changes (width/height edited), a worker frame at the
+old resolution can come back after the canvas has already been resized.
+`onWorkerMessage` sets `canvas.width = width` and `canvas.height =
+height` before calling `putImageData` — no crash, no stretched image.
 
-### Browser ohne `requestFrame`
+### Browsers without `requestFrame`
 
-`captureStream(0)` braucht `track.requestFrame()`. Wenn nicht verfügbar,
-fällt der Code auf `captureStream(fps)` zurück — der Browser entscheidet
-selbst, wann er ein Frame capturet. Mit `await
-setTimeout(frameDelayMs)` zwischen Frames bekommt der Browser genug Zeit,
-das aktuelle Canvas-Bild zu sehen.
+`captureStream(0)` needs `track.requestFrame()`. If unavailable, the
+code falls back to `captureStream(fps)` — the browser decides when to
+capture a frame. With `await setTimeout(frameDelayMs)` between frames,
+the browser has enough time to see the current canvas image.
 
-### `preset.gradient` darf nicht serialisiert werden
+### `preset.gradient` must not be serialised
 
-`savePreset()` löscht `gradient` vor dem JSON-Dump — die Stop-Liste ist
-groß und kann aus `gradientName` rekonstruiert werden.
+`savePreset()` deletes `gradient` before the JSON dump — the stop list
+is large and can be reconstructed from `gradientName`.
 
-### Slider bei `loop = false`
+### Slider with `loop = false`
 
-Maximum `2000` reicht für ~33 Minuten Animation (bei 1 t-Einheit pro
-Sekunde). Danach ist der Slider am Anschlag, die Animation läuft aber
-intern weiter.
+The maximum of `2000` is enough for ~33 minutes of animation (at 1 t
+unit per second). After that the slider is pinned, but the animation
+keeps running internally.

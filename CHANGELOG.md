@@ -1,109 +1,124 @@
 # Changelog
 
-Alle nennenswerten Änderungen an diesem Projekt werden hier dokumentiert.
-Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
-Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
+All notable changes to this project are documented here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-05-27
+
+### Changed
+- **Full translation to English.** UI strings, code comments, docs,
+  config files, commit-message conventions — everything aligned with
+  the rest of the author's Codeberg repos. The "Time scale" parameter
+  (previously "Wabern-Geschwindigkeit") still maps to the same internal
+  `scaleT` value; no behaviour change.
+
 ## [0.5.0] — 2026-05-27
 
-### Hinzugefügt
-- **README-Showcase**: Hero-Bild (Lava-Preset) + Galerie mit 4 Beispielen
-  (Aurora, Ocean, Terrain, Circuit) + drei Live-WebM-Loops — alles mit
-  dem Tool selbst gerendert.
-- `scripts/render-readme-images.js` — pur Node (zlib + crc32) PNG-Encoder,
-  nutzt das echte `perlin.js`-Modul. Reproduzierbar via dokumentierten
-  Parameter-Sets im Script.
-- `scripts/render-readme-videos.js` — rendert Frames in Node und pipet
-  sie an `ffmpeg` (VP9). 60 Frames · 24 fps · 480×270 · ~150 KB pro Loop.
-- `docs/examples/*.webm` — drei nahtlose Beispiel-Loops, direkt von der
-  Codeberg-Pages-URL einbettbar.
-- **PWA-Setup**: `manifest.webmanifest` + 192/512-PNG-Icons (aus
-  `favicon.svg` via `sips` gerastert) + Apple-Touch-Icon. App ist jetzt
-  installierbar auf iOS/Android-Home-Screen und Desktop.
-- `og:image` und `twitter:image` Meta-Tags zeigen auf `hero.png` →
-  Link-Preview-Karten zeigen das Hero-Bild.
-- `SECURITY.md` mit Threat-Model (clientseitig, kein Backend) und
-  Meldewegen.
-- `.gitea/issue_template/` — strukturierte Bug-Report- und
-  Feature-Request-Forms, plus Config mit Kontaktlinks.
-- `.editorconfig` für konsistente Indentation/Encoding/EOL über IDEs.
+### Added
+- **`docs/examples/{lava,aurora,terrain}-loop.webm`** — three seamless
+  2.5-second loops (VP9, 480×270, ~150 KB each). Directly embeddable
+  in any docs via the Codeberg Pages URL using
+  `<video src="…" autoplay loop muted playsinline>`.
+- **`scripts/render-readme-videos.js`** — Node renderer that produces
+  frames in Node and pipes them to `ffmpeg` (libvpx-vp9). Reproducible.
+- **PWA setup**: `manifest.webmanifest` + icons (192px, 512px,
+  Apple-Touch). The site is now installable on iOS/Android home
+  screens and on desktop.
+- README: new "Live loops" section embedding all three videos.
 
-### Geändert
-- Forgejo-Actions-Workflow: redundante `if:`-Condition entfernt und
-  Repo-Owner-Interpolation auf `forge.event.repository.owner.username`
-  umgestellt (Wildcard-Matching-Pattern aus der git-pages-action-Doku).
-  Vorher wurde der Workflow stets als „skipped" markiert.
-- Workflow `concurrency:`-Block ergänzt — bei schnellen Push-Sequenzen
-  läuft immer nur der jüngste Deploy.
+### Changed
+- Forgejo Actions workflow: `concurrency:` block added. On fast push
+  sequences only the newest deploy runs, older in-flight runs are
+  cancelled.
+
+### Fixed
+- Forgejo workflow: removed the redundant `if:` condition and switched
+  the repo-owner interpolation to `forge.event.repository.owner.username`.
+  Before, the workflow was always marked as "skipped".
 
 ## [0.4.0] — 2026-05-27
 
-### Hinzugefügt
-- Open-Source-Veröffentlichung auf Codeberg:
-  <https://codeberg.org/jkaindl/perlin-studio>, live unter
+### Added
+- Open-source publication on Codeberg:
+  <https://codeberg.org/jkaindl/perlin-studio>, live at
   <https://jkaindl.codeberg.page/perlin-studio/>.
-- Open-Source-Basisdateien: `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`,
+- Open-source base files: `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`,
   `AGENTS.md`, `CHANGELOG.md`, `.gitignore`.
-- `docs/ARCHITECTURE.md` und `docs/USAGE.md` mit detaillierter technischer
-  und bedienungsorientierter Dokumentation.
-- JSDoc-Blöcke an den öffentlichen API-Funktionen in `perlin.js` und
+- `docs/ARCHITECTURE.md` and `docs/USAGE.md` with detailed technical
+  and user-facing documentation.
+- JSDoc blocks on the public API functions in `perlin.js` and
   `perlin-studio.js`.
-- `.forgejo/workflows/deploy.yml` — Forgejo-Actions-Workflow, der jeden
-  Push auf `main` automatisch auf den `pages`-Branch mirrort.
-- `assets/favicon.svg` — SVG-Favicon in den Akzentfarben (Cyan/Violett/Grün).
-- `<head>`-Meta-Tags in `index.html`: `description`, Open-Graph,
-  Twitter-Card, `canonical`, `theme-color` — für Link-Preview-Karten
-  bei Social-Sharing.
+- README showcase: hero image (Lava preset) + gallery of 4 examples
+  (Aurora, Ocean, Terrain, Circuit) — all rendered by the tool itself.
+- `scripts/render-readme-images.js` — pure-Node (zlib + crc32) PNG
+  encoder that uses the real `perlin.js` module. Reproducible via
+  documented parameter sets in the script.
+- `og:image` and `twitter:image` meta tags now point at `hero.png` →
+  link-preview cards show the hero image.
+- `.forgejo/workflows/deploy.yml` — Forgejo Actions workflow,
+  publishes every push on `main` to Codeberg Pages.
+- `assets/favicon.svg` — SVG favicon in the project accent colors
+  (cyan/violet/green).
+- `<head>` meta tags in `index.html`: `description`, Open Graph,
+  Twitter Card, `canonical`, `theme-color` — for link-preview cards
+  on social shares.
+- `SECURITY.md` with threat model (client-side only, no backend) and
+  reporting channels.
+- `.gitea/issue_template/` — structured bug-report and feature-request
+  forms, plus a config with contact links.
+- `.editorconfig` for consistent indentation/encoding/EOL across IDEs.
 
-### Geändert
-- Lizenz von MIT auf **GNU AGPL-3.0** umgestellt — Konsistenz mit anderen
-  Repos des Autors; Network-Use-Copyleft passt zum web-deployten Tool.
-- README/AGENTS/CONTRIBUTING entsprechend der neuen Lizenz angepasst,
-  Codeberg-Launch-Badge hinzugefügt.
+### Changed
+- License switched from MIT to **GNU AGPL-3.0** — consistency with the
+  author's other repos; network-use copyleft fits a web-deployed tool.
+- README/AGENTS/CONTRIBUTING updated to reflect the new license,
+  Codeberg launch badge added.
 
 ## [0.3.0] — 2026-05-20
 
-### Hinzugefügt
-- 4D-Perlin-Noise (`perlin4`, `fbm4`) für nahtlosen Loop via Kreisbahn in
-  `(z, w)`.
-- Toggle **Nahtloser Loop** (Default an) mit konfigurierbarer Dauer und Radius.
-- Korrekte Animationsgeschwindigkeit: `t` läuft mit 1 Einheit pro Sekunde
-  statt vorher `fps` Einheiten pro Sekunde — sanftes Wabern statt Flackern.
+### Added
+- 4D Perlin noise (`perlin4`, `fbm4`) for seamless loops via a circular
+  orbit in `(z, w)`.
+- **Seamless loop** toggle (default on) with configurable duration and
+  radius.
+- Correct animation speed: `t` advances by 1 unit per second instead
+  of `fps` units per second — soft ripple instead of flicker.
 
-### Geändert
-- UI-Label `scale t` → **Wabern-Geschwindigkeit**, Default `0.5` → `0.15`.
-- Alle 6 Builtin-Presets nutzen jetzt Loop-Mode mit angepasstem `scaleT`.
+### Changed
+- UI label `scale t` → **Time scale**, default `0.5` → `0.15`.
+- All 6 built-in presets now use loop mode with adjusted `scaleT`.
 
 ## [0.2.0] — 2026-05-20
 
-### Hinzugefügt
-- Web Worker (inline via Blob-URL) für die Perlin-Berechnung — Main-Thread
-  bleibt frei für UI.
-- Vier Farb-Modi: **RGB** (pro Kanal), **Gradient** (8 Presets), **HSV**,
-  **Posterize**.
-- Preset-System: 6 Builtin-Chips + Speichern/Laden als JSON.
-- WebM-Export via `MediaRecorder` + `canvas.captureStream`.
-- Play/Pause-Steuerung (Button + Leertaste) mit Wall-Clock-Zeit für
-  framerate-unabhängige Animation.
+### Added
+- Web Worker (inline via Blob URL) for the Perlin computation — main
+  thread stays free for the UI.
+- Four color modes: **RGB** (per channel), **Gradient** (8 presets),
+  **HSV**, **Posterize**.
+- Preset system: 6 built-in chips + save/load as JSON.
+- WebM export via `MediaRecorder` + `canvas.captureStream`.
+- Play/pause control (button + spacebar) with wall-clock time so
+  animation is framerate-independent.
 
-### Geändert
-- Reduziert auf reines Perlin Studio; der Texturizer-Modus liegt als
-  Snapshot in `_archiv/old_texturizer_combined/`.
+### Changed
+- Reduced to a pure Perlin Studio; the Texturizer mode lives on as a
+  snapshot in `_archiv/old_texturizer_combined/`.
 
 ## [0.1.0] — 2026-05-20
 
-### Hinzugefügt
-- Erste Browser-Version mit Texturizer (Bild → Minecraft-Block-Mosaik)
-  und Perlin-Vorschau.
-- Default-Texture-Atlas als base64-Fallback ins JS eingebettet.
-- Drag-and-Drop für Eingangsbild und Atlas.
+### Added
+- First browser version with the Texturizer (image → Minecraft block
+  mosaic) and a Perlin preview.
+- Default texture atlas embedded as a base64 fallback in JS.
+- Drag-and-drop for the input image and the atlas.
 
-## Quellen
+## Sources
 
-Das Projekt ist aus zwei älteren Hobbyprojekten gewachsen, die im
-`_archiv/`-Verzeichnis als Referenz erhalten bleiben:
-- `_archiv/texturizer.ipynb` (Januar 2023) — Atlas-Tile-Analyse als Jupyter
-- `_archiv/perlin_noise/` (Mai 2023, Updates 2024) — Python +
-  `noise`-Library + matplotlib für GIF-Export
+The project grew out of two older hobby projects, preserved as reference
+in the `_archiv/` directory:
+- `_archiv/texturizer.ipynb` (January 2023) — atlas-tile analysis as a Jupyter notebook
+- `_archiv/perlin_noise/` (May 2023, updates 2024) — Python +
+  `noise` library + matplotlib for GIF export

@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Perlin Studio — parametrische 3D/4D-Perlin-Animationen im Browser</title>
-  <meta name="description" content="Parametrische 3D/4D-Perlin-Animationen im Browser. Vanilla JS, keine Dependencies, kein Build. Worker-beschleunigt, nahtlos loopbar, mit WebM-Export.">
+  <title>Perlin Studio — parametric 3D/4D Perlin animations in the browser</title>
+  <meta name="description" content="Parametric 3D/4D Perlin animations in the browser. Vanilla JS, no dependencies, no build. Worker-accelerated, seamless loop, WebM export.">
   <meta name="author" content="Johannes Kaindl">
   <meta name="theme-color" content="#0a0a18" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f5f5fa" media="(prefers-color-scheme: light)">
@@ -17,16 +17,16 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jkaindl.codeberg.page/perlin-studio/">
   <meta property="og:title" content="Perlin Studio">
-  <meta property="og:description" content="Parametrische 3D/4D-Perlin-Animationen im Browser — Vanilla JS, nahtloser Loop, WebM-Export.">
+  <meta property="og:description" content="Parametric 3D/4D Perlin animations in the browser — Vanilla JS, seamless loop, WebM export.">
   <meta property="og:image" content="https://jkaindl.codeberg.page/perlin-studio/assets/hero.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Perlin Studio — feurige 3D-Perlin-Animation im Lava-Preset">
-  <meta property="og:locale" content="de_DE">
+  <meta property="og:image:alt" content="Perlin Studio — fiery 3D Perlin animation, Lava preset">
+  <meta property="og:locale" content="en_US">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Perlin Studio">
-  <meta name="twitter:description" content="Parametrische 3D/4D-Perlin-Animationen im Browser — nahtloser Loop, WebM-Export.">
+  <meta name="twitter:description" content="Parametric 3D/4D Perlin animations in the browser — seamless loop, WebM export.">
   <meta name="twitter:image" content="https://jkaindl.codeberg.page/perlin-studio/assets/hero.png">
 
   <link rel="stylesheet" href="styles.css">
@@ -35,26 +35,26 @@
   <header>
     <h1>Perlin Studio</h1>
     <p class="subtitle">
-      Parametrische 3D-Perlin-Animationen im Browser. Worker-beschleunigt,
-      WebM-Export, Presets. <span class="muted">Aus dem alten Hobbyprojekt
-      <code>_archiv/perlin_noise/</code>.</span>
+      Parametric 3D Perlin animations in the browser. Worker-accelerated,
+      WebM export, presets. <span class="muted">Grown out of the old hobby
+      project <code>_archiv/perlin_noise/</code>.</span>
     </p>
   </header>
 
   <main>
     <!-- ============ SIDEBAR ============ -->
     <aside class="panel sidebar">
-      <h2>Auflösung</h2>
+      <h2>Resolution</h2>
       <div class="grid-2">
-        <label>Breite<input type="number" id="p-w" min="4" max="1024" value="256"></label>
-        <label>Höhe<input type="number" id="p-h" min="4" max="1024" value="256"></label>
+        <label>Width<input type="number" id="p-w" min="4" max="1024" value="256"></label>
+        <label>Height<input type="number" id="p-h" min="4" max="1024" value="256"></label>
       </div>
 
-      <h2>Rauschen</h2>
+      <h2>Noise</h2>
       <div class="grid-2">
         <label>scale x<input type="number" id="p-sx" step="0.005" value="0.02"></label>
         <label>scale y<input type="number" id="p-sy" step="0.005" value="0.02"></label>
-        <label class="span2">Wabern-Geschwindigkeit<input type="number" id="p-st" step="0.01" value="0.15"></label>
+        <label class="span2">Time scale<input type="number" id="p-st" step="0.01" value="0.15"></label>
         <label>base (seed)<input type="number" id="p-base" value="0"></label>
         <label>octaves<input type="number" id="p-oct" min="1" max="10" value="6"></label>
         <label>persistence<input type="number" id="p-pers" step="0.05" value="0.5"></label>
@@ -62,23 +62,23 @@
       </div>
 
       <h2>Loop</h2>
-      <label class="checkbox"><input type="checkbox" id="p-loop" checked>Nahtloser Loop</label>
+      <label class="checkbox"><input type="checkbox" id="p-loop" checked>Seamless loop</label>
       <div class="grid-2" id="loop-controls">
-        <label>Loop-Dauer (Sek)<input type="number" id="p-loop-duration" min="0.5" max="60" step="0.5" value="4"></label>
-        <label>Loop-Radius<input type="number" id="p-loop-radius" min="0" max="4" step="0.05" value="1.0"></label>
+        <label>Loop duration (sec)<input type="number" id="p-loop-duration" min="0.5" max="60" step="0.5" value="4"></label>
+        <label>Loop radius<input type="number" id="p-loop-radius" min="0" max="4" step="0.05" value="1.0"></label>
       </div>
 
-      <h2>Farb-Modus</h2>
+      <h2>Color mode</h2>
       <label>
         <select id="p-color-mode">
-          <option value="rgb" selected>RGB (pro Kanal)</option>
-          <option value="gradient">Gradient (Preset)</option>
-          <option value="hsv">HSV (Hue aus Noise)</option>
-          <option value="posterize">Posterize (Stufen + Gradient)</option>
+          <option value="rgb" selected>RGB (per channel)</option>
+          <option value="gradient">Gradient (preset)</option>
+          <option value="hsv">HSV (hue from noise)</option>
+          <option value="posterize">Posterize (steps + gradient)</option>
         </select>
       </label>
 
-      <!-- RGB-spezifisch -->
+      <!-- RGB-specific -->
       <div class="color-section" data-for="rgb">
         <label>r scale<input type="range" id="p-rs" min="0" max="2" step="0.05" value="0"></label>
         <label>g scale<input type="range" id="p-gs" min="0" max="2" step="0.05" value="1"></label>
@@ -90,7 +90,7 @@
         </div>
       </div>
 
-      <!-- Gradient-spezifisch -->
+      <!-- Gradient-specific -->
       <div class="color-section" data-for="gradient" hidden>
         <label>Preset
           <select id="p-gradient-preset">
@@ -107,7 +107,7 @@
         <div class="gradient-preview" id="p-gradient-preview"></div>
       </div>
 
-      <!-- HSV-spezifisch -->
+      <!-- HSV-specific -->
       <div class="color-section" data-for="hsv" hidden>
         <label>hue shift<input type="range" id="p-hue-shift" min="0" max="1" step="0.01" value="0"></label>
         <label>hue range<input type="range" id="p-hue-range" min="0" max="1" step="0.01" value="0.6"></label>
@@ -115,10 +115,10 @@
         <label>value<input type="range" id="p-val" min="0" max="1" step="0.05" value="1"></label>
       </div>
 
-      <!-- Posterize-spezifisch -->
+      <!-- Posterize-specific -->
       <div class="color-section" data-for="posterize" hidden>
-        <label>Stufen<input type="number" id="p-poster-steps" min="2" max="16" value="5"></label>
-        <label>Gradient-Preset
+        <label>Steps<input type="number" id="p-poster-steps" min="2" max="16" value="5"></label>
+        <label>Gradient preset
           <select id="p-poster-gradient">
             <option value="viridis" selected>Viridis</option>
             <option value="magma">Magma</option>
@@ -134,8 +134,8 @@
 
       <h2>Presets</h2>
       <div class="preset-actions">
-        <button id="btn-preset-save">Speichern</button>
-        <button id="btn-preset-load">Laden</button>
+        <button id="btn-preset-save">Save</button>
+        <button id="btn-preset-load">Load</button>
         <input type="file" id="preset-file" accept="application/json,.json" hidden>
       </div>
       <div class="preset-builtins">
@@ -149,9 +149,9 @@
 
       <h2>Export</h2>
       <div class="export-actions">
-        <button id="btn-png">PNG (aktuelles Bild)</button>
-        <button id="btn-webm" class="primary">WebM-Animation</button>
-        <button id="btn-webm-download" hidden disabled>WebM herunterladen</button>
+        <button id="btn-png">PNG (current frame)</button>
+        <button id="btn-webm" class="primary">WebM animation</button>
+        <button id="btn-webm-download" hidden disabled>Download WebM</button>
       </div>
     </aside>
 
@@ -164,9 +164,9 @@
 
       <div class="transport">
         <button id="btn-play" class="transport-btn primary" aria-label="Play/Pause">▶</button>
-        <button id="btn-reset-t" class="transport-btn" aria-label="t zurücksetzen">⏮</button>
+        <button id="btn-reset-t" class="transport-btn" aria-label="Reset t">⏮</button>
         <label class="t-slider">
-          <span class="t-label"><span id="t-label-name">Loop-Fortschritt</span> = <span id="t-display">0.00</span></span>
+          <span class="t-label"><span id="t-label-name">Loop progress</span> = <span id="t-display">0.00</span></span>
           <input type="range" id="p-t" min="0" max="1" step="0.001" value="0">
         </label>
         <label class="fps-label">
@@ -180,7 +180,7 @@
       </div>
 
       <div class="status-row">
-        <div class="status" id="status">Initialisiere …</div>
+        <div class="status" id="status">Initialising …</div>
         <div class="fps-counter" id="fps-counter"></div>
       </div>
       <div class="progress" id="progress"><div class="bar" id="progress-bar"></div></div>
@@ -189,8 +189,8 @@
 
   <footer>
     <small>
-      Vanilla JS, kein Backend. Worker für Perlin-Berechnung, MediaRecorder
-      für Animation. Geeignet für statisches Hosting.
+      Vanilla JS, no backend. Worker for Perlin compute, MediaRecorder
+      for animation. Suitable for static hosting.
     </small>
   </footer>
 
