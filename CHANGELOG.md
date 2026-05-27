@@ -6,13 +6,23 @@ Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-05-27
+
 ### Hinzugefügt
-- README-Showcase: Hero-Bild (Lava-Preset) + Galerie mit 4 Beispielen
-  (Aurora, Ocean, Terrain, Circuit) — alle mit dem Tool selbst gerendert.
+- **README-Showcase**: Hero-Bild (Lava-Preset) + Galerie mit 4 Beispielen
+  (Aurora, Ocean, Terrain, Circuit) + drei Live-WebM-Loops — alles mit
+  dem Tool selbst gerendert.
 - `scripts/render-readme-images.js` — pur Node (zlib + crc32) PNG-Encoder,
   nutzt das echte `perlin.js`-Modul. Reproduzierbar via dokumentierten
   Parameter-Sets im Script.
-- `og:image` und `twitter:image` Meta-Tags zeigen jetzt auf `hero.png` →
+- `scripts/render-readme-videos.js` — rendert Frames in Node und pipet
+  sie an `ffmpeg` (VP9). 60 Frames · 24 fps · 480×270 · ~150 KB pro Loop.
+- `docs/examples/*.webm` — drei nahtlose Beispiel-Loops, direkt von der
+  Codeberg-Pages-URL einbettbar.
+- **PWA-Setup**: `manifest.webmanifest` + 192/512-PNG-Icons (aus
+  `favicon.svg` via `sips` gerastert) + Apple-Touch-Icon. App ist jetzt
+  installierbar auf iOS/Android-Home-Screen und Desktop.
+- `og:image` und `twitter:image` Meta-Tags zeigen auf `hero.png` →
   Link-Preview-Karten zeigen das Hero-Bild.
 - `SECURITY.md` mit Threat-Model (clientseitig, kein Backend) und
   Meldewegen.
@@ -24,6 +34,9 @@ Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 - Forgejo-Actions-Workflow: redundante `if:`-Condition entfernt und
   Repo-Owner-Interpolation auf `forge.event.repository.owner.username`
   umgestellt (Wildcard-Matching-Pattern aus der git-pages-action-Doku).
+  Vorher wurde der Workflow stets als „skipped" markiert.
+- Workflow `concurrency:`-Block ergänzt — bei schnellen Push-Sequenzen
+  läuft immer nur der jüngste Deploy.
 
 ## [0.4.0] — 2026-05-27
 

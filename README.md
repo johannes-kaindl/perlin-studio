@@ -81,6 +81,27 @@ Frame aus dem 4D-Loop. Reproduzierbar via Seed (`base`) + Parameter.
   </tr>
 </table>
 
+## Live-Loops
+
+Drei nahtlose 2,5-Sekunden-Loops, gerendert vom Tool selbst — Quellcode
+und Parameter in [`scripts/render-readme-videos.js`](scripts/render-readme-videos.js).
+Die WebMs liegen unter [`docs/examples/`](docs/examples/) und sind ab der
+[Live-Demo](https://jkaindl.codeberg.page/perlin-studio/) auch direkt
+verlinkbar (z.B. für Einbettung in andere Dokumentationen).
+
+<table>
+  <tr>
+    <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/lava-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
+    <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/aurora-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
+    <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/terrain-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Lava</b> · Fire-Gradient · 5 Oktaven</sub></td>
+    <td align="center"><sub><b>Aurora</b> · HSV-Modus · stark anisotroper Scale</sub></td>
+    <td align="center"><sub><b>Terrain</b> · Posterize 7 Stufen · Forest-Gradient</sub></td>
+  </tr>
+</table>
+
 ## Bedienung
 
 Komplette Bedienungsanleitung mit allen Parametern erklärt:

@@ -12,6 +12,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Bei schnellen Push-Sequenzen läuft immer nur der jüngste Deploy.
+# Frühere noch laufende Deploys werden abgebrochen — vermeidet
+# Race-Conditions auf Codeberg Pages.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: codeberg-tiny

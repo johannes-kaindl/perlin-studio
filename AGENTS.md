@@ -43,18 +43,21 @@ auf jedem statischen Webhoster.
 ├── styles.css             # gesamtes Styling (Dark + Light auto)
 ├── perlin.js              # math/api (Noise, Color-Modi, Worker-Source)
 ├── perlin-studio.js       # Controller (RAF-Loop, Recording, Presets, UI-Bindings)
-├── assets/                # statische Assets (favicon.svg, hero.png,
-│                          #   gallery-*.png + legacy default-atlas.webp
-│                          #   fürs Archiv)
+├── manifest.webmanifest   # PWA-Manifest (Installierbarkeit)
+├── assets/                # statische Assets (favicon.svg, icon-{192,512}.png,
+│                          #   apple-touch-icon.png, hero.png, gallery-*.png
+│                          #   + legacy default-atlas.webp fürs Archiv)
 ├── scripts/
-│   └── render-readme-images.js  # rendert assets/*.png aus perlin.js
+│   ├── render-readme-images.js  # rendert assets/*.png aus perlin.js
+│   └── render-readme-videos.js  # rendert docs/examples/*.webm (Node → ffmpeg)
 ├── _archiv/               # historische Vorgänger (READ-ONLY!)
 │   ├── perlin_noise/      # Python-Original
 │   ├── texturizer.ipynb   # Texturizer-Notebook
 │   └── old_texturizer_combined/   # erste Browser-Version
 ├── docs/
 │   ├── ARCHITECTURE.md    # technische Doku
-│   └── USAGE.md           # ausführliche Bedienungsanleitung
+│   ├── USAGE.md           # ausführliche Bedienungsanleitung
+│   └── examples/          # gerenderte WebM-Loops (für README + Einbettung)
 ├── .editorconfig          # konsistente Indentation/Encoding/EOL
 ├── .forgejo/
 │   └── workflows/         # Codeberg Pages Auto-Deploy
