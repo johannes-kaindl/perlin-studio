@@ -1,33 +1,20 @@
 /**
  * perlin-studio.js — main-thread controller of Perlin Studio.
  *
- * Ties the UI, worker, RAF loop, preset system, and WebM recorder together.
- * Pure vanilla JS, no dependencies other than `perlin.js`.
- *
- * Architecture for smooth animation:
- *
- *     Main thread:        Worker:
- *       ┌─────────┐         ┌──────────┐
- *       │ RAF     │ params  │ Perlin   │
- *       │ loop    │────────▶│ + color  │
- *       │         │         │          │
- *       │ putImg  │◀────────│ ImageData│   (transferable, zero-copy)
- *       └─────────┘         └──────────┘
- *
- * Only one frame is in flight in the worker at a time — no queue. If the
- * computation is slower than the display refresh rate, the finished frame
- * is simply drawn whenever it arrives. Wall-clock time drives the
- * animation, not the frame index → consistent speed regardless of load.
+ * Ties the UI, preset system, image mask, and WebM recorder to a PerlinEngine
+ * (perlin-engine.js) that owns the worker + RAF render loop. Pure vanilla JS,
+ * no dependencies beyond `perlin.js` and `perlin-presets.js`.
  *
  * Data flow:
  *   1. UI input / slider / preset → `gatherParams()` builds a plain object
- *   2. `requestFrame(params)` → `worker.postMessage({id, params})`
- *   3. The worker computes `fbm3`/`fbm4` + `colorize`, posts an `ArrayBuffer` back
- *   4. `onWorkerMessage` builds `ImageData` and calls `putImageData` on the canvas
+ *      (with the gradient resolved to concrete stops).
+ *   2. `engine.setParams(params)` + `engine.renderOnce()` / `engine.play()`.
+ *   3. The engine renders in the worker and paints the canvas; it reports
+ *      progress via `onTick` (drives the slider) and `onFrame` (FPS readout),
+ *      and calls `transformFrame` so the image mask is applied before paint.
  *
- * For WebM recording, `renderFrameAndWait` (synchronous) is used so every
- * frame lands in the `MediaRecorder` stream — the normal skip logic would
- * drop frames.
+ * For WebM recording, `engine.renderFrameAndWait` is used so every frame lands
+ * in the `MediaRecorder` stream — the normal skip logic would drop frames.
  *
  * @license AGPL-3.0-or-later
  */
@@ -48,20 +35,9 @@ const DEFAULT_CUSTOM_STOPS = [
   { pos: 1.0, color: [253, 231, 37] },
 ];
 
+// Rendering/animation state (worker, RAF, FPS) is owned by the PerlinEngine
+// instance below; this object holds only studio-specific UI state.
 const state = {
-  worker: null,
-  workerBusy: false,
-  workerJobId: 0,
-  latestJobId: 0,     // highest requested job id; older replies are ignored
-  currentImage: null, // last ImageData for redrawing
-  currentImageMeta: { w: 0, h: 0 },
-
-  playing: false,
-  rafHandle: 0,
-  lastFrameTime: 0,
-  fpsEMA: 0,          // exponentially smoothed mean for the FPS readout
-  framesRendered: 0,
-
   customStops: DEFAULT_CUSTOM_STOPS.map(s => ({ pos: s.pos, color: s.color.slice() })),
 
   // Image mask — see initMaskControls below.
@@ -77,9 +53,6 @@ const state = {
   recordedChunks: [],
   recordedBlob: null,
   recorder: null,
-
-  currentParams: null,
-  pendingResolves: [],  // [{id, resolve}] — promises waiting on a specific frame
 };
 
 // ============= DOM =============
@@ -590,118 +563,20 @@ function addCustomStop() {
   schedulePreview();
 }
 
-// ============= WORKER (with main-thread fallback) =============
-function initWorker() {
-  if (!window.MTPerlin || !window.MTPerlin.WORKER_SOURCE) {
-    setStatus("Perlin module not loaded.", true);
-    return;
-  }
-  try {
-    const blob = new Blob([window.MTPerlin.WORKER_SOURCE], { type: "application/javascript" });
-    const url = URL.createObjectURL(blob);
-    state.worker = new Worker(url);
-    state.worker.onmessage = onWorkerMessage;
-    state.worker.onerror = (e) => {
-      console.warn("Worker error — falling back to main-thread rendering.", e);
-      state.worker = null;
-    };
-  } catch (e) {
-    console.warn("Worker couldn't start — main-thread fallback.", e);
-    state.worker = null;
-  }
-}
-
-// Synchronous fallback: renders directly into the output canvas.
-function renderInMain(params) {
-  const ctx = els.canvas.getContext("2d");
-  if (els.canvas.width !== params.width || els.canvas.height !== params.height) {
-    els.canvas.width = params.width;
-    els.canvas.height = params.height;
-  }
-  window.MTPerlin.generatePerlinImage(params, ctx);
-  // Apply mask post-hoc on the main-thread path. Extra round-trip through
-  // ImageData but this branch is already the slow fallback.
-  if (state.maskApplied && state.maskSourceImage) {
-    const imgData = ctx.getImageData(0, 0, params.width, params.height);
-    applyMaskToImageData(imgData);
-    ctx.putImageData(imgData, 0, 0);
-  }
-  // FPS EMA for the readout
-  const now = performance.now();
-  if (state.lastFrameTime > 0) {
-    const dt = now - state.lastFrameTime;
-    state.fpsEMA = state.fpsEMA ? state.fpsEMA * 0.85 + (1000 / dt) * 0.15 : 1000 / dt;
-    if (state.playing) els.fpsCounter.textContent = `${state.fpsEMA.toFixed(1)} fps (main)`;
-  }
-  state.lastFrameTime = now;
-  state.framesRendered++;
-}
-
-function onWorkerMessage(e) {
-  const { id, width, height, buffer } = e.data;
-  state.workerBusy = false;
-
-  // Drop stale jobs (e.g. after a parameter change).
-  if (id < state.latestJobId) {
-    // Buffer can be discarded — we only want the newest frame.
-    return;
-  }
-
-  const data = new Uint8ClampedArray(buffer);
-  const imgData = new ImageData(data, width, height);
-  // Apply mask on the noise pixels before putImageData. Mutates imgData
-  // in place — alpha bytes are overwritten with the mask's per-pixel value.
-  applyMaskToImageData(imgData);
-  state.currentImage = imgData;
-  state.currentImageMeta = { w: width, h: height };
-
-  // Adjust the canvas size if it changed.
-  if (els.canvas.width !== width || els.canvas.height !== height) {
-    els.canvas.width = width;
-    els.canvas.height = height;
-  }
-  els.canvas.getContext("2d").putImageData(imgData, 0, 0);
-
-  // Measure FPS (wall-clock time between completed frames).
-  const now = performance.now();
-  if (state.lastFrameTime > 0) {
-    const dt = now - state.lastFrameTime;
-    const instFps = 1000 / dt;
-    state.fpsEMA = state.fpsEMA ? state.fpsEMA * 0.85 + instFps * 0.15 : instFps;
-    if (state.playing) {
-      els.fpsCounter.textContent = `${state.fpsEMA.toFixed(1)} fps`;
+// ============= ENGINE =============
+// The worker lifecycle, RAF loop, and FPS smoothing live in PerlinEngine
+// (perlin-engine.js, loaded before this script). The studio wires three
+// callbacks: onTick drives the time slider at display rate, onFrame drives
+// the FPS readout, and transformFrame applies the image mask before paint.
+const engine = new PerlinEngine(els.canvas, {
+  onTick: (position) => setTValue(position),
+  onFrame: ({ fps, isMain }) => {
+    if (engine.playing) {
+      els.fpsCounter.textContent = `${fps.toFixed(1)} fps${isMain ? " (main)" : ""}`;
     }
-  }
-  state.lastFrameTime = now;
-  state.framesRendered++;
-
-  // Resolve any promises waiting on this frame.
-  for (let i = state.pendingResolves.length - 1; i >= 0; i--) {
-    if (state.pendingResolves[i].id === id) {
-      state.pendingResolves[i].resolve();
-      state.pendingResolves.splice(i, 1);
-    }
-  }
-}
-
-/**
- * Kicks off a new frame render. Skips if the worker is still busy (no
- * frame queue, no drift). With no worker available, renders synchronously
- * on the main thread (fallback e.g. for Safari under `file://`).
- *
- * @param {Object} params  From `gatherParams()`
- */
-function requestFrame(params) {
-  state.currentParams = params;
-  if (!state.worker) {
-    renderInMain(params);
-    return;
-  }
-  if (state.workerBusy) return;
-  state.workerBusy = true;
-  state.latestJobId = ++state.workerJobId;
-  state.worker.postMessage({ id: state.workerJobId, params });
-}
+  },
+  transformFrame: (imgData) => applyMaskToImageData(imgData),
+});
 
 // ============= LIVE PREVIEW + ANIMATION =============
 function getTValue() {
@@ -712,82 +587,41 @@ function setTValue(v) {
   els.tDisplay.textContent = v.toFixed(2);
 }
 
-// Write the slider value into params depending on the mode:
-// loop=on  → loopProgress = slider
-// loop=off → t = slider
-function applySliderTo(params) {
-  const v = getTValue();
-  if (params.loop) {
-    params.loopProgress = v;
-    params.t = 0;
-  } else {
-    params.t = v;
-    params.loopProgress = 0;
-  }
-}
-
 function renderOnce() {
-  const params = gatherParams();
-  applySliderTo(params);
-  requestFrame(params);
+  engine.setParams(gatherParams());
+  engine.seek(getTValue());
+  engine.renderOnce();
 }
 
 let livePreviewTimer = 0;
 function schedulePreview() {
-  if (state.playing) return; // in play mode the loop renders anyway
+  if (engine.playing) {
+    // Live edits during playback: push the new params so the running loop
+    // picks them up (the engine caches params between ticks; the old rafTick
+    // re-read gatherParams every frame).
+    engine.setParams(gatherParams());
+    return;
+  }
   clearTimeout(livePreviewTimer);
   livePreviewTimer = setTimeout(renderOnce, 20);
 }
 
-// Animation: wall-clock time drives either loopProgress (loop=on) or t (loop=off).
-let animStartTime = 0;
-let animStartSlider = 0;
-
-function rafTick(now) {
-  if (!state.playing) return;
-  const elapsedSec = (now - animStartTime) / 1000;
-  const params = gatherParams();
-
-  if (params.loop) {
-    // Loop progress traverses [0, 1) once every `loopDuration` seconds.
-    // Modulo ensures a seamless wraparound after each loop.
-    const progress = ((animStartSlider + elapsedSec / params.loopDuration) % 1 + 1) % 1;
-    setTValue(progress);
-    params.loopProgress = progress;
-    params.t = 0;
-  } else {
-    // Linear: 1 t unit per second. scaleT scales it in noise space, so with
-    // scaleT=0.15 and fps=30 a frame advances ~0.005 — a soft ripple.
-    const tNow = animStartSlider + elapsedSec;
-    setTValue(tNow);
-    params.t = tNow;
-    params.loopProgress = 0;
-  }
-
-  requestFrame(params);
-  state.rafHandle = requestAnimationFrame(rafTick);
-}
-
 function play() {
-  if (state.playing) return;
-  state.playing = true;
+  if (engine.playing) return;
+  engine.setParams(gatherParams());
+  engine.seek(getTValue());
+  engine.play();
   els.btnPlay.textContent = "⏸";
   els.btnPlay.setAttribute("aria-label", "Pause");
-  animStartTime = performance.now();
-  animStartSlider = getTValue();
-  state.lastFrameTime = 0;
-  state.fpsEMA = 0;
-  state.rafHandle = requestAnimationFrame(rafTick);
 }
 function pause() {
-  if (!state.playing) return;
-  state.playing = false;
+  if (!engine.playing) return;
+  engine.pause();
   els.btnPlay.textContent = "▶";
   els.btnPlay.setAttribute("aria-label", "Play");
-  cancelAnimationFrame(state.rafHandle);
   els.fpsCounter.textContent = "";
 }
-function togglePlay() { state.playing ? pause() : play(); }
+function togglePlay() { engine.playing ? pause() : play(); }
 
 // ============= PRESETS =============
 function applyPreset(name) {
@@ -910,7 +744,7 @@ async function recordWebm() {
   const mime = chooseRecorderMime();
   if (!mime) { setStatus("Your browser doesn't support a WebM recorder.", true); return; }
 
-  const wasPlaying = state.playing;
+  const wasPlaying = engine.playing;
   if (wasPlaying) pause();
 
   const totalFrames = clampInt(els.frames.value, 1, 600, 120);
@@ -932,7 +766,7 @@ async function recordWebm() {
   try {
     for (let i = 0; i < totalFrames; i++) {
       const params = paramsForRecordingFrame(baseParams, startSlider, i, totalFrames, fps);
-      await renderFrameAndWait(params);
+      await engine.renderFrameAndWait(params);
       if (canRequestFrame) track.requestFrame();
       setProgress(Math.round(((i + 1) / totalFrames) * 100));
       setStatus(`Recording: frame ${i + 1}/${totalFrames}${params.loop ? " (loop)" : ""}`);
@@ -959,21 +793,6 @@ async function recordWebm() {
   setStatus(`Animation done — ${totalFrames} frames @ ${fps} fps, ${(blob.size / 1024).toFixed(1)} KB.`);
 
   if (wasPlaying) play();
-}
-
-// Wait for a frame synchronously (for recording — every frame must finish).
-function renderFrameAndWait(params) {
-  if (!state.worker) {
-    renderInMain(params);
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const id = ++state.workerJobId;
-    state.latestJobId = id;
-    state.pendingResolves.push({ id, resolve });
-    state.workerBusy = true;
-    state.worker.postMessage({ id, params });
-  });
 }
 
 function downloadWebm() {
@@ -1023,13 +842,10 @@ function wireEvents() {
 
   els.loop.addEventListener("change", () => {
     updateLoopMode();
-    // On a mode change, reset the slider sensibly and re-render.
+    // On a mode change, reset the slider sensibly and re-render. renderOnce
+    // pushes the new loop flag and seeks to 0, which re-anchors the engine if
+    // it's currently playing.
     setTValue(0);
-    if (state.playing) {
-      // Also re-anchor the running animation to the new mode.
-      animStartTime = performance.now();
-      animStartSlider = 0;
-    }
     renderOnce();
   });
 
@@ -1126,7 +942,6 @@ function initThemeToggle() {
 
 // ============= INIT =============
 (function init() {
-  initWorker();
   updateColorSections();
   renderCustomStops();
   updateGradientPreview();
