@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>perlin-noise — embedding examples</title>
+  <style>
+    body { margin: 0; font: 16px/1.5 system-ui, -apple-system, sans-serif; background: #0b0d10; color: #e8e6e0; }
+    section { padding: 2rem clamp(1rem, 5vw, 4rem); max-width: 60rem; }
+    h1, h2 { font-weight: 600; }
+    h1 { margin: 0; }
+    .hero { position: relative; height: 60vh; min-height: 320px; display: grid; place-items: center; overflow: hidden; }
+    .hero perlin-noise { position: absolute; inset: 0; z-index: 0; }
+    .hero .label { position: relative; z-index: 1; font-size: clamp(2rem, 6vw, 4rem); text-shadow: 0 2px 16px rgba(0,0,0,.7); }
+    .tiles { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+    .tile { width: 320px; height: 200px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+    .tile perlin-noise { width: 100%; height: 100%; }
+    code { background: #1b1f24; padding: .12em .45em; border-radius: 4px; font-size: .92em; }
+    pre { background: #1b1f24; padding: 1rem; border-radius: 8px; overflow: auto; }
+    p.note { color: #9aa4ad; }
+    a { color: #78dcdc; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <perlin-noise preset="aurora" autoplay></perlin-noise>
+    <h1 class="label">&lt;perlin-noise&gt;</h1>
+  </div>
+
+  <section>
+    <p>Drop the four scripts on any page and use the <code>&lt;perlin-noise&gt;</code>
+      tag. No build step, no dependencies. The hero above is a single full-bleed
+      element.</p>
+
+    <h2>Built-in presets (work under file://)</h2>
+    <div class="tiles">
+      <div class="tile"><perlin-noise preset="lava" autoplay></perlin-noise></div>
+      <div class="tile"><perlin-noise preset="flow" autoplay></perlin-noise></div>
+      <div class="tile"><perlin-noise preset="composite" autoplay></perlin-noise></div>
+    </div>
+    <p><code>&lt;perlin-noise preset="lava" autoplay&gt;&lt;/perlin-noise&gt;</code></p>
+
+    <h2>Custom preset from JSON (serve over HTTP)</h2>
+    <div class="tiles">
+      <div class="tile"><perlin-noise src="./marble.json" autoplay max-resolution="640"></perlin-noise></div>
+    </div>
+    <p><code>&lt;perlin-noise src="./marble.json" autoplay max-resolution="640"&gt;&lt;/perlin-noise&gt;</code>
+      — export a preset from the studio (Save preset) and point <code>src</code>
+      at the JSON. <span class="note">Under <code>file://</code> the fetch is
+      CORS-blocked; use <code>preset</code> or the <code>.params</code> property
+      there.</span></p>
+
+    <h2>Markup to include</h2>
+    <pre>&lt;script src="perlin.js"&gt;&lt;/script&gt;
+&lt;script src="perlin-presets.js"&gt;&lt;/script&gt;
+&lt;script src="perlin-engine.js"&gt;&lt;/script&gt;
+&lt;script src="perlin-element.js"&gt;&lt;/script&gt;
+&lt;perlin-noise preset="aurora" autoplay&gt;&lt;/perlin-noise&gt;</pre>
+
+    <p class="note">Accessibility &amp; performance: with “Reduce motion” enabled
+      in your OS, every element renders a single still frame instead of
+      animating. Off-screen elements auto-pause to save battery; the render
+      resolution is capped at <code>max-resolution</code> (default 1280) so a
+      full-bleed hero stays cheap.</p>
+  </section>
+
+  <script src="../perlin.js" defer></script>
+  <script src="../perlin-presets.js" defer></script>
+  <script src="../perlin-engine.js" defer></script>
+  <script src="../perlin-element.js" defer></script>
+</body>
+</html>
