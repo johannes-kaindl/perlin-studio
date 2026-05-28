@@ -754,8 +754,70 @@ reference so the look is the same at any size. It renders a single still
 frame (no animation) when the OS has **Reduce motion** on, and pauses
 while scrolled off-screen.
 
+### Recipe: full-bleed hero background
+
+Position the element absolutely behind your content and let it fill the
+section. Keep `max-resolution` modest so a huge viewport stays cheap.
+
+```html
+<section class="hero">
+  <perlin-noise preset="aurora" autoplay max-resolution="1280"></perlin-noise>
+  <h1>Your headline</h1>
+</section>
+```
+```css
+.hero { position: relative; min-height: 70vh; display: grid; place-items: center; overflow: hidden; }
+.hero perlin-noise { position: absolute; inset: 0; z-index: 0; }
+.hero h1 { position: relative; z-index: 1; text-shadow: 0 2px 16px rgba(0,0,0,.6); }
+```
+
+The element already pauses off-screen and falls back to a still frame
+under *Reduce motion*, so it's safe to use as a page background.
+
+### Recipe: your own look, designed in the studio
+
+1. In the studio, dial in a look and click **Save preset** → you get a
+   JSON file.
+2. Drop it next to your page and point `src` at it (needs an HTTP
+   server — `fetch` is blocked under `file://`):
+
+```html
+<perlin-noise src="my-look.json" autoplay></perlin-noise>
+```
+
+The JSON is the same format the studio loads, so it round-trips exactly
+— including a custom gradient.
+
+### Recipe: drive it from JavaScript
+
+Skip the attributes entirely and set a params object. This wins over
+`preset`/`src` and re-renders immediately:
+
+```js
+const el = document.querySelector("perlin-noise");
+el.params = { colorMode: "gradient", gradientName: "fire",
+              scaleX: 0.02, scaleY: 0.02, octaves: 5,
+              loop: true, loopDuration: 6, loopRadius: 1 };
+el.play();   // or el.pause(); el.playing → boolean
+```
+
+`gradientName` is expanded to concrete stops for you. To swap a preset
+live, just assign a new object — no need to recreate the element.
+
+### Recipe: tuning cost
+
+- **`max-resolution`** is the main dial. 1280 (default) is crisp for a
+  hero; drop to 640–800 for small tiles or low-power devices. The render
+  cost scales with width × height, so halving the cap quarters the work.
+- **Octaves** in the preset is the other big lever — each octave is
+  another noise evaluation per pixel.
+- **Many instances:** every `<perlin-noise>` spawns its own worker.
+  A single hero is ideal; a dozen tiles on one page is heavy. For a grid
+  of many, prefer one larger element or exported WebM thumbnails.
+
 A runnable demo with a hero, preset tiles, and a JSON-`src` tile lives
-in **[examples/embed.html](../examples/embed.html)**.
+in **[examples/embed.html](../examples/embed.html)** (or
+[live](https://jkaindl.codeberg.page/perlin-studio/examples/embed.html)).
 
 ---
 

@@ -12,6 +12,10 @@
   <a href="https://jkaindl.codeberg.page/perlin-studio/">
     <img alt="Launch the web app" src="https://img.shields.io/badge/Launch_Web_App-16e0e0?style=for-the-badge&logo=pwa&logoColor=060709">
   </a>
+  &nbsp;
+  <a href="https://jkaindl.codeberg.page/perlin-studio/examples/embed.html">
+    <img alt="Live embedding demo" src="https://img.shields.io/badge/▶_Live_Embedding_Demo-8a4dff?style=for-the-badge&logoColor=fff">
+  </a>
 </p>
 
 <p align="center">
@@ -155,7 +159,10 @@ JSON exported from the studio, or the `params` JS property. It fills its
 container responsively (render resolution capped via `max-resolution`,
 default 1280), respects `prefers-reduced-motion`, and pauses while
 off-screen. Works from `file://` too — except `src`, which needs an HTTP
-server (use `preset` or `.params` locally). See **[examples/embed.html](examples/embed.html)**.
+server (use `preset` or `.params` locally).
+
+▶ **See it live:** [jkaindl.codeberg.page/perlin-studio/examples/embed.html](https://jkaindl.codeberg.page/perlin-studio/examples/embed.html)
+— source in [examples/embed.html](examples/embed.html).
 
 ## Architecture in one picture
 
