@@ -50,6 +50,9 @@
 </head>
 <body>
   <header class="topbar">
+    <!-- Dogfooding: the header texture is the embeddable <perlin-noise>
+         element itself, dimmed by a scrim for legibility. Decorative. -->
+    <perlin-noise class="topbar-bg" preset="aurora" autoplay max-resolution="640" aria-hidden="true"></perlin-noise>
     <a class="brand" href="./" aria-label="Perlin Studio home">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 64 64" width="32" height="32">
@@ -374,5 +377,6 @@
   <script src="perlin-presets.js" defer></script>
   <script src="perlin-engine.js" defer></script>
   <script src="perlin-studio.js" defer></script>
+  <script src="perlin-element.js" defer></script>
 </body>
 </html>

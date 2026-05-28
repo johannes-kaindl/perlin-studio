@@ -156,12 +156,39 @@ html[data-theme="dark"],  html[data-theme="dark"]  body { color-scheme: dark; }
    TOPBAR
    ============================================================ */
 .topbar {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 18px 28px 14px;
   border-bottom: 1px solid var(--border);
+}
+/* Decorative <perlin-noise> behind the header, dimmed by a scrim so the
+   brand and chips stay legible. The element handles reduced-motion (still
+   frame) and pauses when off-screen on its own. */
+.topbar-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.topbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--bg);
+  opacity: 0.58;
+  pointer-events: none;
+}
+.topbar > .brand,
+.topbar > .topbar-meta,
+.topbar > .theme-toggle {
+  position: relative;
+  z-index: 2;
 }
 .brand {
   display: flex;
