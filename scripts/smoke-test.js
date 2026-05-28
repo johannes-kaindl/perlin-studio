@@ -498,6 +498,42 @@ function ok(label, cond, detail) {
      masked[0] === 10 && masked[5] === 50 && masked[10] === 90);
 }
 
+// ----- I: resolveParams (perlin-presets.js) -----
+// The shared presets module is what both the studio and the <perlin-noise>
+// element use to turn a preset into a renderable params object. The key
+// invariant: a named gradient must be expanded to concrete stops before the
+// params reach the worker, without mutating the caller's object.
+{
+  const P = require(path.join(__dirname, "..", "perlin-presets.js"));
+  const { GRADIENTS, BUILTIN_PRESETS, resolveParams } = P;
+
+  const fire = resolveParams({ colorMode: "gradient", gradientName: "fire" });
+  ok("resolveParams injects named gradient stops (fire)",
+     Array.isArray(fire.gradient) && JSON.stringify(fire.gradient) === JSON.stringify(GRADIENTS.fire));
+
+  const post = resolveParams({ colorMode: "posterize", gradientName: "ocean" });
+  ok("resolveParams resolves a gradient for posterize mode",
+     Array.isArray(post.gradient) && post.gradient.length >= 2);
+
+  const stops = [{ pos: 0, color: [1, 2, 3] }, { pos: 1, color: [4, 5, 6] }];
+  const custom = resolveParams({ colorMode: "gradient", gradientName: "custom", gradient: stops });
+  ok("resolveParams preserves explicit custom stops",
+     JSON.stringify(custom.gradient) === JSON.stringify(stops));
+
+  const input = { colorMode: "rgb", rScale: 1 };
+  const rgb = resolveParams(input);
+  ok("resolveParams leaves non-gradient modes without a gradient", rgb.gradient === undefined);
+  ok("resolveParams does not mutate its input", input.gradient === undefined && rgb !== input);
+
+  const unknown = resolveParams({ colorMode: "gradient", gradientName: "nope" });
+  ok("resolveParams falls back to viridis for unknown gradient names",
+     JSON.stringify(unknown.gradient) === JSON.stringify(GRADIENTS.viridis));
+
+  const lava = resolveParams(BUILTIN_PRESETS.lava);
+  ok("a built-in preset (lava) resolves to a renderable params object",
+     Array.isArray(lava.gradient));
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");
