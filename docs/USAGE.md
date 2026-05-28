@@ -23,8 +23,9 @@ curtain see [ARCHITECTURE](ARCHITECTURE.md).
 10. [09 · Export](#09--export)
 11. [Transport bar](#transport-bar)
 12. [Theme toggle](#theme-toggle)
-13. [Tips and workflows](#tips-and-workflows)
-14. [Keyboard shortcuts](#keyboard-shortcuts)
+13. [Embedding (`<perlin-noise>`)](#embedding-perlin-noise)
+14. [Tips and workflows](#tips-and-workflows)
+15. [Keyboard shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -718,14 +719,60 @@ the chrome differs.
 
 ---
 
+## Embedding (`<perlin-noise>`)
+
+Besides exporting a WebM, you can embed the *live* animation on a page
+with the `<perlin-noise>` custom element — a renderer with no controls.
+Include the four scripts in order, then drop the tag:
+
+```html
+<script src="perlin.js"></script>
+<script src="perlin-presets.js"></script>
+<script src="perlin-engine.js"></script>
+<script src="perlin-element.js"></script>
+
+<perlin-noise preset="aurora" autoplay></perlin-noise>
+```
+
+**Configuration** (precedence high → low):
+
+| How | Example | Notes |
+|-----|---------|-------|
+| `params` property | `el.params = {...}` | A full params object; wins over attributes. |
+| `src` attribute | `src="loop.json"` | A preset exported via **Save preset**. Needs an HTTP server — `fetch` is blocked under `file://`. |
+| `preset` attribute | `preset="lava"` | A built-in name. Works under `file://`. |
+| (none) | | Falls back to the `default` preset. |
+
+**Other attributes:** `autoplay` (start animating), `static` (force a
+single still frame), `max-resolution` (render cap in px on the longest
+edge, default 1280).
+
+**Behaviour:** the element fills its container and renders at the
+displayed size × devicePixelRatio, capped at `max-resolution`, so a
+full-bleed hero stays cheap. The preset's width/height act as a
+reference so the look is the same at any size. It renders a single still
+frame (no animation) when the OS has **Reduce motion** on, and pauses
+while scrolled off-screen.
+
+A runnable demo with a hero, preset tiles, and a JSON-`src` tile lives
+in **[examples/embed.html](../examples/embed.html)**.
+
+---
+
 ## Tips and workflows
 
 ### "I want a background loop for my homepage"
-1. Load the `clouds` or `aurora` preset
-2. Set `Loop duration` to 6–10 sec
-3. Adjust width/height to your layout (e.g. 1280×360 for a banner)
-4. Export WebM, fps=24, frames=144 (= 6 sec)
-5. In HTML: `<video autoplay muted loop playsinline>`
+
+Two options:
+- **Live element (no file):** embed `<perlin-noise preset="aurora"
+  autoplay>` — see [Embedding](#embedding-perlin-noise) above. It loops
+  forever, scales to the container, and respects reduced motion.
+- **Exported video:**
+  1. Load the `clouds` or `aurora` preset
+  2. Set `Loop duration` to 6–10 sec
+  3. Adjust width/height to your layout (e.g. 1280×360 for a banner)
+  4. Export WebM, fps=24, frames=144 (= 6 sec)
+  5. In HTML: `<video autoplay muted loop playsinline>`
 
 ### "I want a seamlessly tileable texture"
 1. Pick a starting preset (e.g. `clouds` or `terrain`)

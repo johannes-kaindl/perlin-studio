@@ -43,15 +43,21 @@ static webhost.
 ├── index.html             # UI markup
 ├── styles.css             # all styling (dark + light, system-following with toggle override)
 ├── perlin.js              # math/API (noise, color modes, worker source)
-├── perlin-studio.js       # controller (RAF loop, recording, presets, UI bindings)
+├── perlin-presets.js      # gradients, built-in presets, resolveParams (shared)
+├── perlin-engine.js       # headless render engine (worker lifecycle + RAF loop)
+├── perlin-studio.js       # controller (UI bindings, recording, presets) — consumes the engine
+├── perlin-element.js      # <perlin-noise> embeddable renderer-only custom element
 ├── manifest.webmanifest   # PWA manifest (installable)
 ├── assets/                # static assets (favicon.svg, icon-{192,512}.png,
 │                          #   apple-touch-icon.png, hero.png, gallery-*.png
 │                          #   + legacy default-atlas.webp for the archive)
+├── examples/
+│   ├── embed.html         # <perlin-noise> embedding demo
+│   └── marble.json        # resolved preset export for the src demo
 ├── scripts/
 │   ├── render-readme-images.js  # renders assets/*.png from perlin.js
 │   ├── render-readme-videos.js  # renders docs/examples/*.webm (Node → ffmpeg)
-│   └── smoke-test.js            # math invariants for perlin.js, gates CI deploy
+│   └── smoke-test.js            # math + resolveParams invariants, gates CI deploy
 ├── _archiv/               # historical predecessors (READ-ONLY!)
 │   ├── perlin_noise/      # Python original
 │   ├── texturizer.ipynb   # Texturizer notebook
@@ -76,6 +82,22 @@ static webhost.
 **`_archiv/` is off-limits for active changes.** These files document
 the project's genealogy and may only be added to (e.g. when another
 snapshot is preserved), never edited or deleted.
+
+### Module layering
+
+Five plain scripts, each attaching a `window` global, loaded in order
+(`file://`-safe, no ES modules):
+
+1. `perlin.js` → `MTPerlin` — math + `WORKER_SOURCE`.
+2. `perlin-presets.js` → `MTPerlinPresets` — `GRADIENTS`, `BUILTIN_PRESETS`,
+   `resolveParams` (named gradient → concrete stops).
+3. `perlin-engine.js` → `PerlinEngine` — headless renderer: owns the worker,
+   the RAF loop, and FPS smoothing. Consumers pass `onTick` / `onFrame` /
+   `transformFrame` callbacks.
+4. `perlin-studio.js` and `perlin-element.js` are **consumers** of the engine.
+   The studio is the full editor; `<perlin-noise>` is the embeddable
+   renderer-only element. Keep render/animation logic in the engine, not
+   duplicated in either consumer.
 
 ## Glossary
 

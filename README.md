@@ -136,6 +136,27 @@ Short version of the most important controls:
 | **t slider** | Time scrub (loop: `[0, 1)`, otherwise free) |
 | **fps / frames** | Only used for WebM export |
 
+## Embedding
+
+Drop the looping animation onto any page with the `<perlin-noise>` custom
+element — renderer only, no controls:
+
+```html
+<script src="perlin.js"></script>
+<script src="perlin-presets.js"></script>
+<script src="perlin-engine.js"></script>
+<script src="perlin-element.js"></script>
+
+<perlin-noise preset="aurora" autoplay></perlin-noise>
+```
+
+Configure it with a built-in `preset` name, a `src` pointing at a preset
+JSON exported from the studio, or the `params` JS property. It fills its
+container responsively (render resolution capped via `max-resolution`,
+default 1280), respects `prefers-reduced-motion`, and pauses while
+off-screen. Works from `file://` too — except `src`, which needs an HTTP
+server (use `preset` or `.params` locally). See **[examples/embed.html](examples/embed.html)**.
+
 ## Architecture in one picture
 
 ```
@@ -172,9 +193,14 @@ animation smooth even at low resolutions.
 ├── index.html             # UI markup
 ├── styles.css             # theme (dark + light, system-following with topbar toggle override)
 ├── perlin.js              # math/API (3D + 4D noise, color modes, worker source)
-├── perlin-studio.js       # controller (RAF loop, recording, presets, events)
+├── perlin-presets.js      # gradients, built-in presets, resolveParams (shared)
+├── perlin-engine.js       # headless render engine (worker + RAF loop)
+├── perlin-studio.js       # controller (UI, recording, presets, events)
+├── perlin-element.js      # <perlin-noise> embeddable custom element
 ├── manifest.webmanifest   # PWA manifest (installable)
 ├── assets/                # static assets (favicon, PWA icons, README images)
+├── examples/
+│   └── embed.html         # <perlin-noise> embedding demo
 ├── docs/
 │   ├── ARCHITECTURE.md    # technical docs
 │   ├── USAGE.md           # full user guide
@@ -215,11 +241,13 @@ Shipped since the original list:
 - [x] **Tileable noise** — `Tile X` / `Tile Y` make the output repeat (v0.10.0)
 - [x] **Image mask** — load a PNG / JPG, render noise inside the alpha (v0.11.0)
 - [x] **Layer system** — composite two noise fields with a blend mode (v0.11.0)
+- [x] **Web Component** — embeddable `<perlin-noise>` renderer element (v0.12.0)
 
 Still on the wishlist:
 
 - [ ] **Obsidian plugin** — `main.ts` with a modal + canvas embed (separate repo)
-- [ ] **Web Component** — embeddable `<perlin-studio>` variant for the homepage
+- [ ] **`<perlin-studio>` element** — the full editor (controls + canvas) as a
+  single embeddable tag, building on the shared `PerlinEngine`
 
 Considered and explicitly deferred:
 

@@ -6,6 +6,34 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-05-28
+
+### Added
+- **`<perlin-noise>` web component** — a renderer-only custom element for
+  embedding a looping Perlin animation on any page. Configure with a
+  built-in preset name (`preset="lava"`), a JSON preset exported from the
+  studio (`src="…"`), or the `params` JS property. Responsive: the render
+  resolution tracks the displayed size × devicePixelRatio, capped at
+  `max-resolution` (default 1280); the preset's declared size acts as a
+  reference composition so the look is resolution-independent. Respects
+  `prefers-reduced-motion` (renders one still frame) and pauses while
+  off-screen. Plain script, file://-safe (except `src`, which needs HTTP).
+- **`examples/embed.html`** — embedding demo: a full-bleed hero, preset
+  tiles, and a JSON-`src` tile.
+- Seven smoke assertions for `resolveParams` (named gradient → stops,
+  custom-stop passthrough, no input mutation, viridis fallback). Total
+  smoke battery: 39 → 46.
+
+### Changed
+- **`perlin-engine.js`** — the worker lifecycle, RAF loop, and FPS
+  smoothing were extracted from the studio controller into a reusable
+  headless `PerlinEngine` class consumed by both the studio and the new
+  element. No behavioural change to the studio; the worker source and
+  skip/stale logic are reused verbatim.
+- **`perlin-presets.js`** — gradients and built-in presets moved out of
+  the controller into a shared module with a `resolveParams` helper, so
+  the studio and the element resolve presets identically.
+
 ## [0.11.0] — 2026-05-27
 
 ### Added

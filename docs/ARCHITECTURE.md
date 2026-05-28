@@ -17,54 +17,71 @@ for the broad overview.
 10. [WebM recording](#webm-recording)
 11. [Color modes](#color-modes)
 12. [Image mask](#image-mask)
-13. [Smoke tests](#smoke-tests)
-14. [Known edge cases](#known-edge-cases)
+13. [Embeddable element (`<perlin-noise>`)](#embeddable-element-perlin-noise)
+14. [Smoke tests](#smoke-tests)
+15. [Known edge cases](#known-edge-cases)
 
 ---
 
 ## Code layout
 
-Two JS files share the responsibility:
+Five plain scripts, each attaching a `window` global, layered bottom-up.
+None are ES modules — module scripts are CORS-restricted under `file://`,
+and double-click-to-run is a hard requirement.
 
 ```
-perlin.js                          perlin-studio.js
-├── Math (perlin3, perlin4)        ├── DOM bindings (els, $)
-├── fBm (fbm3, fbm4)               ├── theme toggle + FOUC sync
-├── Domain warp                    ├── worker setup + main-thread fallback
-│   (warpedFbm3, warpedFbm4)       ├── RAF loop (play/pause)
-├── Tile wrap helpers              ├── live-preview debounce
-│   (wrapCell, nextCell)           ├── recording (MediaRecorder)
-├── colorize()  + variants         ├── preset system (built-in + JSON)
-│   (colorizeRgbMulti,             │     incl. custom gradient editor
-│    colorizeFlow)                 └── transport bar wiring
-├── generatePerlinImage()
-└── WORKER_SOURCE (string)
+perlin.js          → MTPerlin          math + WORKER_SOURCE (pure, no DOM)
+perlin-presets.js  → MTPerlinPresets   GRADIENTS, BUILTIN_PRESETS, resolveParams
+perlin-engine.js   → PerlinEngine      headless renderer: worker + RAF + FPS
+perlin-studio.js   (controller)        ─┐ both consume PerlinEngine
+perlin-element.js  (<perlin-noise>)    ─┘
 
 scripts/
-├── smoke-test.js                  ← math invariants, gates CI deploy
+├── smoke-test.js                  ← math + resolveParams invariants, gates CI
 ├── render-readme-images.js        ← regenerates assets/*.png
-└── render-readme-videos.js        ← regenerates docs/examples/*.webm
+├── render-readme-videos.js        ← regenerates docs/examples/*.webm
+└── build-standalone.js            ← concatenates the 4 runtime scripts → dist/
 ```
 
 `perlin.js` is **pure** — no globals, no DOM access. An IIFE exports
 to `window.MTPerlin`. The entire module logic is also available as a
-string in `MTPerlin.WORKER_SOURCE`; that's what the studio uses to
+string in `MTPerlin.WORKER_SOURCE`; that's what the engine uses to
 build a Blob worker. Important so the worker also runs under `file://`
-(some browsers block external worker URLs).
+(some browsers block external worker URLs). The worker source is built
+by interpolating each top-level function via `.toString()` into a
+template literal — so any new helper added to `perlin.js` automatically
+becomes available in the worker as long as it's listed in the
+interpolation block at the bottom of the file.
 
-The worker source is built by interpolating each top-level function via
-`.toString()` into a template literal — so any new helper added to
-`perlin.js` automatically becomes available in the worker as long as
-it's listed in the interpolation block at the bottom of the file.
+`perlin-presets.js` holds the colour gradients, the built-in presets,
+and `resolveParams` (expands a named gradient to concrete stops without
+mutating its input). Shared so the studio and the `<perlin-noise>`
+element resolve presets identically. It is also CommonJS-exportable so
+the smoke test can exercise `resolveParams` under Node.
 
-`perlin-studio.js` is the **controller** — it reads UI state, sends
-frames to the worker, draws responses onto the canvas, drives the
-animation, manages the theme override and the custom gradient editor,
-and exports WebM.
+`perlin-engine.js` (`PerlinEngine`) owns the **render loop** — worker
+lifecycle, main-thread fallback, the RAF animation, the "one frame in
+flight" skip logic, stale-reply dropping, and FPS smoothing. It knows
+nothing about UI, presets, masks, or recording. Consumers wire three
+optional callbacks: `onTick(position)` (per RAF tick, drives a slider),
+`onFrame({position, fps, isMain})` (per painted frame, drives a readout),
+and `transformFrame(imageData)` (mutate pixels before paint, e.g. a mask).
+The Worker pipeline and Animation loop sections below describe this
+machinery in detail — it now lives in the engine, not the controller.
 
-`scripts/smoke-test.js` runs all the math invariants (currently 25
-assertions across 7 groups). The Forgejo deploy workflow gates on
-this — a regression stops the site from being republished.
+`perlin-studio.js` is the **controller** — it reads UI state, hands
+params to the engine, manages the theme override, the custom gradient
+editor, the image mask (via `transformFrame`), the preset system, and
+WebM recording (via `engine.renderFrameAndWait`).
+
+`perlin-element.js` defines `<perlin-noise>` — a renderer-only custom
+element wrapping a `PerlinEngine` on a shadow-DOM canvas. See the
+*Embeddable element* section below.
+
+`scripts/smoke-test.js` runs all the math invariants plus the
+`resolveParams` checks (currently 46 assertions). The Forgejo deploy
+workflow gates on this — a regression stops the site from being
+republished.
 
 ---
 
@@ -752,6 +769,53 @@ reproduced inline in the test:
 
 ---
 
+## Embeddable element (`<perlin-noise>`)
+
+`perlin-element.js` registers a renderer-only custom element. It wraps a
+`PerlinEngine` pointed at a `<canvas>` inside an open shadow root, with no
+controls — the studio is the editor; this is the output.
+
+### Configuration
+
+```
+Precedence:  .params property  >  src JSON  >  preset built-in  >  default
+```
+
+- `preset="lava"` — a `BUILTIN_PRESETS` name (works under `file://`).
+- `src="my.json"` — a preset exported from the studio, fetched at connect.
+  `fetch` is CORS-restricted under `file://`, so on failure the element
+  logs a warning and falls back to the `default` preset.
+- `el.params = {…}` — a params object; resolved via `resolveParams` and
+  takes precedence over the attributes.
+- `autoplay`, `static` (force a single still frame), `max-resolution`
+  (render cap, default 1280).
+
+### Responsive sizing
+
+A `ResizeObserver` recomputes the render resolution on every layout change:
+`renderEdge = min(cssEdge × devicePixelRatio, maxResolution)`. The canvas
+backing store is set to that; CSS scales it to fill the host. The preset's
+declared `width`/`height` are treated as a **reference composition** —
+`scaleX`/`scaleY` are rescaled by `ref/render` so the visual feature size
+is preserved across resolutions (a 4K hero looks like the same noise, just
+sharper). `scaleT`, `loopRadius`, and octaves are already resolution-free.
+
+### Accessibility & battery
+
+- `prefers-reduced-motion: reduce` → never animates; renders one still
+  frame. A `matchMedia` listener reacts live to OS toggles.
+- An `IntersectionObserver` pauses the engine while the element is fully
+  off-screen and resumes it when visible (only if it wants to play).
+- One worker per element instance — simple and isolated. Many instances
+  spawn many workers; fine for a hero, not intended for dozens on a page.
+
+`_applyMotion()` is the single gate: it pauses + renders one frame when
+blocked (reduced motion, `static`, not wanted, or off-screen), otherwise
+plays. Sizing, attribute, visibility, and motion changes all funnel
+through it so there's one place that decides play-vs-still.
+
+---
+
 ## Smoke tests
 
 `scripts/smoke-test.js` runs all the math invariants the project relies
@@ -760,7 +824,7 @@ on. It's a single Node script — no test framework — that loads
 pattern. The Forgejo deploy workflow runs it before publishing; a
 failure stops the deploy.
 
-The current battery (25 assertions across 7 groups):
+The current battery (46 assertions):
 
 | Group | What it covers |
 |-------|----------------|
@@ -775,6 +839,7 @@ The current battery (25 assertions across 7 groups):
 | H0. Layer blends | Each of the six blend modes (`multiply`, `add`, `screen`, `darken`, `lighten`, `difference`) gives the right algebra at known sample points; unknown mode falls back to `n1` |
 | H1. Layer render path | `layer2On=false` is bit-identical to the un-layered baseline; `layer2On=true, mix=1` diverges; `layer2On=true, mix=0` short-circuits back to the baseline |
 | H. Image mask | Per-pixel alpha modulation matches the byte-arithmetic spec; invert flips via `255 − mask`; RGB channels untouched |
+| I. resolveParams | Named gradient → concrete stops (gradient + posterize); explicit custom stops preserved; non-gradient modes get no gradient; input not mutated; unknown name → viridis; a built-in preset resolves to renderable params |
 
 The pattern is "regression guard plus sanity guard" — for every
 feature toggle, one test confirms the **off** state is unchanged
