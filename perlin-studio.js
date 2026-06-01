@@ -163,15 +163,27 @@ function clampFloat(value, lo, hi, fallback) {
 function setStatus(msg, isError = false) {
   els.status.textContent = msg || "";
   els.status.classList.toggle("error", !!isError);
+  // Errors interrupt (assertive); routine progress is announced politely.
+  els.status.setAttribute("aria-live", isError ? "assertive" : "polite");
 }
 function setProgress(pct) {
   if (pct == null) {
     els.progress.classList.remove("active");
     els.progressBar.style.width = "0%";
+    els.progress.removeAttribute("aria-valuenow");
   } else {
+    const v = Math.max(0, Math.min(100, pct));
     els.progress.classList.add("active");
-    els.progressBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+    els.progressBar.style.width = `${v}%`;
+    els.progress.setAttribute("aria-valuenow", String(Math.round(v)));
   }
+}
+
+/** Format a slider value for display: integers as-is, else 2 decimals. */
+function formatRangeVal(v) {
+  const n = parseFloat(v);
+  if (!Number.isFinite(n)) return String(v);
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
 // ============= PARAMS COLLECT =============
@@ -277,6 +289,7 @@ function applyParamsToUi(p) {
   if (p.layer2Base != null) els.layer2Base.value = p.layer2Base;
   if (p.layer2BlendMode) els.layer2Blend.value = p.layer2BlendMode;
   if (p.layer2Mix != null) els.layer2Mix.value = p.layer2Mix;
+  updateLayer2Mode();
 
   if (p.loop != null) { els.loop.checked = p.loop; }
   if (p.loopDuration != null) els.loopDuration.value = p.loopDuration;
@@ -319,6 +332,7 @@ function applyParamsToUi(p) {
   if (p.hsvSat != null) els.sat.value = p.hsvSat;
   if (p.hsvVal != null) els.val.value = p.hsvVal;
   if (p.posterizeSteps != null) els.posterSteps.value = p.posterizeSteps;
+  refreshRangeReadouts();
 }
 
 function updateColorSections() {
@@ -326,6 +340,16 @@ function updateColorSections() {
   for (const sec of els.colorSections) {
     const isActive = sec.dataset.for === active;
     sec.hidden = !isActive;
+  }
+}
+
+// Layer 2's sub-fields do nothing while the toggle is off (the engine ignores
+// them), so disable them — matching how the Loop / Color / Mask sections gate
+// their own controls.
+function updateLayer2Mode() {
+  const on = els.layer2On.checked;
+  for (const el of [els.layer2Sx, els.layer2Sy, els.layer2Oct, els.layer2Base, els.layer2Blend, els.layer2Mix]) {
+    el.disabled = !on;
   }
 }
 
@@ -500,8 +524,15 @@ function renderCustomStops() {
     pos.type = "range"; pos.min = "0"; pos.max = "1"; pos.step = "0.01";
     pos.value = String(stop.pos);
     pos.className = "stop-pos";
+    pos.setAttribute("aria-label", "Stop " + (i + 1) + " position");
+
+    const val = document.createElement("output");
+    val.className = "stop-val";
+    val.textContent = formatRangeVal(stop.pos);
+
     pos.addEventListener("input", () => {
       stop.pos = parseFloat(pos.value);
+      val.textContent = formatRangeVal(pos.value);
       updateGradientPreview();
       schedulePreview();
     });
@@ -514,6 +545,7 @@ function renderCustomStops() {
     color.type = "color";
     color.value = rgbToHex(stop.color);
     color.className = "stop-color";
+    color.setAttribute("aria-label", "Stop " + (i + 1) + " color");
     color.addEventListener("input", () => {
       stop.color = hexToRgb(color.value);
       updateGradientPreview();
@@ -536,6 +568,7 @@ function renderCustomStops() {
     });
 
     row.appendChild(pos);
+    row.appendChild(val);
     row.appendChild(color);
     row.appendChild(remove);
     list.appendChild(row);
@@ -563,6 +596,37 @@ function addCustomStop() {
   updateGradientPreview();
   schedulePreview();
 }
+
+// ============= SLIDER READOUTS =============
+// Every sidebar range gets a live numeric readout (the transport t slider
+// already has one). For a tool built on shareable parameter sets, a slider
+// with no visible value is guesswork. Built once over the static markup; the
+// custom-gradient stop sliders carry their own readout (see renderCustomStops).
+const rangeReadouts = [];
+function attachRangeReadouts() {
+  const ranges = document.querySelectorAll('.sidebar input[type="range"]');
+  for (const input of ranges) {
+    if (input.classList.contains("stop-pos")) continue;  // per-stop readout instead
+    const label = input.closest("label");
+    if (!label) continue;
+    const out = document.createElement("output");
+    out.className = "range-val";
+    if (input.id) out.htmlFor = input.id;
+    // Lift the label caption next to the value in a header row, slider below.
+    const head = document.createElement("span");
+    head.className = "range-head";
+    while (label.firstChild && label.firstChild !== input) head.appendChild(label.firstChild);
+    head.appendChild(out);
+    label.insertBefore(head, input);
+    const sync = () => { out.textContent = formatRangeVal(input.value); };
+    input.addEventListener("input", sync);
+    sync();
+    rangeReadouts.push(sync);
+  }
+}
+// Preset / JSON load set values programmatically (no `input` event), so the
+// readouts are refreshed explicitly from applyParamsToUi.
+function refreshRangeReadouts() { for (const sync of rangeReadouts) sync(); }
 
 // ============= ENGINE =============
 // The worker lifecycle, RAF loop, and FPS smoothing live in PerlinEngine
@@ -690,6 +754,7 @@ function exportPng() {
   a.download = `perlin-${Date.now()}.png`;
   a.href = els.canvas.toDataURL("image/png");
   a.click();
+  setStatus(`PNG saved — ${els.canvas.width}×${els.canvas.height}.`);
 }
 
 function chooseRecorderMime() {
@@ -782,6 +847,7 @@ async function recordWebm() {
   // The frame delay ensures `captureStream` sees the canvas state; without a
   // pause some browsers capture before the repaint.
   const frameDelayMs = 1000 / fps;
+  let lastAnnounced = -1;
 
   try {
     for (let i = 0; i < totalFrames; i++) {
@@ -789,8 +855,15 @@ async function recordWebm() {
       const params = paramsForRecordingFrame(baseParams, startSlider, i, totalFrames, fps);
       await engine.renderFrameAndWait(params);
       if (canRequestFrame) track.requestFrame();
-      setProgress(Math.round(((i + 1) / totalFrames) * 100));
-      setStatus(`Recording: frame ${i + 1}/${totalFrames}${params.loop ? " (loop)" : ""}`);
+      const pct = Math.round(((i + 1) / totalFrames) * 100);
+      setProgress(pct);
+      // Throttle the live-region status to ~10% steps so assistive tech isn't
+      // flooded with a per-frame announcement; the bar still moves every frame.
+      const milestone = pct - (pct % 10);
+      if (milestone !== lastAnnounced || i + 1 === totalFrames) {
+        lastAnnounced = milestone;
+        setStatus(`Recording: ${pct}% — frame ${i + 1}/${totalFrames}${params.loop ? " (loop)" : ""}`);
+      }
       await new Promise(r => setTimeout(r, frameDelayMs));
     }
     // Tail frame so the stream definitely captures the last image.
@@ -886,6 +959,7 @@ function wireEvents() {
     schedulePreview();
   });
   els.layer2Blend.addEventListener("change", schedulePreview);
+  els.layer2On.addEventListener("change", updateLayer2Mode);
   els.posterGradient.addEventListener("change", () => {
     updateGradientPreview();
     schedulePreview();
@@ -1004,6 +1078,8 @@ function initThemeToggle() {
   renderCustomStops();
   updateGradientPreview();
   updateLoopMode();
+  attachRangeReadouts();
+  updateLayer2Mode();
   wireEvents();
   initThemeToggle();
   // Apply and render the first preset

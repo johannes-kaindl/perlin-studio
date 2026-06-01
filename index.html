@@ -114,13 +114,13 @@
       <section class="ctrl-section">
         <h2><span class="sec-num">02</span><span class="sec-name">Noise</span></h2>
         <div class="grid-2">
-          <label>scale x<input type="number" id="p-sx" step="0.005" value="0.02"></label>
-          <label>scale y<input type="number" id="p-sy" step="0.005" value="0.02"></label>
-          <label class="span2">Time scale<input type="number" id="p-st" step="0.01" value="0.15"></label>
-          <label>base (seed)<input type="number" id="p-base" value="0"></label>
+          <label>scale x<input type="number" id="p-sx" min="0.0001" max="10" step="0.005" value="0.02"></label>
+          <label>scale y<input type="number" id="p-sy" min="0.0001" max="10" step="0.005" value="0.02"></label>
+          <label class="span2">Time scale<input type="number" id="p-st" min="0" max="10" step="0.01" value="0.15"></label>
+          <label>base (seed)<input type="number" id="p-base" step="1" value="0"></label>
           <label>octaves<input type="number" id="p-oct" min="1" max="10" value="6"></label>
-          <label>persistence<input type="number" id="p-pers" step="0.05" value="0.5"></label>
-          <label class="span2">lacunarity<input type="number" id="p-lac" step="0.1" value="2.0"></label>
+          <label>persistence<input type="number" id="p-pers" min="0" max="2" step="0.05" value="0.5"></label>
+          <label class="span2">lacunarity<input type="number" id="p-lac" min="1" max="8" step="0.1" value="2.0"></label>
         </div>
       </section>
 
@@ -132,10 +132,10 @@
           <span class="switch-label">Enable Layer 2</span>
         </label>
         <div class="grid-2">
-          <label>scale x<input type="number" id="p-layer2-sx" step="0.005" value="0.06"></label>
-          <label>scale y<input type="number" id="p-layer2-sy" step="0.005" value="0.06"></label>
+          <label>scale x<input type="number" id="p-layer2-sx" min="0.0001" max="10" step="0.005" value="0.06"></label>
+          <label>scale y<input type="number" id="p-layer2-sy" min="0.0001" max="10" step="0.005" value="0.06"></label>
           <label>octaves<input type="number" id="p-layer2-oct" min="1" max="10" value="4"></label>
-          <label>base (seed)<input type="number" id="p-layer2-base" value="101"></label>
+          <label>base (seed)<input type="number" id="p-layer2-base" step="1" value="101"></label>
         </div>
         <label class="select-row">blend mode
           <select id="p-layer2-blend">
@@ -174,7 +174,7 @@
       <section class="ctrl-section">
         <h2><span class="sec-num">06</span><span class="sec-name">Color mode</span></h2>
         <label class="select-row">
-          <select id="p-color-mode">
+          <select id="p-color-mode" aria-label="Color mode">
             <option value="rgb" selected>RGB · per channel</option>
             <option value="gradient">Gradient · preset</option>
             <option value="hsv">HSV · hue from noise</option>
@@ -353,10 +353,10 @@
       </div>
 
       <div class="status-row">
-        <div class="status" id="status">Initialising …</div>
+        <div class="status" id="status" role="status" aria-live="polite">Initialising …</div>
         <div class="fps-counter" id="fps-counter"></div>
       </div>
-      <div class="progress" id="progress"><div class="bar" id="progress-bar"></div></div>
+      <div class="progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="bar" id="progress-bar"></div></div>
     </section>
   </main>
 

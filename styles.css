@@ -382,6 +382,21 @@ label .unit {
   font-size: 10px;
   margin-left: 4px;
 }
+/* Slider readout: caption + live value in a header row, slider below — same
+   treatment as the transport t readout, so every range shows its value. */
+.range-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.range-val {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
 label.checkbox {
   display: flex;
   align-items: center;
@@ -580,13 +595,21 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 }
 .custom-stop {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 6px;
 }
 .custom-stop .stop-pos {
   width: 100%;
   margin: 0;
+}
+.custom-stop .stop-val {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.4em;
+  text-align: right;
 }
 .custom-stop .stop-color {
   width: 28px; height: 26px;
