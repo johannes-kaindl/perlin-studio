@@ -308,7 +308,8 @@ main {
 @media (max-width: 720px) {
   main { grid-template-columns: 1fr; }
   .main { order: -1; position: static !important; }
-  .canvas-wrap { height: auto; min-height: 280px; max-height: 60vh; padding: 32px 14px 14px; }
+  /* Definite height so the canvas object-fit:contain has a box to fill. */
+  .canvas-wrap { height: 60vh; height: 60dvh; min-height: 280px; padding: 32px 14px 14px; }
 }
 
 .panel {
@@ -784,24 +785,25 @@ button.primary:hover:not(:disabled) {
 
 
 #canvas-output {
+  /* Fill the frame so low-resolution renders scale up into crisp pixel
+     blocks (the deliberate "Minecraft" look) instead of sitting tiny at
+     their native size. object-fit: contain preserves the render's aspect
+     ratio — matte bars show the framed .canvas-frame vignette. The outer
+     .canvas-frame supplies the framing, so no per-image shadow/ring. */
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
-  border-radius: 4px;
-  box-shadow: 0 4px 32px -12px rgba(0,0,0,0.8),
-              0 0 0 1px rgba(255,255,255,0.04);
 }
 #anim-preview {
   display: none;
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 4px;
-  box-shadow: 0 4px 32px -12px rgba(0,0,0,0.8),
-              0 0 0 1px var(--circuit-soft);
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Low-res recordings play back upscaled-crisp to match the live canvas. */
+  image-rendering: pixelated;
 }
 #anim-preview.ready { display: block; }
 #canvas-output.hidden { display: none; }
