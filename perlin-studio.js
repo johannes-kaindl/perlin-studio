@@ -50,6 +50,7 @@ const state = {
   maskInvert: false,
 
   recording: false,
+  recordingCancel: false,
   recordedChunks: [],
   recordedBlob: null,
   recorder: null,
@@ -349,7 +350,7 @@ function loadMaskFile(file) {
       state.maskCacheH = 0;
       if (els.maskName) els.maskName.textContent = `${file.name} · ${bitmap.width}×${bitmap.height}`;
       if (els.maskApply) els.maskApply.disabled = false;
-      if (els.maskClear) els.maskClear.disabled = false;
+      if (els.btnMaskClear) els.btnMaskClear.disabled = false;
       // Auto-enable on load so users see the effect immediately.
       if (els.maskApply && !els.maskApply.checked) {
         els.maskApply.checked = true;
@@ -376,7 +377,7 @@ function clearMask() {
   state.maskApplied = false;
   if (els.maskName) els.maskName.textContent = "no mask loaded";
   if (els.maskApply) { els.maskApply.checked = false; els.maskApply.disabled = true; }
-  if (els.maskClear) els.maskClear.disabled = true;
+  if (els.btnMaskClear) els.btnMaskClear.disabled = true;
   setStatus("Mask cleared.");
   renderOnce();
 }
@@ -587,7 +588,20 @@ function setTValue(v) {
   els.tDisplay.textContent = v.toFixed(2);
 }
 
+// After a WebM export the live canvas is hidden behind the <video> preview.
+// Any fresh render (param edit, preset, reset) or return to playback must
+// retire that stale preview and bring the live canvas back — otherwise the
+// only escape is a page reload.
+function showLiveCanvas() {
+  els.canvas.classList.remove("hidden");
+  if (els.animPreview.classList.contains("ready")) {
+    els.animPreview.classList.remove("ready");
+    els.animPreview.pause();
+  }
+}
+
 function renderOnce() {
+  showLiveCanvas();
   engine.setParams(gatherParams());
   engine.seek(getTValue());
   engine.renderOnce();
@@ -608,6 +622,7 @@ function schedulePreview() {
 
 function play() {
   if (engine.playing) return;
+  showLiveCanvas();
   engine.setParams(gatherParams());
   engine.seek(getTValue());
   engine.play();
@@ -756,7 +771,12 @@ async function recordWebm() {
   state.recorder = recorder;
   recorder.start();
   state.recording = true;
-  els.btnWebm.disabled = true;
+  state.recordingCancel = false;
+  // Repurpose the button as a Stop control for the duration of the capture,
+  // and retire any prior download until this clip finishes.
+  els.btnWebm.textContent = "Stop recording";
+  els.btnWebmDownload.hidden = true;
+  els.btnWebmDownload.disabled = true;
   setProgress(0);
 
   // The frame delay ensures `captureStream` sees the canvas state; without a
@@ -765,6 +785,7 @@ async function recordWebm() {
 
   try {
     for (let i = 0; i < totalFrames; i++) {
+      if (state.recordingCancel) break;
       const params = paramsForRecordingFrame(baseParams, startSlider, i, totalFrames, fps);
       await engine.renderFrameAndWait(params);
       if (canRequestFrame) track.requestFrame();
@@ -779,18 +800,26 @@ async function recordWebm() {
     recorder.stop();
     await stopped;
     state.recording = false;
-    els.btnWebm.disabled = false;
+    els.btnWebm.textContent = "WebM animation";
     setProgress(null);
   }
 
+  const cancelled = state.recordingCancel;
   const blob = new Blob(state.recordedChunks, { type: mime });
+  if (blob.size === 0) {
+    setStatus("Recording stopped before any frame was captured.", true);
+    if (wasPlaying) play();
+    return;
+  }
   state.recordedBlob = blob;
   els.animPreview.src = URL.createObjectURL(blob);
   els.animPreview.classList.add("ready");
   els.canvas.classList.add("hidden");
   els.btnWebmDownload.hidden = false;
   els.btnWebmDownload.disabled = false;
-  setStatus(`Animation done — ${totalFrames} frames @ ${fps} fps, ${(blob.size / 1024).toFixed(1)} KB.`);
+  setStatus(cancelled
+    ? `Recording stopped — partial clip, ${(blob.size / 1024).toFixed(1)} KB.`
+    : `Animation done — ${totalFrames} frames @ ${fps} fps, ${(blob.size / 1024).toFixed(1)} KB.`);
 
   if (wasPlaying) play();
 }
@@ -815,10 +844,38 @@ const PARAM_INPUTS = [
   "posterSteps",
 ];
 
+// Numeric fields whose values gatherParams() silently clamps. On commit
+// (change), snap the visible value into range so the field can never disagree
+// with what the engine renders or what a saved preset records — a typed value
+// or spinner overshoot would otherwise show e.g. 9999 while 1024 is rendered.
+// Mirrors the gatherParams clamps; runs on `change`, not `input`, so it never
+// fights mid-typing. Integer seeds (base, layer2Base) have no range → omitted.
+const CLAMPED_FIELDS = [
+  ["w", 4, 1024, true], ["h", 4, 1024, true],
+  ["tileX", 0, 64, true], ["tileY", 0, 64, true],
+  ["sx", 0.0001, 10, false], ["sy", 0.0001, 10, false], ["st", 0, 10, false],
+  ["oct", 1, 10, true], ["pers", 0, 2, false], ["lac", 1, 8, false],
+  ["layer2Sx", 0.0001, 10, false], ["layer2Sy", 0.0001, 10, false],
+  ["layer2Oct", 1, 10, true], ["loopDuration", 0.5, 60, false],
+  ["loopRadius", 0, 4, false], ["posterSteps", 2, 16, true],
+  ["fps", 1, 60, true], ["frames", 1, 600, true],
+];
+function wireClampedFields() {
+  for (const [key, lo, hi, isInt] of CLAMPED_FIELDS) {
+    const el = els[key];
+    if (!el) continue;
+    el.addEventListener("change", () => {
+      const n = (isInt ? clampInt : clampFloat)(el.value, lo, hi, null);
+      if (n != null) el.value = n;  // empty/invalid → leave for the engine fallback
+    });
+  }
+}
+
 function wireEvents() {
   for (const key of PARAM_INPUTS) {
     els[key].addEventListener("input", schedulePreview);
   }
+  wireClampedFields();
   els.colorMode.addEventListener("change", () => {
     updateColorSections();
     updateGradientPreview();
@@ -862,11 +919,12 @@ function wireEvents() {
 
   els.btnPng.addEventListener("click", exportPng);
   els.btnWebm.addEventListener("click", () => {
+    if (state.recording) { state.recordingCancel = true; return; }
     recordWebm().catch((err) => {
       console.error(err);
       setStatus(`WebM error: ${err.message}`, true);
       state.recording = false;
-      els.btnWebm.disabled = false;
+      els.btnWebm.textContent = "WebM animation";
       setProgress(null);
     });
   });
