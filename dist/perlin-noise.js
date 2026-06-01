@@ -1013,7 +1013,18 @@
         const blob = new Blob([M.WORKER_SOURCE], { type: "application/javascript" });
         this.worker = new Worker(URL.createObjectURL(blob));
         this.worker.onmessage = (e) => this._onWorkerMessage(e);
-        this.worker.onerror = () => { this.worker = null; };
+        this.worker.onerror = (e) => {
+          // The worker died (CSP, OOM, internal throw). Drop it so renders
+          // fall back to the main thread — and fail any frames awaiting it so
+          // callers (e.g. WebM recording) surface the error instead of hanging
+          // forever on a promise that can never resolve.
+          this.worker = null;
+          this.workerBusy = false;
+          const pending = this.pendingResolves;
+          this.pendingResolves = [];
+          const err = new Error("Perlin worker crashed" + (e && e.message ? ": " + e.message : ""));
+          for (const p of pending) { if (p.reject) p.reject(err); }
+        };
       } catch (e) {
         this.worker = null;
       }
@@ -1106,10 +1117,10 @@
      */
     renderFrameAndWait(params) {
       if (!this.worker) { this._renderInMain(params); return Promise.resolve(); }
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const id = ++this.workerJobId;
         this.latestJobId = id;
-        this.pendingResolves.push({ id, resolve });
+        this.pendingResolves.push({ id, resolve, reject });
         this.workerBusy = true;
         this.worker.postMessage({ id, params });
       });
