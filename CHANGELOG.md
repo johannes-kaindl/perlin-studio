@@ -6,6 +6,51 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-06-02
+
+### Added
+- **Low-resolution pixel-block look.** The output canvas now fills its frame
+  with nearest-neighbour upscaling, so a small Width/Height (e.g. 64×64)
+  renders as crisp, deliberate pixel blocks instead of a tiny image at native
+  size. Aspect ratio is preserved (matte bars where it doesn't match the
+  frame), and WebM playback scales the same way. Display-only — exported
+  PNG/WebM still use the native render resolution.
+- **Live value readout beside every parameter slider** (the transport time
+  slider already had one); custom-gradient stops show their position too.
+- **Stop control for WebM recording** — the Export button becomes "Stop
+  recording" during a capture and yields the partial clip, instead of locking
+  the UI until every frame is done.
+- A hint at the Export controls noting that WebM is RGB-only and ignores an
+  active mask.
+
+### Changed
+- **Accessibility:** `#status` is now a polite live region (assertive on
+  error), the progress bar exposes `role=progressbar` with `aria-valuenow`
+  (per-frame announcements throttled so assistive tech isn't flooded), the
+  Color-mode select and gradient-stop inputs are labelled, number fields
+  carry their `min`/`max` bounds, and Layer-2 sub-fields are disabled while
+  Layer 2 is off.
+- **Mobile / touch:** 24 px touch targets and 16 px form inputs on coarse
+  pointers (no more iOS zoom-and-stick), and the canvas area uses `dvh` with
+  a floor so the transport stays on-screen on short viewports.
+- PNG export now confirms in the status line, matching every other action.
+
+### Fixed
+- The live canvas could remain hidden behind the WebM `<video>` preview after
+  an export — any later edit repainted a hidden canvas and only a reload
+  recovered. Any render now restores the live canvas.
+- The "Clear mask" button was permanently disabled (it toggled a mis-named
+  element reference).
+- Number fields could show an un-clamped value (e.g. `9999`) while the engine
+  rendered the clamped one (`1024`), and a saved preset recorded the
+  visible-but-wrong number. Fields now snap into range on commit.
+- A worker crash during recording could hang the app indefinitely; pending
+  frame requests are now rejected so it falls back to the main thread.
+
+### Tests
+- Made the `perlin3`/`perlin4` value-range smoke check deterministic
+  (seeded sampling) so it can no longer intermittently block the deploy.
+
 ## [0.12.0] — 2026-05-28
 
 ### Added
