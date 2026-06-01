@@ -127,6 +127,7 @@ const els = {
   btnPng: $("btn-png"),
   btnWebm: $("btn-webm"),
   btnWebmDownload: $("btn-webm-download"),
+  webmMaskHint: $("webm-mask-hint"),
 
   // Main output
   canvas: $("canvas-output"),
@@ -353,6 +354,12 @@ function updateLayer2Mode() {
   }
 }
 
+// WebM is RGB-only and ignores the alpha mask. Surface that caveat right at
+// the export button (not just in the distant Mask section) while a mask is on.
+function updateWebmMaskHint() {
+  if (els.webmMaskHint) els.webmMaskHint.hidden = !state.maskApplied;
+}
+
 // ============= IMAGE MASK =============
 // The mask is loaded once from a user-supplied PNG / JPG and re-rasterised
 // to the current canvas resolution on demand. The cached Uint8Array of
@@ -380,6 +387,7 @@ function loadMaskFile(file) {
         els.maskApply.checked = true;
         state.maskApplied = true;
       }
+      updateWebmMaskHint();
       setStatus(`Mask loaded: ${file.name} (${bitmap.width}×${bitmap.height})`);
       renderOnce();
     } catch (err) {
@@ -402,6 +410,7 @@ function clearMask() {
   if (els.maskName) els.maskName.textContent = "no mask loaded";
   if (els.maskApply) { els.maskApply.checked = false; els.maskApply.disabled = true; }
   if (els.btnMaskClear) els.btnMaskClear.disabled = true;
+  updateWebmMaskHint();
   setStatus("Mask cleared.");
   renderOnce();
 }
@@ -1022,6 +1031,7 @@ function wireEvents() {
   els.btnMaskClear.addEventListener("click", clearMask);
   els.maskApply.addEventListener("change", () => {
     state.maskApplied = els.maskApply.checked;
+    updateWebmMaskHint();
     renderOnce();
   });
   els.maskInvert.addEventListener("change", () => {
