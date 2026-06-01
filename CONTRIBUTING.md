@@ -139,8 +139,17 @@ Please **discuss before working on**:
 - File renames without a refactoring reason
 - Auto-formatting across the whole repo
 
-## License
+## License of contributions
 
-Contributions are released under [GNU AGPL-3.0](LICENSE). By submitting
-a PR you agree that your contribution will be published under this
-license.
+By opening a PR you agree to the [Contributor License Agreement](CLA.md): you
+keep your copyright, your contribution stays available under the project's
+open-source license, **and** you grant the maintainer the right to also
+license it under other terms — which keeps the project's
+[dual-licensing model](LICENSING.md) (AGPL + an optional commercial license)
+possible. To accept, add this line to your PR description (or as a
+`Signed-off-by:` trailer on your commits):
+
+> I have read and agree to the Contributor License Agreement (CLA.md).
+
+Under the open-source license, your contribution is published under the same
+license as the overall project: [AGPL-3.0-or-later](LICENSE).

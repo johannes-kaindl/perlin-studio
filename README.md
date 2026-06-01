@@ -266,9 +266,17 @@ Considered and explicitly deferred:
 
 ## License
 
-[GNU AGPL-3.0](LICENSE) — copyleft with the network-use clause. If you
-host the tool (or a fork) so others can use it over the network, the
-source of your variant must also be available under AGPL.
+Perlin Studio is **dual-licensed** — see [LICENSING.md](LICENSING.md) for the
+full picture:
+
+- **Open source (default):** [GNU AGPL-3.0-or-later](LICENSE) — copyleft with
+  the network-use clause. If you host the tool (or a fork) so others can use
+  it over the network, the source of your variant must also be available
+  under AGPL.
+- **Commercial license (on request):** for uses the AGPL does not fit — e.g. a
+  proprietary/closed-source product or an Apple App Store build, which is
+  incompatible with the AGPL. Details in [LICENSING.md](LICENSING.md);
+  contributions are governed by the [CLA](CLA.md).
 
 The Perlin permutation table and the "Improved Noise" algorithm come
 from Ken Perlin's freely published Java reference (2002), reimplemented
