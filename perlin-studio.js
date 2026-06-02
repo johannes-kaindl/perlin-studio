@@ -96,6 +96,8 @@ const els = {
   customStopsWrap: $("custom-stops"),
   customStopsList: $("custom-stops-list"),
   btnAddStop: $("btn-add-stop"),
+  paletteInput: $("palette-input"),
+  btnApplyPalette: $("btn-apply-palette"),
   // hsv
   hueShift: $("p-hue-shift"), hueRange: $("p-hue-range"),
   sat: $("p-sat"), val: $("p-val"),
@@ -502,7 +504,7 @@ function updateGradientPreview() {
   // Show the custom-stops editor only when the active gradient mode is custom.
   const mode = els.colorMode.value;
   const name = mode === "posterize" ? els.posterGradient.value : els.gradientPreset.value;
-  els.customStopsWrap.hidden = !(mode === "gradient" && name === "custom");
+  els.customStopsWrap.hidden = !((mode === "gradient" || mode === "posterize") && name === "custom");
 }
 
 // ---- Custom gradient editor ----
@@ -513,10 +515,25 @@ function rgbToHex(rgb) {
   const h = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
   return "#" + h(rgb[0]) + h(rgb[1]) + h(rgb[2]);
 }
-function hexToRgb(hex) {
-  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || "");
-  if (!m) return [0, 0, 0];
-  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+// Liberal hex parse for typed/pasted input: optional "#", 3- or 6-digit.
+// Returns [r,g,b] or null. (The native color picker always yields #rrggbb.)
+function parseHex(str) {
+  let s = String(str).trim().replace(/^#/, "");
+  if (/^[\da-f]{3}$/i.test(s)) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+  if (!/^[\da-f]{6}$/i.test(s)) return null;
+  return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+}
+function hexToRgb(hex) { return parseHex(hex) || [0, 0, 0]; }
+// Scan free text for hex colour tokens (palette paste); ignores non-hex.
+function parseHexList(str) {
+  const out = [];
+  const re = /#?([\da-f]{6}|[\da-f]{3})\b/gi;
+  let m;
+  while ((m = re.exec(String(str))) !== null) {
+    const rgb = parseHex(m[1]);
+    if (rgb) out.push(rgb);
+  }
+  return out;
 }
 function renderCustomStops() {
   const list = els.customStopsList;
@@ -555,11 +572,30 @@ function renderCustomStops() {
     color.value = rgbToHex(stop.color);
     color.className = "stop-color";
     color.setAttribute("aria-label", "Stop " + (i + 1) + " color");
+
+    const hex = document.createElement("input");
+    hex.type = "text";
+    hex.className = "stop-hex";
+    hex.value = rgbToHex(stop.color);
+    hex.spellcheck = false;
+    hex.setAttribute("maxlength", "7");
+    hex.setAttribute("aria-label", "Stop " + (i + 1) + " hex value");
+
     color.addEventListener("input", () => {
       stop.color = hexToRgb(color.value);
+      hex.value = rgbToHex(stop.color);
       updateGradientPreview();
       schedulePreview();
     });
+    hex.addEventListener("input", () => {
+      const rgb = parseHex(hex.value);
+      if (!rgb) return;  // ignore while invalid; blur normalises it back
+      stop.color = rgb;
+      color.value = rgbToHex(rgb);
+      updateGradientPreview();
+      schedulePreview();
+    });
+    hex.addEventListener("blur", () => { hex.value = rgbToHex(stop.color); });
 
     const remove = document.createElement("button");
     remove.type = "button";
@@ -579,6 +615,7 @@ function renderCustomStops() {
     row.appendChild(pos);
     row.appendChild(val);
     row.appendChild(color);
+    row.appendChild(hex);
     row.appendChild(remove);
     list.appendChild(row);
   }
@@ -604,6 +641,26 @@ function addCustomStop() {
   renderCustomStops();
   updateGradientPreview();
   schedulePreview();
+}
+
+// Build/replace the custom stops from a pasted list of hex colours, spread
+// evenly across [0,1]. The paste box only shows when custom is already the
+// active gradient (gradient or posterize), so no mode switch is needed.
+const MAX_PALETTE_STOPS = 16;
+function applyPalette() {
+  const all = parseHexList(els.paletteInput.value);
+  if (all.length < 2) {
+    setStatus("Paste at least 2 hex colours (e.g. #1ea84a, #4ac8d8).", true);
+    return;
+  }
+  const colors = all.slice(0, MAX_PALETTE_STOPS);
+  state.customStops = colors.map((color, i) => ({ pos: i / (colors.length - 1), color }));
+  renderCustomStops();
+  updateGradientPreview();
+  schedulePreview();
+  setStatus(all.length > MAX_PALETTE_STOPS
+    ? `Applied the first ${MAX_PALETTE_STOPS} of ${all.length} pasted colours.`
+    : `Applied a ${colors.length}-colour palette.`);
 }
 
 // ============= SLIDER READOUTS =============
@@ -986,6 +1043,7 @@ function wireEvents() {
     schedulePreview();
   });
   els.btnAddStop.addEventListener("click", addCustomStop);
+  els.btnApplyPalette.addEventListener("click", applyPalette);
 
   els.t.addEventListener("input", () => {
     els.tDisplay.textContent = parseFloat(els.t.value).toFixed(2);

@@ -220,10 +220,6 @@
               <span>0.0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1.0</span>
             </div>
           </div>
-          <div class="custom-stops" id="custom-stops" hidden>
-            <div class="custom-stops-list" id="custom-stops-list"></div>
-            <button type="button" id="btn-add-stop" class="add-stop-btn">+ add stop</button>
-          </div>
         </div>
 
         <!-- HSV-specific -->
@@ -257,8 +253,20 @@
               <option value="grayscale">Grayscale</option>
               <option value="sunset">Sunset</option>
               <option value="ice">Ice</option>
+              <option value="custom">Custom …</option>
             </select>
           </label>
+        </div>
+
+        <!-- Shared custom-gradient editor — shown for gradient OR posterize
+             when their preset is "Custom …". Lives at section level (not inside
+             a color-section) so it can be revealed in either mode. -->
+        <div class="custom-stops" id="custom-stops" hidden>
+          <label class="palette-label" for="palette-input">Paste hex palette</label>
+          <textarea id="palette-input" class="palette-input" rows="2" spellcheck="false" placeholder="#1ea84a, #4ac8d8, #a878ff"></textarea>
+          <button type="button" id="btn-apply-palette" class="apply-palette-btn">Apply palette</button>
+          <div class="custom-stops-list" id="custom-stops-list"></div>
+          <button type="button" id="btn-add-stop" class="add-stop-btn">+ add stop</button>
         </div>
       </section>
 
