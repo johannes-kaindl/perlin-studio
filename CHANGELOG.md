@@ -6,6 +6,20 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-06-02
+
+### Added
+- **Custom colours by hex value.** In the custom gradient editor each colour
+  stop now has a `#rrggbb` text field, synced both ways with the swatch
+  (type/paste a hex or pick visually). Liberal parsing (`#rrggbb`, `rrggbb`,
+  3-digit `#rgb`); invalid input reverts on blur.
+- **Paste a whole palette.** A "Paste palette" box turns a pasted list of hex
+  codes (any separator, with or without `#`) into an evenly-spread gradient
+  in one go — for matching a brand/design spec exactly (≥2 colours, capped
+  at 16).
+- **Custom palettes in Posterize mode** too, via a new "Custom …" option —
+  previously custom stops were only reachable in Gradient mode.
+
 ## [0.13.0] — 2026-06-02
 
 ### Added
