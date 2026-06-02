@@ -81,25 +81,31 @@ live preview updates after every input.
 
 ## Gallery
 
-All four images were rendered with the tool itself — a single frame
-from the 4D loop in each case. Reproducible via seed (`base`) + parameters.
+Every image is a single frame from a **built-in preset**, rendered by the tool
+itself — and reproducible from the presets via
+[`scripts/render-readme-images.js`](scripts/render-readme-images.js). Together
+they show the range of colour modes and features.
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/gallery-aurora.png" alt="Aurora — HSV mode with green-cyan-blue band" width="100%"></td>
-    <td width="50%"><img src="assets/gallery-ocean.png" alt="Ocean gradient — flowing cyan clouds" width="100%"></td>
+    <td width="33%"><img src="assets/gallery-aurora.png" alt="Aurora preset — HSV mode, cyan-green-blue bands" width="100%"></td>
+    <td width="33%"><img src="assets/gallery-nebula.png" alt="Nebula preset — per-channel RGB noise, vivid magenta" width="100%"></td>
+    <td width="33%"><img src="assets/gallery-marble.png" alt="Marble preset — domain warp pulls the field into stone veins" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Aurora</b> · HSV mode, scaleY ≫ scaleX → horizontal bands</sub></td>
-    <td align="center"><sub><b>Ocean</b> · gradient, 6 octaves for soft organic flow</sub></td>
+    <td align="center"><sub><b>Aurora</b> · HSV mode</sub></td>
+    <td align="center"><sub><b>Nebula</b> · per-channel RGB noise</sub></td>
+    <td align="center"><sub><b>Marble</b> · domain warp</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="assets/gallery-terrain.png" alt="Terrain — Posterize with Forest gradient, contour-line look" width="100%"></td>
-    <td width="50%"><img src="assets/gallery-circuit.png" alt="Circuit — Posterize with 4 steps and Sunset gradient" width="100%"></td>
+    <td width="33%"><img src="assets/gallery-flow.png" alt="Flow preset — noise rendered as a vector field" width="100%"></td>
+    <td width="33%"><img src="assets/gallery-composite.png" alt="Composite preset — two noise layers blended on a magma gradient" width="100%"></td>
+    <td width="33%"><img src="assets/gallery-terrain.png" alt="Terrain preset — posterized forest gradient, contour-map look" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Terrain</b> · Posterize mode with 7 steps → contour-map look</sub></td>
-    <td align="center"><sub><b>Circuit</b> · Posterize 4-step, high lacunarity → hard edges</sub></td>
+    <td align="center"><sub><b>Flow</b> · flow field</sub></td>
+    <td align="center"><sub><b>Composite</b> · Layer 2 blend</sub></td>
+    <td align="center"><sub><b>Terrain</b> · Posterize mode</sub></td>
   </tr>
 </table>
 

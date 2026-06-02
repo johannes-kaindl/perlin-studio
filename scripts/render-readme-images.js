@@ -1,5 +1,7 @@
-// Renders the README showcase images (assets/hero.png + gallery-*.png) using
-// the actual perlin.js module from this repo. PNG encoding is pure Node
+// Renders the README showcase images (assets/hero.png + gallery-*.png) from
+// the ACTUAL built-in presets (perlin-presets.js) through the full render
+// pipeline (perlin.js generatePerlinImage — domain warp, layer 2, flow,
+// posterize and per-channel noise all supported). PNG encoding is pure Node
 // (zlib + crc32), no external dependencies.
 //
 //   node scripts/render-readme-images.js
@@ -11,76 +13,38 @@ const fs = require("fs");
 const zlib = require("zlib");
 const path = require("path");
 
-// perlin.js exports via window.MTPerlin — build the sandbox as in AGENTS.md.
+// perlin.js + perlin-presets.js export via window.* — build the sandbox as in
+// AGENTS.md so the renderer uses the real presets with no duplicated data.
 const REPO = path.resolve(__dirname, "..");
 global.window = {};
 require(path.join(REPO, "perlin.js"));
-const { makePermutation, fbm3, fbm4, colorize } = global.window.MTPerlin;
+require(path.join(REPO, "perlin-presets.js"));
+const { generatePerlinImage } = global.window.MTPerlin;
+const { BUILTIN_PRESETS, resolveParams } = global.window.MTPerlinPresets;
 
-// ---------- Gradients (copy from perlin-studio.js so the renderer is self-contained) ----------
-const GRADIENTS = {
-  fire: [
-    { pos: 0.0, color: [0, 0, 0] },
-    { pos: 0.3, color: [136, 0, 0] },
-    { pos: 0.6, color: [255, 89, 0] },
-    { pos: 0.85, color: [255, 213, 0] },
-    { pos: 1.0, color: [255, 255, 240] },
-  ],
-  ocean: [
-    { pos: 0.0, color: [3, 11, 41] },
-    { pos: 0.3, color: [5, 56, 107] },
-    { pos: 0.6, color: [0, 144, 178] },
-    { pos: 0.85, color: [120, 220, 220] },
-    { pos: 1.0, color: [240, 248, 255] },
-  ],
-  forest: [
-    { pos: 0.0, color: [25, 35, 20] },
-    { pos: 0.3, color: [40, 80, 30] },
-    { pos: 0.6, color: [80, 140, 50] },
-    { pos: 0.85, color: [180, 200, 110] },
-    { pos: 1.0, color: [240, 245, 200] },
-  ],
-  grayscale: [
-    { pos: 0.0, color: [0, 0, 0] },
-    { pos: 1.0, color: [255, 255, 255] },
-  ],
-  sunset: [
-    { pos: 0.0, color: [12, 12, 60] },
-    { pos: 0.3, color: [110, 30, 100] },
-    { pos: 0.6, color: [240, 110, 80] },
-    { pos: 0.85, color: [255, 200, 90] },
-    { pos: 1.0, color: [255, 245, 200] },
-  ],
-};
-
-// ---------- Render one frame (loop mode at the chosen progress) ----------
-function renderFrame(params) {
-  const { width, height, scaleX, scaleY, scaleT,
-          octaves, persistence, lacunarity, base,
-          loopProgress, loopRadius = 1 } = params;
-  const perm = makePermutation(base);
-  const buf = Buffer.alloc(width * height * 3);
-
-  const radius = loopRadius * (scaleT || 1);
-  const safeProgress = ((loopProgress || 0) % 1 + 1) % 1;
-  const alpha = safeProgress * Math.PI * 2;
-  const zc = Math.cos(alpha) * radius;
-  const wc = Math.sin(alpha) * radius;
-
-  const colorParams = { ...params };
-  if (colorParams.gradientName) {
-    colorParams.gradient = GRADIENTS[colorParams.gradientName] || GRADIENTS.grayscale;
+// Headless 2D-context shim: generatePerlinImage only needs createImageData +
+// putImageData — no canvas, no deps (same trick as scripts/smoke-test.js).
+// Returns a packed RGB buffer (alpha dropped; presets don't use the mask).
+function renderRGB(params) {
+  const ctx = {
+    createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+    _img: null,
+    putImageData(img) { this._img = img; },
+  };
+  generatePerlinImage(params, ctx);
+  const rgba = ctx._img.data;
+  const rgb = Buffer.alloc(params.width * params.height * 3);
+  for (let i = 0, j = 0; i < rgba.length; i += 4) {
+    rgb[j++] = rgba[i]; rgb[j++] = rgba[i + 1]; rgb[j++] = rgba[i + 2];
   }
+  return rgb;
+}
 
-  let off = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const n = fbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity);
-      const [r, g, b] = colorize(n, colorParams);
-      buf[off++] = r; buf[off++] = g; buf[off++] = b;
-    }
-  }
-  return buf;
+// A single still frame from a named preset at a chosen loop position + size.
+function presetFrame(name, width, height, loopProgress) {
+  const preset = BUILTIN_PRESETS[name];
+  if (!preset) throw new Error("unknown preset: " + name);
+  return renderRGB(resolveParams({ ...preset, width, height, loop: true, loopProgress }));
 }
 
 // ---------- PNG encoder (pure Node) ----------
@@ -107,17 +71,17 @@ function chunk(type, data) {
   return Buffer.concat([len, typeBuf, data, crc]);
 }
 function encodePng(width, height, rgb) {
-  // IHDR: width, height, bit depth=8, colour type=2 (RGB), compression=0, filter=0, interlace=0
+  // IHDR: width, height, bit depth=8, colour type=2 (RGB), no interlace.
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr.writeUInt8(8, 8);     // bit depth
-  ihdr.writeUInt8(2, 9);     // colour type RGB
-  ihdr.writeUInt8(0, 10);    // compression
-  ihdr.writeUInt8(0, 11);    // filter
-  ihdr.writeUInt8(0, 12);    // interlace
+  ihdr.writeUInt8(8, 8);
+  ihdr.writeUInt8(2, 9);
+  ihdr.writeUInt8(0, 10);
+  ihdr.writeUInt8(0, 11);
+  ihdr.writeUInt8(0, 12);
 
-  // Prefix each scanline with filter byte 0 (None)
+  // Prefix each scanline with filter byte 0 (None).
   const stride = width * 3;
   const filtered = Buffer.alloc(height * (stride + 1));
   for (let y = 0; y < height; y++) {
@@ -136,63 +100,18 @@ function encodePng(width, height, rgb) {
 }
 
 // ---------- Render jobs ----------
+// Hero is the iconic Lava fire; the gallery shows the range of colour modes /
+// features: HSV (aurora), per-channel RGB (nebula), domain warp (marble),
+// flow field (flow), Layer 2 composite, and posterize (terrain).
 const ASSETS = path.join(REPO, "assets");
-const LOOP_DEFAULTS = { loopRadius: 1.0, scaleT: 0.15 };
-
 const JOBS = [
-  // Hero / OG image — Lava variant, wide
-  {
-    out: "hero.png",
-    params: {
-      width: 1200, height: 630,
-      scaleX: 0.008, scaleY: 0.008, scaleT: 0.12,
-      octaves: 6, persistence: 0.62, lacunarity: 2.1, base: 7,
-      colorMode: "gradient", gradientName: "fire",
-      loopProgress: 0.42, loopRadius: 1.0,
-    },
-  },
-  // Gallery
-  {
-    out: "gallery-aurora.png",
-    params: {
-      width: 700, height: 467,
-      scaleX: 0.009, scaleY: 0.024, scaleT: 0.18,
-      octaves: 5, persistence: 0.6, lacunarity: 2.4, base: 19,
-      colorMode: "hsv",
-      hsvHueShift: 0.30, hsvHueRange: 0.48, hsvSat: 0.88, hsvVal: 1.0,
-      loopProgress: 0.27, loopRadius: 1.0,
-    },
-  },
-  {
-    out: "gallery-ocean.png",
-    params: {
-      width: 700, height: 467,
-      scaleX: 0.011, scaleY: 0.011, scaleT: 0.14,
-      octaves: 6, persistence: 0.55, lacunarity: 2.0, base: 23,
-      colorMode: "gradient", gradientName: "ocean",
-      loopProgress: 0.33, loopRadius: 1.0,
-    },
-  },
-  {
-    out: "gallery-terrain.png",
-    params: {
-      width: 700, height: 467,
-      scaleX: 0.009, scaleY: 0.009, scaleT: 0.08,
-      octaves: 6, persistence: 0.55, lacunarity: 2.0, base: 42,
-      colorMode: "posterize", posterizeSteps: 7, gradientName: "forest",
-      loopProgress: 0.60, loopRadius: 1.0,
-    },
-  },
-  {
-    out: "gallery-circuit.png",
-    params: {
-      width: 700, height: 467,
-      scaleX: 0.025, scaleY: 0.025, scaleT: 0.2,
-      octaves: 3, persistence: 0.7, lacunarity: 3.0, base: 11,
-      colorMode: "posterize", posterizeSteps: 4, gradientName: "sunset",
-      loopProgress: 0.18, loopRadius: 1.0,
-    },
-  },
+  { out: "hero.png",              preset: "lava",      width: 1200, height: 630, loopProgress: 0.42 },
+  { out: "gallery-aurora.png",    preset: "aurora",    width: 700,  height: 467, loopProgress: 0.27 },
+  { out: "gallery-nebula.png",    preset: "nebula",    width: 700,  height: 467, loopProgress: 0.55 },
+  { out: "gallery-marble.png",    preset: "marble",    width: 700,  height: 467, loopProgress: 0.33 },
+  { out: "gallery-flow.png",      preset: "flow",      width: 700,  height: 467, loopProgress: 0.18 },
+  { out: "gallery-composite.png", preset: "composite", width: 700,  height: 467, loopProgress: 0.60 },
+  { out: "gallery-terrain.png",   preset: "terrain",   width: 700,  height: 467, loopProgress: 0.50 },
 ];
 
 if (!fs.existsSync(ASSETS)) {
@@ -202,12 +121,10 @@ if (!fs.existsSync(ASSETS)) {
 
 for (const job of JOBS) {
   const t0 = Date.now();
-  const rgb = renderFrame(job.params);
-  const png = encodePng(job.params.width, job.params.height, rgb);
-  const outPath = path.join(ASSETS, job.out);
-  fs.writeFileSync(outPath, png);
-  const t1 = Date.now();
+  const rgb = presetFrame(job.preset, job.width, job.height, job.loopProgress);
+  const png = encodePng(job.width, job.height, rgb);
+  fs.writeFileSync(path.join(ASSETS, job.out), png);
   const kb = (png.length / 1024).toFixed(1);
-  console.log(`✓ ${job.out.padEnd(28)} ${job.params.width}×${job.params.height}  ${kb} KB  ${t1 - t0} ms`);
+  console.log(`✓ ${job.out.padEnd(24)} ${job.preset.padEnd(10)} ${job.width}×${job.height}  ${kb} KB  ${Date.now() - t0} ms`);
 }
 console.log("all images written →", ASSETS);
