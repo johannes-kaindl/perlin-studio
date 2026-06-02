@@ -6,6 +6,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.16.1] — 2026-06-02
+
+### Changed
+- Internal: consolidated the ad-hoc font sizes into a small type-scale of
+  `--fs-*` tokens. A few near-duplicate sizes snapped to the nearest step
+  (≤0.5px shifts, on minor chrome only); no functional change. (The full
+  spacing-token ramp was intentionally deferred — see notes.)
+
 ## [0.16.0] — 2026-06-02
 
 ### Changed
