@@ -86,6 +86,7 @@ const els = {
 
   // Color mode
   colorMode: $("p-color-mode"),
+  btnCustomPalette: $("btn-custom-palette"),
   // rgb
   rs: $("p-rs"), gs: $("p-gs"), bs: $("p-bs"),
   ri: $("p-ri"), gi: $("p-gi"), bi: $("p-bi"),
@@ -667,6 +668,18 @@ function applyPalette() {
     : `Applied a ${colors.length}-colour palette.`);
 }
 
+// Always-visible entry point to the custom hex palette: jump straight to the
+// gradient editor in custom mode from any colour mode (it is otherwise two
+// dropdowns deep). UI sugar over the existing controls — no state of its own.
+function goToCustomPalette() {
+  els.colorMode.value = "gradient";
+  updateColorSections();
+  els.gradientPreset.value = "custom";
+  updateGradientPreview();
+  schedulePreview();
+  els.customStopsWrap.scrollIntoView({ block: "nearest" });
+}
+
 // ============= SLIDER READOUTS =============
 // Every sidebar range gets a live numeric readout (the transport t slider
 // already has one). For a tool built on shareable parameter sets, a slider
@@ -1048,6 +1061,7 @@ function wireEvents() {
   });
   els.btnAddStop.addEventListener("click", addCustomStop);
   els.btnApplyPalette.addEventListener("click", applyPalette);
+  els.btnCustomPalette.addEventListener("click", goToCustomPalette);
 
   els.t.addEventListener("input", () => {
     els.tDisplay.textContent = parseFloat(els.t.value).toFixed(2);

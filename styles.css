@@ -556,6 +556,21 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 
 .select-row { margin-bottom: 8px; }
 
+/* Always-visible entry point to the custom hex palette (otherwise two
+   dropdowns deep). Accent-tinted so it reads as the way to your own colours. */
+.custom-palette-cta {
+  width: 100%;
+  margin-bottom: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+}
+.custom-palette-cta:hover:not(:disabled) {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 16%, var(--panel-2));
+  border-color: var(--accent);
+}
+
 /* Color sub-sections */
 .color-section {
   margin-top: 10px;
