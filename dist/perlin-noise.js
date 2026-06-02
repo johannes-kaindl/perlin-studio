@@ -1024,6 +1024,11 @@
           this.pendingResolves = [];
           const err = new Error("Perlin worker crashed" + (e && e.message ? ": " + e.message : ""));
           for (const p of pending) { if (p.reject) p.reject(err); }
+          // The in-flight frame is lost with the worker; repaint it on the main
+          // thread so the canvas isn't left blank and consumers' onFrame still
+          // fires (e.g. to clear a first-paint loading state). Subsequent
+          // renders take the main-thread path automatically (worker is null).
+          if (this.params) this.renderOnce();
         };
       } catch (e) {
         this.worker = null;
