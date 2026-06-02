@@ -6,6 +6,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.2] — 2026-06-02
+
+### Changed
+- **Accessibility contrast pass (round 2, slice 1).** Faint informational text
+  (`--text-faint`) now meets WCAG AA (≥4.5:1) in both themes. Small accent text
+  (section numbers, the time readout, the status prefix, the custom-palette
+  button) uses a deeper green in the **light** theme via a new `--accent-text`
+  token, and the light primary-button label now sits on a deeper green so the
+  white text passes AA. Resting field/section borders are lifted for low-vision
+  visibility — a middle ground that keeps the hairline look, with the focus
+  ring remaining the fully WCAG-compliant indicator. Dark-theme accents are
+  unchanged.
+
 ## [0.14.1] — 2026-06-02
 
 ### Added
