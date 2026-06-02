@@ -6,6 +6,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-06-02
+
+### Changed
+- **Refreshed the built-in presets** for more impact and to better show off
+  the tool's range: `flow` is now a visible, saturated vector field (was
+  nearly black); `nebula` a vivid magenta per-channel field; `composite` a
+  dramatic layered magma; `circuit` brighter with more structure; `default` a
+  higher-contrast viridis; `clouds` more dramatic storm-grey; `terrain` more
+  banded/topographic. Affects the studio preset chips and the embeddable
+  `<perlin-noise preset="…">` element.
+
 ## [0.16.1] — 2026-06-02
 
 ### Changed
