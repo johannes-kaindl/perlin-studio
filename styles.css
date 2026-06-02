@@ -308,8 +308,10 @@ main {
 @media (max-width: 720px) {
   main { grid-template-columns: 1fr; }
   .main { order: -1; position: static !important; }
-  /* Definite height so the canvas object-fit:contain has a box to fill. */
-  .canvas-wrap { height: 60vh; height: 60dvh; min-height: 280px; padding: 32px 14px 14px; }
+  /* Definite height so the canvas object-fit:contain has a box to fill. The
+     #canvas-wrap id beats the later equal-specificity base .canvas-wrap rule,
+     so this mobile sizing actually wins the cascade. */
+  #canvas-wrap { height: 60vh; height: 60dvh; min-height: 280px; padding: 32px 14px 14px; }
 }
 
 .panel {

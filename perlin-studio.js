@@ -618,9 +618,11 @@ function attachRangeReadouts() {
     if (input.classList.contains("stop-pos")) continue;  // per-stop readout instead
     const label = input.closest("label");
     if (!label) continue;
-    const out = document.createElement("output");
+    // A plain <span>, not <output>: <output> is a labelable element, so as the
+    // label's first labelable descendant it would steal the slider's implicit
+    // association (accessible name + click-to-focus). The readout is display-only.
+    const out = document.createElement("span");
     out.className = "range-val";
-    if (input.id) out.htmlFor = input.id;
     // Lift the label caption next to the value in a header row, slider below.
     const head = document.createElement("span");
     head.className = "range-head";
@@ -894,16 +896,26 @@ async function recordWebm() {
     return;
   }
   state.recordedBlob = blob;
-  els.animPreview.src = URL.createObjectURL(blob);
-  els.animPreview.classList.add("ready");
-  els.canvas.classList.add("hidden");
   els.btnWebmDownload.hidden = false;
   els.btnWebmDownload.disabled = false;
-  setStatus(cancelled
-    ? `Recording stopped — partial clip, ${(blob.size / 1024).toFixed(1)} KB.`
-    : `Animation done — ${totalFrames} frames @ ${fps} fps, ${(blob.size / 1024).toFixed(1)} KB.`);
-
-  if (wasPlaying) play();
+  const sizeKb = (blob.size / 1024).toFixed(1);
+  // If the animation was running, resume live playback (the clip is available
+  // via Download). Otherwise show it inline as a <video> preview. The two are
+  // mutually exclusive: play() -> showLiveCanvas() retires the preview, so they
+  // must never both run on the same path.
+  if (wasPlaying) {
+    play();
+    setStatus(cancelled
+      ? `Recording stopped — partial clip, ${sizeKb} KB (Download).`
+      : `Animation done — ${totalFrames} frames @ ${fps} fps, ${sizeKb} KB (Download).`);
+  } else {
+    els.animPreview.src = URL.createObjectURL(blob);
+    els.animPreview.classList.add("ready");
+    els.canvas.classList.add("hidden");
+    setStatus(cancelled
+      ? `Recording stopped — partial clip, ${sizeKb} KB.`
+      : `Animation done — ${totalFrames} frames @ ${fps} fps, ${sizeKb} KB.`);
+  }
 }
 
 function downloadWebm() {
