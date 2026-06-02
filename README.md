@@ -114,8 +114,8 @@ they show the range of colour modes and features.
 
 ## Live loops
 
-Three seamless 2.5-second loops, rendered by the tool itself — source and
-parameters in [`scripts/render-readme-videos.js`](scripts/render-readme-videos.js).
+Three seamless 2.5-second loops, rendered from the built-in presets via
+[`scripts/render-readme-videos.js`](scripts/render-readme-videos.js).
 The WebMs live under [`docs/examples/`](docs/examples/) and are directly
 linkable from the [live demo](https://jkaindl.codeberg.page/perlin-studio/)
 (handy for embedding into other docs).
@@ -127,9 +127,9 @@ linkable from the [live demo](https://jkaindl.codeberg.page/perlin-studio/)
     <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/terrain-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Lava</b> · Fire gradient · 5 octaves</sub></td>
-    <td align="center"><sub><b>Aurora</b> · HSV mode · strongly anisotropic scale</sub></td>
-    <td align="center"><sub><b>Terrain</b> · Posterize 7-step · Forest gradient</sub></td>
+    <td align="center"><sub><b>Lava</b> · Fire gradient</sub></td>
+    <td align="center"><sub><b>Aurora</b> · HSV mode</sub></td>
+    <td align="center"><sub><b>Terrain</b> · Posterize · Forest gradient</sub></td>
   </tr>
 </table>
 
