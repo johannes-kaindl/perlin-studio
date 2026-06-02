@@ -123,3 +123,15 @@ needed.
 - Relocating `#custom-stops` must not break `renderCustomStops`
   (`#custom-stops-list` id) or the visibility toggle (`#custom-stops` id) —
   both are id-based, so location-independent.
+
+---
+
+## Addendum (v0.14.1) — discoverability
+
+The custom palette was reachable only two dropdowns deep (Color mode →
+Gradient → "Custom …"), so it was easy to miss entirely. An always-visible
+**"Custom hex palette →"** button now sits directly under the Color-mode
+select. Clicking it (`goToCustomPalette`) switches to Gradient + "Custom",
+reveals the editor, and scrolls it into view — from any colour mode. Pure UI
+sugar over the existing controls (no new state, no backend/bundle change); the
+gradient preset dropdown keeps its own "Custom …" entry too.

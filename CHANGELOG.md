@@ -6,6 +6,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-06-02
+
+### Added
+- A visible **"Custom hex palette →"** button under the Color-mode selector
+  that jumps straight to the custom gradient editor (switches to
+  Gradient + "Custom" and reveals it). The palette was previously reachable
+  only via Color mode → Gradient → "Custom …", two dropdowns deep.
+
 ## [0.14.0] — 2026-06-02
 
 ### Added
