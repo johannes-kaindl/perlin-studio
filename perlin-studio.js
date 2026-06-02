@@ -328,13 +328,17 @@ function applyParamsToUi(p) {
       }));
       renderCustomStops();
     }
-    updateGradientPreview();
   }
   if (p.hsvHueShift != null) els.hueShift.value = p.hsvHueShift;
   if (p.hsvHueRange != null) els.hueRange.value = p.hsvHueRange;
   if (p.hsvSat != null) els.sat.value = p.hsvSat;
   if (p.hsvVal != null) els.val.value = p.hsvVal;
   if (p.posterizeSteps != null) els.posterSteps.value = p.posterizeSteps;
+  // Editor visibility + gradient preview, after the mode and gradient name are
+  // applied. Must run for ALL modes: now that #custom-stops is a section-level
+  // sibling, updateColorSections() no longer hides it via the gradient section,
+  // so a preset without a gradientName (RGB/HSV/Flow) must hide it here.
+  updateGradientPreview();
   refreshRangeReadouts();
 }
 
