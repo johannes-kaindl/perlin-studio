@@ -69,9 +69,11 @@ const els = {
   // Warp
   warpStrength: $("p-warp-strength"),
   warpScale:    $("p-warp-scale"),
+  warpExtra:    $("warp-extra"),
 
   // Layer 2
   layer2On:       $("p-layer2-on"),
+  layer2Controls: $("layer2-controls"),
   layer2Sx:       $("p-layer2-sx"),
   layer2Sy:       $("p-layer2-sy"),
   layer2Oct:      $("p-layer2-oct"),
@@ -290,6 +292,7 @@ function applyParamsToUi(p) {
   if (p.lacunarity != null) els.lac.value = p.lacunarity;
   if (p.warpStrength != null) els.warpStrength.value = p.warpStrength;
   if (p.warpScale != null) els.warpScale.value = p.warpScale;
+  updateWarpMode();
 
   if (p.layer2On != null) els.layer2On.checked = p.layer2On;
   if (p.layer2ScaleX != null) els.layer2Sx.value = p.layer2ScaleX;
@@ -360,10 +363,12 @@ function updateColorSections() {
 // them), so disable them — matching how the Loop / Color / Mask sections gate
 // their own controls.
 function updateLayer2Mode() {
-  const on = els.layer2On.checked;
-  for (const el of [els.layer2Sx, els.layer2Sy, els.layer2Oct, els.layer2Base, els.layer2Blend, els.layer2Mix]) {
-    el.disabled = !on;
-  }
+  // Progressive disclosure: reveal the Layer-2 controls only when enabled.
+  els.layer2Controls.hidden = !els.layer2On.checked;
+}
+function updateWarpMode() {
+  // Warp scale is inert until strength > 0 — reveal it only when it matters.
+  els.warpExtra.hidden = clampFloat(els.warpStrength.value, 0, 8, 0) <= 0;
 }
 
 // WebM is RGB-only and ignores the alpha mask. Surface that caveat right at
@@ -1081,6 +1086,7 @@ function wireEvents() {
   });
   els.layer2Blend.addEventListener("change", schedulePreview);
   els.layer2On.addEventListener("change", updateLayer2Mode);
+  els.warpStrength.addEventListener("input", updateWarpMode);
   els.posterGradient.addEventListener("change", () => {
     updateGradientPreview();
     schedulePreview();
@@ -1205,6 +1211,7 @@ function initThemeToggle() {
   updateLoopMode();
   attachRangeReadouts();
   updateLayer2Mode();
+  updateWarpMode();
   wireEvents();
   initThemeToggle();
   setFrameState("paused");

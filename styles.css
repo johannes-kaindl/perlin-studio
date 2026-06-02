@@ -430,6 +430,9 @@ label.checkbox input { margin: 0; }
   padding: 8px 0 0;
   margin-bottom: 0;
 }
+/* Progressive-disclosure wrappers (Layer 2 controls / Warp scale). */
+.layer2-controls[hidden],
+.warp-extra[hidden] { display: none; }
 
 input[type="number"],
 input[type="text"],
@@ -980,7 +983,7 @@ button.primary:hover:not(:disabled) {
    ============================================================ */
 .transport {
   display: grid;
-  grid-template-columns: auto auto 1fr auto auto;
+  grid-template-columns: auto auto 1fr;
   gap: 10px;
   align-items: end;
   padding: 12px 14px;
@@ -1067,9 +1070,6 @@ button.primary:hover:not(:disabled) {
     row-gap: 10px;
   }
   .t-slider { grid-column: 1 / -1; grid-row: 2; }
-  .num-field { width: auto; }
-  .fps-label { grid-column: 2; grid-row: 1; }
-  .frames-label { grid-column: 3; grid-row: 1; }
   .transport-btn { grid-row: 1; }
 }
 
