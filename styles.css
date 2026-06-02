@@ -1052,27 +1052,6 @@ button.primary:hover:not(:disabled) {
 .t-label-val { color: var(--accent-text); font-weight: 600; letter-spacing: 0.02em; text-transform: none; }
 .t-slider input[type="range"] { margin: 0; height: 18px; }
 
-.num-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  width: 78px;
-}
-.num-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-}
-.num-field input {
-  margin: 0;
-  padding: 6px 8px;
-  font-size: var(--fs-md);
-  height: 30px;
-}
-
 @media (max-width: 720px) {
   .transport {
     grid-template-columns: auto auto 1fr;
@@ -1222,8 +1201,7 @@ button.primary:hover:not(:disabled) {
 @media (pointer: coarse) {
   input[type="number"],
   input[type="text"],
-  select,
-  .num-field input { font-size: 16px; }
+  select { font-size: 16px; }
 
   input[type="range"],
   .t-slider input[type="range"] { height: 28px; }
