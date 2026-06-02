@@ -423,6 +423,13 @@ label.checkbox input { margin: 0; }
   margin-bottom: 10px;
 }
 .switch-label { color: var(--text); font-weight: 500; }
+/* De-nest: inside a bordered color-section, drop the switch-row's own box. */
+.color-section .switch-row {
+  background: none;
+  border: none;
+  padding: 8px 0 0;
+  margin-bottom: 0;
+}
 
 input[type="number"],
 input[type="text"],
@@ -610,7 +617,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 .custom-stops {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed var(--border);
+  border-top: 1px solid var(--border);
 }
 .custom-stops[hidden] { display: none; }
 .custom-stops-list {
@@ -928,17 +935,44 @@ button.primary:hover:not(:disabled) {
   -webkit-backdrop-filter: blur(6px);
 }
 .frame-tag-tl { left: 8px; }
-.frame-tag-tr { right: 8px; color: var(--accent); border-color: color-mix(in oklab, var(--accent) 35%, var(--border)); }
+.frame-tag-tr { right: 8px; }
+/* The corner tag reflects the real transport state. */
+.frame-tag-tr.is-live   { color: var(--accent-text); border-color: color-mix(in oklab, var(--accent) 35%, var(--border)); }
+.frame-tag-tr.is-paused { color: var(--text-dim); border-color: var(--border); }
+.frame-tag-tr.is-rec    { color: var(--danger); border-color: color-mix(in oklab, var(--danger) 45%, var(--border)); }
 .tag-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent-glow);
-  animation: dot-pulse 2s ease-in-out infinite;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
 }
+.frame-tag-tr.is-live .tag-dot { animation: dot-pulse 2s ease-in-out infinite; }
+.frame-tag-tr.is-rec  .tag-dot { animation: dot-pulse 1s ease-in-out infinite; }
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+
+/* First-paint loading indicator, cleared on the first rendered frame. */
+.canvas-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  pointer-events: none;
+  animation: loading-pulse 1.2s ease-in-out infinite;
+}
+.canvas-loading[hidden] { display: none; }
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
 }
 
 /* ============================================================
@@ -965,7 +999,23 @@ button.primary:hover:not(:disabled) {
   justify-content: center;
 }
 .transport-btn .play-glyph { line-height: 1; }
-.transport-btn.primary { font-size: 13px; }
+/* Play reflects transport state: filled accent while running, neutral idle. */
+#btn-play.is-playing {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+#btn-play.is-playing:hover:not(:disabled) {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--accent-fg);
+}
+/* Light theme: the white glyph needs the deeper green to pass AA (mirrors
+   button.primary). */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) #btn-play.is-playing { background: var(--accent-2); border-color: var(--accent-2); }
+}
+:root[data-theme="light"] #btn-play.is-playing { background: var(--accent-2); border-color: var(--accent-2); }
 
 .t-slider {
   display: flex;
@@ -1068,6 +1118,18 @@ button.primary:hover:not(:disabled) {
   min-width: 0;
 }
 .fps-counter:empty { display: none; }
+.engine-mode {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--danger);
+  border: 1px solid color-mix(in oklab, var(--danger) 40%, var(--border));
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+  background: var(--danger-soft);
+}
+.engine-mode[hidden] { display: none; }
 
 .progress {
   height: 3px;
@@ -1165,6 +1227,7 @@ button.primary:hover:not(:disabled) {
    REDUCED MOTION
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-  .tag-dot { animation: none; }
+  .tag-dot { animation: none !important; }
+  .canvas-loading { animation: none !important; }
   * { transition-duration: 0ms !important; }
 }

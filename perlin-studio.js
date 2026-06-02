@@ -54,6 +54,7 @@ const state = {
   recordedChunks: [],
   recordedBlob: null,
   recorder: null,
+  firstFrameRendered: false,
 };
 
 // ============= DOM =============
@@ -135,6 +136,9 @@ const els = {
   // Main output
   canvas: $("canvas-output"),
   animPreview: $("anim-preview"),
+  frameTag: $("frame-tag-tr"),
+  tagVal: $("tag-val"),
+  canvasLoading: $("canvas-loading"),
 
   // Transport
   btnPlay: $("btn-play"),
@@ -147,6 +151,7 @@ const els = {
 
   status: $("status"),
   fpsCounter: $("fps-counter"),
+  engineMode: $("engine-mode"),
   progress: $("progress"),
   progressBar: $("progress-bar"),
 
@@ -721,8 +726,15 @@ function refreshRangeReadouts() { for (const sync of rangeReadouts) sync(); }
 const engine = new PerlinEngine(els.canvas, {
   onTick: (position) => setTValue(position),
   onFrame: ({ fps, isMain }) => {
+    if (!state.firstFrameRendered) {
+      state.firstFrameRendered = true;
+      els.canvasLoading.hidden = true;
+    }
+    // Worker couldn't start → surface the main-thread fallback persistently,
+    // not just transiently in the FPS readout.
+    if (isMain && els.engineMode.hidden) els.engineMode.hidden = false;
     if (engine.playing) {
-      els.fpsCounter.textContent = `${fps.toFixed(1)} fps${isMain ? " (main)" : ""}`;
+      els.fpsCounter.textContent = `${fps.toFixed(1)} fps`;
     }
   },
   transformFrame: (imgData) => applyMaskToImageData(imgData),
@@ -747,6 +759,14 @@ function showLiveCanvas() {
     els.animPreview.classList.remove("ready");
     els.animPreview.pause();
   }
+}
+
+// Reflect the real transport state in the canvas corner tag.
+function setFrameState(s) {
+  const labels = { live: "LIVE", paused: "PAUSED", rec: "REC" };
+  els.tagVal.textContent = labels[s] || "PAUSED";
+  els.frameTag.classList.remove("is-live", "is-paused", "is-rec");
+  els.frameTag.classList.add("is-" + s);
 }
 
 function renderOnce() {
@@ -777,13 +797,17 @@ function play() {
   engine.play();
   els.btnPlay.textContent = "⏸";
   els.btnPlay.setAttribute("aria-label", "Pause");
+  els.btnPlay.classList.add("is-playing");
+  setFrameState("live");
 }
 function pause() {
   if (!engine.playing) return;
   engine.pause();
   els.btnPlay.textContent = "▶";
   els.btnPlay.setAttribute("aria-label", "Play");
+  els.btnPlay.classList.remove("is-playing");
   els.fpsCounter.textContent = "";
+  setFrameState("paused");
 }
 function togglePlay() { engine.playing ? pause() : play(); }
 
@@ -928,6 +952,7 @@ async function recordWebm() {
   els.btnWebmDownload.hidden = true;
   els.btnWebmDownload.disabled = true;
   setProgress(0);
+  setFrameState("rec");
 
   // The frame delay ensures `captureStream` sees the canvas state; without a
   // pause some browsers capture before the repaint.
@@ -966,7 +991,7 @@ async function recordWebm() {
   const blob = new Blob(state.recordedChunks, { type: mime });
   if (blob.size === 0) {
     setStatus("Recording stopped before any frame was captured.", true);
-    if (wasPlaying) play();
+    if (wasPlaying) play(); else setFrameState("paused");
     return;
   }
   state.recordedBlob = blob;
@@ -986,6 +1011,7 @@ async function recordWebm() {
     els.animPreview.src = URL.createObjectURL(blob);
     els.animPreview.classList.add("ready");
     els.canvas.classList.add("hidden");
+    setFrameState("paused");
     setStatus(cancelled
       ? `Recording stopped — partial clip, ${sizeKb} KB.`
       : `Animation done — ${totalFrames} frames @ ${fps} fps, ${sizeKb} KB.`);
@@ -1097,6 +1123,7 @@ function wireEvents() {
       state.recording = false;
       els.btnWebm.textContent = "WebM animation";
       setProgress(null);
+      setFrameState(engine.playing ? "live" : "paused");
     });
   });
   els.btnWebmDownload.addEventListener("click", downloadWebm);
@@ -1180,7 +1207,10 @@ function initThemeToggle() {
   updateLayer2Mode();
   wireEvents();
   initThemeToggle();
-  // Apply and render the first preset
+  setFrameState("paused");
+  // Apply and render the first preset; the loading overlay clears on the first
+  // painted frame (see onFrame). Status is set deterministically here so it
+  // doesn't differ between worker and main-thread modes.
   applyPreset("default");
   setStatus("Ready. Press ▶ or Space to animate.");
 })();

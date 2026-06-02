@@ -330,10 +330,11 @@
         <div class="frame-tag frame-tag-tl" aria-hidden="true">
           <span class="tag-label">FRAME</span>
         </div>
-        <div class="frame-tag frame-tag-tr" aria-hidden="true">
-          <span class="tag-dot"></span>
-          <span class="tag-val">LIVE</span>
+        <div class="frame-tag frame-tag-tr is-paused" id="frame-tag-tr" aria-hidden="true">
+          <span class="tag-dot" id="tag-dot"></span>
+          <span class="tag-val" id="tag-val">PAUSED</span>
         </div>
+        <div class="canvas-loading" id="canvas-loading" aria-hidden="true">rendering …</div>
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="canvas-output"></canvas>
           <video id="anim-preview" controls loop></video>
@@ -341,7 +342,7 @@
       </div>
 
       <div class="transport">
-        <button id="btn-play" class="transport-btn primary" aria-label="Play/Pause" title="Play / Pause (Space)">
+        <button id="btn-play" class="transport-btn" aria-label="Play/Pause" title="Play / Pause (Space)">
           <span class="play-glyph" aria-hidden="true">▶</span>
         </button>
         <button id="btn-reset-t" class="transport-btn" aria-label="Reset t" title="Reset time">⏮</button>
@@ -365,6 +366,7 @@
 
       <div class="status-row">
         <div class="status" id="status" role="status" aria-live="polite">Initialising …</div>
+        <span class="engine-mode" id="engine-mode" hidden title="The compute worker could not start — rendering on the main thread (may be less smooth).">main thread</span>
         <div class="fps-counter" id="fps-counter"></div>
       </div>
       <div class="progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="bar" id="progress-bar"></div></div>
