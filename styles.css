@@ -14,19 +14,20 @@
   --panel-3:   #181c24;  /* hovered surfaces */
 
   /* ----- Borders ----- */
-  --border:        #22272f;  /* subtle hairline */
-  --border-strong: #2e343d;
-  --border-input:  #1c2129;
+  --border:        #3a414c;  /* hairline, lifted for resting visibility */
+  --border-strong: #474f5c;
+  --border-input:  #343b45;
   --border-focus:  rgba(57, 255, 122, 0.55);
 
   /* ----- Foreground ----- */
   --text:      #e8e4d8;  /* pearl */
   --text-dim:  #828a97;
-  --text-faint:#5a6170;
+  --text-faint:#7e8694;  /* AA on panel-2 (>=4.5:1), still below text-dim */
 
   /* ----- Signals (brand-aligned) ----- */
   --accent:        #39ff7a;            /* phosphor / brand green */
   --accent-2:      #2bd965;            /* hover/press */
+  --accent-text:   #39ff7a;            /* accent as small text (dark: same) */
   --accent-soft:   rgba(57,255,122,0.10);
   --accent-glow:   rgba(57,255,122,0.40);
   --accent-fg:     #06170c;            /* readable text on phosphor */
@@ -72,18 +73,19 @@
     --panel-2:   #ece8dc;
     --panel-3:   #e3decf;
 
-    --border:        #d8d2c2;
-    --border-strong: #bbb4a1;
-    --border-input:  #cfc8b6;
+    --border:        #bdb5a0;
+    --border-strong: #a89e85;
+    --border-input:  #c6bfac;
     --border-focus:  rgba(30, 160, 75, 0.55);
 
     --text:      #181c24;
     --text-dim:  #5a6170;
-    --text-faint:#7a8290;
+    --text-faint:#5f6670;
 
     /* Light-theme accent: darken phosphor for AA contrast on bone */
     --accent:      #1ea84a;
     --accent-2:    #157a36;
+    --accent-text: #13702f;
     --accent-soft: rgba(30,168,74,0.10);
     --accent-glow: rgba(30,168,74,0.30);
     --accent-fg:   #ffffff;
@@ -105,17 +107,18 @@
   --panel-2:   #ece8dc;
   --panel-3:   #e3decf;
 
-  --border:        #d8d2c2;
-  --border-strong: #bbb4a1;
-  --border-input:  #cfc8b6;
+  --border:        #bdb5a0;
+  --border-strong: #a89e85;
+  --border-input:  #c6bfac;
   --border-focus:  rgba(30, 160, 75, 0.55);
 
   --text:      #181c24;
   --text-dim:  #5a6170;
-  --text-faint:#7a8290;
+  --text-faint:#5f6670;
 
   --accent:      #1ea84a;
   --accent-2:    #157a36;
+  --accent-text: #13702f;
   --accent-soft: rgba(30,168,74,0.10);
   --accent-glow: rgba(30,168,74,0.30);
   --accent-fg:   #ffffff;
@@ -239,7 +242,7 @@ html[data-theme="dark"],  html[data-theme="dark"]  body { color-scheme: dark; }
   background: var(--panel);
 }
 .chip-mono:nth-child(1) { color: var(--circuit); border-color: color-mix(in oklab, var(--circuit) 30%, var(--border)); }
-.chip-mono:nth-child(2) { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); }
+.chip-mono:nth-child(2) { color: var(--accent-text); border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); }
 .chip-mono:nth-child(3) { color: var(--spectre); border-color: color-mix(in oklab, var(--spectre) 30%, var(--border)); }
 
 .theme-toggle {
@@ -259,7 +262,7 @@ html[data-theme="dark"],  html[data-theme="dark"]  body { color-scheme: dark; }
               background var(--dur) var(--ease);
 }
 .theme-toggle:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: color-mix(in oklab, var(--accent) 35%, var(--border));
   background: var(--panel-3);
 }
@@ -347,7 +350,7 @@ main {
   color: var(--text);
 }
 .sec-num {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 .sec-name {
@@ -398,7 +401,7 @@ label .unit {
 .range-val {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -561,12 +564,12 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 .custom-palette-cta {
   width: 100%;
   margin-bottom: 10px;
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
   border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
 }
 .custom-palette-cta:hover:not(:disabled) {
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in oklab, var(--accent) 16%, var(--panel-2));
   border-color: var(--accent);
 }
@@ -638,7 +641,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
   background: var(--panel-3);
 }
 .apply-palette-btn:hover:not(:disabled) {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
 }
 .custom-stop {
@@ -710,7 +713,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
   background: var(--panel-3);
 }
 .add-stop-btn:hover:not(:disabled) {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
 }
 
@@ -780,6 +783,19 @@ button.primary:hover:not(:disabled) {
   border-color: var(--accent-2);
   color: var(--accent-fg);
   box-shadow: 0 0 24px -6px var(--accent-glow);
+}
+/* Light theme: the white primary-button label needs a deeper green to reach
+   AA (4.5:1); the dark theme's phosphor green is already high-contrast. The
+   raised glow on hover still provides the hover cue. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) button.primary {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+  }
+}
+:root[data-theme="light"] button.primary {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
 }
 
 /* Preset action row */
@@ -970,7 +986,7 @@ button.primary:hover:not(:disabled) {
 }
 .t-label-name { color: var(--text-dim); }
 .t-label-eq { color: var(--text-faint); }
-.t-label-val { color: var(--accent); font-weight: 600; letter-spacing: 0.02em; text-transform: none; }
+.t-label-val { color: var(--accent-text); font-weight: 600; letter-spacing: 0.02em; text-transform: none; }
 .t-slider input[type="range"] { margin: 0; height: 18px; }
 
 .num-field {
@@ -1028,7 +1044,7 @@ button.primary:hover:not(:disabled) {
 }
 .status::before {
   content: ">";
-  color: var(--accent);
+  color: var(--accent-text);
   margin-right: 6px;
   opacity: 0.7;
 }
