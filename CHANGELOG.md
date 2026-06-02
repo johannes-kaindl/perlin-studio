@@ -6,6 +6,29 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-06-02
+
+### Added
+- **Visible transport state.** The canvas corner tag now reflects the real
+  state — **LIVE** (green, pulsing), **PAUSED** (dim), or **REC** (red) —
+  instead of always reading "LIVE" with a forever-pulsing dot.
+- A **first-paint loading** indicator shows until the first frame actually
+  renders (the status no longer claims "Ready" before the canvas has pixels).
+- A persistent **"main thread"** badge appears when the compute worker can't
+  start, instead of a transient suffix shown only during playback.
+
+### Changed
+- **One clear primary action.** The Play button no longer wears the glowing
+  primary treatment; it fills with accent only while running and is neutral
+  when idle, leaving WebM export as the single primary call-to-action.
+- Unified the sidebar dividers — the lone dashed rule is now solid, and nested
+  switch rows inside colour sections drop their redundant inner box.
+
+### Fixed
+- A compute worker that starts but then dies (e.g. CSP under `file://`) now
+  repaints on the main thread instead of leaving the canvas blank, and the
+  first-paint indicator clears reliably.
+
 ## [0.14.2] — 2026-06-02
 
 ### Changed
