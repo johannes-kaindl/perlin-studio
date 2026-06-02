@@ -28,6 +28,7 @@ yarn-error.log*
 *.webm
 *.png
 !assets/*.png
+!docs/images/**/*.png
 !docs/examples/**/*.png
 !docs/examples/**/*.webm
 
