@@ -6,6 +6,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-06-02
+
+### Changed
+- **Sidebar reorganised for first-run flow.** Presets now sit at the top (pick
+  a look first), then the core parameters (Resolution, Noise, Color, Loop),
+  then the advanced sections (Layer 2, Warp), then Mask and Export.
+- **Recording length & rate live with the recorder.** The frames/fps fields
+  moved out of the transport bar into the Export section, next to the WebM
+  button they drive — they never affected live playback.
+- **Progressive disclosure.** The Layer-2 controls appear only when Layer 2 is
+  enabled, and the Warp scale appears only when Warp strength is above 0, so
+  the panel stays uncluttered until a feature is in use.
+
 ## [0.15.0] — 2026-06-02
 
 ### Added
