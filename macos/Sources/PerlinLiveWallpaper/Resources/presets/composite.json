@@ -1,0 +1,68 @@
+{
+  "width": 384,
+  "height": 256,
+  "scaleX": 0.008,
+  "scaleY": 0.008,
+  "scaleT": 0.1,
+  "octaves": 4,
+  "persistence": 0.5,
+  "lacunarity": 2,
+  "base": 17,
+  "warpStrength": 0,
+  "warpScale": 1,
+  "layer2On": true,
+  "layer2ScaleX": 0.05,
+  "layer2ScaleY": 0.05,
+  "layer2Octaves": 5,
+  "layer2Base": 211,
+  "layer2BlendMode": "multiply",
+  "layer2Mix": 0.6,
+  "colorMode": "gradient",
+  "gradientName": "magma",
+  "loop": true,
+  "loopDuration": 7,
+  "loopRadius": 1,
+  "gradient": [
+    {
+      "pos": 0,
+      "color": [
+        0,
+        0,
+        4
+      ]
+    },
+    {
+      "pos": 0.25,
+      "color": [
+        80,
+        18,
+        123
+      ]
+    },
+    {
+      "pos": 0.5,
+      "color": [
+        183,
+        55,
+        121
+      ]
+    },
+    {
+      "pos": 0.75,
+      "color": [
+        251,
+        136,
+        97
+      ]
+    },
+    {
+      "pos": 1,
+      "color": [
+        252,
+        253,
+        191
+      ]
+    }
+  ],
+  "name": "composite"
+}

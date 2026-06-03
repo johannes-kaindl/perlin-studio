@@ -1,0 +1,44 @@
+{
+  "width": 384,
+  "height": 256,
+  "scaleX": 0.0075,
+  "scaleY": 0.0075,
+  "scaleT": 0.1,
+  "octaves": 7,
+  "persistence": 0.62,
+  "lacunarity": 2.1,
+  "base": 3,
+  "colorMode": "gradient",
+  "gradientName": "grayscale",
+  "warpStrength": 0,
+  "warpScale": 1,
+  "layer2On": false,
+  "layer2ScaleX": 0.06,
+  "layer2ScaleY": 0.06,
+  "layer2Octaves": 4,
+  "layer2Base": 101,
+  "layer2BlendMode": "multiply",
+  "layer2Mix": 0.5,
+  "loop": true,
+  "loopDuration": 8,
+  "loopRadius": 1,
+  "gradient": [
+    {
+      "pos": 0,
+      "color": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pos": 1,
+      "color": [
+        255,
+        255,
+        255
+      ]
+    }
+  ],
+  "name": "clouds"
+}

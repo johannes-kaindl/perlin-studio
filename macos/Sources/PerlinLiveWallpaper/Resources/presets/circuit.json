@@ -1,0 +1,69 @@
+{
+  "width": 384,
+  "height": 256,
+  "scaleX": 0.024,
+  "scaleY": 0.024,
+  "scaleT": 0.18,
+  "octaves": 4,
+  "persistence": 0.6,
+  "lacunarity": 2.8,
+  "base": 11,
+  "colorMode": "posterize",
+  "posterizeSteps": 5,
+  "gradientName": "ocean",
+  "warpStrength": 0,
+  "warpScale": 1,
+  "layer2On": false,
+  "layer2ScaleX": 0.06,
+  "layer2ScaleY": 0.06,
+  "layer2Octaves": 4,
+  "layer2Base": 101,
+  "layer2BlendMode": "multiply",
+  "layer2Mix": 0.5,
+  "loop": true,
+  "loopDuration": 3,
+  "loopRadius": 1,
+  "gradient": [
+    {
+      "pos": 0,
+      "color": [
+        3,
+        11,
+        41
+      ]
+    },
+    {
+      "pos": 0.3,
+      "color": [
+        5,
+        56,
+        107
+      ]
+    },
+    {
+      "pos": 0.6,
+      "color": [
+        0,
+        144,
+        178
+      ]
+    },
+    {
+      "pos": 0.85,
+      "color": [
+        120,
+        220,
+        220
+      ]
+    },
+    {
+      "pos": 1,
+      "color": [
+        240,
+        248,
+        255
+      ]
+    }
+  ],
+  "name": "circuit"
+}

@@ -1,0 +1,68 @@
+{
+  "width": 256,
+  "height": 256,
+  "scaleX": 0.011,
+  "scaleY": 0.011,
+  "scaleT": 0.15,
+  "octaves": 5,
+  "persistence": 0.62,
+  "lacunarity": 2.1,
+  "base": 0,
+  "colorMode": "gradient",
+  "gradientName": "viridis",
+  "warpStrength": 0,
+  "warpScale": 1,
+  "layer2On": false,
+  "layer2ScaleX": 0.06,
+  "layer2ScaleY": 0.06,
+  "layer2Octaves": 4,
+  "layer2Base": 101,
+  "layer2BlendMode": "multiply",
+  "layer2Mix": 0.5,
+  "loop": true,
+  "loopDuration": 4,
+  "loopRadius": 1,
+  "gradient": [
+    {
+      "pos": 0,
+      "color": [
+        68,
+        1,
+        84
+      ]
+    },
+    {
+      "pos": 0.25,
+      "color": [
+        59,
+        82,
+        139
+      ]
+    },
+    {
+      "pos": 0.5,
+      "color": [
+        33,
+        145,
+        140
+      ]
+    },
+    {
+      "pos": 0.75,
+      "color": [
+        94,
+        201,
+        98
+      ]
+    },
+    {
+      "pos": 1,
+      "color": [
+        253,
+        231,
+        37
+      ]
+    }
+  ],
+  "name": "default"
+}

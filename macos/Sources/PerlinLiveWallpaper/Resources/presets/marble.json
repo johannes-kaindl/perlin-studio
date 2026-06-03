@@ -1,0 +1,68 @@
+{
+  "width": 384,
+  "height": 256,
+  "scaleX": 0.012,
+  "scaleY": 0.012,
+  "scaleT": 0.1,
+  "octaves": 4,
+  "persistence": 0.55,
+  "lacunarity": 2.2,
+  "base": 31,
+  "warpStrength": 1.6,
+  "warpScale": 0.6,
+  "colorMode": "gradient",
+  "gradientName": "sunset",
+  "layer2On": false,
+  "layer2ScaleX": 0.06,
+  "layer2ScaleY": 0.06,
+  "layer2Octaves": 4,
+  "layer2Base": 101,
+  "layer2BlendMode": "multiply",
+  "layer2Mix": 0.5,
+  "loop": true,
+  "loopDuration": 8,
+  "loopRadius": 1,
+  "gradient": [
+    {
+      "pos": 0,
+      "color": [
+        12,
+        12,
+        60
+      ]
+    },
+    {
+      "pos": 0.3,
+      "color": [
+        110,
+        30,
+        100
+      ]
+    },
+    {
+      "pos": 0.6,
+      "color": [
+        240,
+        110,
+        80
+      ]
+    },
+    {
+      "pos": 0.85,
+      "color": [
+        255,
+        200,
+        90
+      ]
+    },
+    {
+      "pos": 1,
+      "color": [
+        255,
+        245,
+        200
+      ]
+    }
+  ],
+  "name": "marble"
+}

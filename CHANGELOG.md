@@ -6,6 +6,18 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **macOS companion app** (`macos/`) — *Perlin Live Wallpaper*, a native
+  menu-bar app that renders the studio's noise live as an animated desktop
+  background on the GPU via Metal. It uses only public AppKit (a desktop-level
+  window behind the icons — no private APIs; macOS has no third-party live-
+  wallpaper API), renders on all displays, and auto-pauses when covered or on
+  battery. Noise *parameters* stay single-source in `perlin-presets.js`
+  (exported to JSON); the noise *algorithm* is ported to Metal Shading Language.
+  v1 ships 8 presets (gradient / posterize / hsv modes). Separate artifact —
+  the zero-build, `file://`-safe web studio is unchanged. See
+  `macos/README.md` and the design spec under `docs/superpowers/specs/`.
+
 ## [0.17.0] — 2026-06-02
 
 ### Changed

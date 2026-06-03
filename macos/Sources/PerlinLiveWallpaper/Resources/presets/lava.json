@@ -1,0 +1,68 @@
+{
+  "width": 384,
+  "height": 256,
+  "scaleX": 0.015,
+  "scaleY": 0.015,
+  "scaleT": 0.12,
+  "octaves": 5,
+  "persistence": 0.65,
+  "lacunarity": 2.2,
+  "base": 7,
+  "colorMode": "gradient",
+  "gradientName": "fire",
+  "warpStrength": 0,
+  "warpScale": 1,
+  "layer2On": false,
+  "layer2ScaleX": 0.06,
+  "layer2ScaleY": 0.06,
+  "layer2Octaves": 4,
+  "layer2Base": 101,
+  "layer2BlendMode": "multiply",
+  "layer2Mix": 0.5,
+  "loop": true,
+  "loopDuration": 6,
+  "loopRadius": 1,
+  "gradient": [
+    {
+      "pos": 0,
+      "color": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "pos": 0.3,
+      "color": [
+        136,
+        0,
+        0
+      ]
+    },
+    {
+      "pos": 0.6,
+      "color": [
+        255,
+        89,
+        0
+      ]
+    },
+    {
+      "pos": 0.85,
+      "color": [
+        255,
+        213,
+        0
+      ]
+    },
+    {
+      "pos": 1,
+      "color": [
+        255,
+        255,
+        240
+      ]
+    }
+  ],
+  "name": "lava"
+}
