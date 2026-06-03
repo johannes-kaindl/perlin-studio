@@ -33,6 +33,11 @@ swift run
 It appears as a menu-bar icon (no Dock icon). The menu lets you pick a preset,
 pause/resume, and toggle **Animate on battery**. It renders on all displays.
 
+**Open Editor…** (⌘E) runs the full Perlin Studio in a window; editing live-drives
+the wallpaper (an injected bridge forwards the studio's parameters — the web
+source is untouched). Your last look is remembered across launches. Image masks
+currently affect only the editor preview, not the wallpaper.
+
 Frames are driven by the app's own run-loop timer (MTKView's internal display
 link doesn't fire reliably for a desktop-level window). Power policy follows the
 power *source*: on AC it runs at 30 fps; on battery it pauses by default, or runs

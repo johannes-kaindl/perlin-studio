@@ -22,7 +22,7 @@ enum RenderCLI {
         var i = 0
         while i < bgra.count { bgra.swapAt(i, i + 2); i += 4 }
         let ok = writePNG(rgba: bgra, width: width, height: height, to: path)
-        FileHandle.standardError.write(Data("render: \(preset.name) [\(preset.colorMode)] \(width)x\(height) -> \(path) ok=\(ok)\n".utf8))
+        FileHandle.standardError.write(Data("render: \(preset.label) [\(preset.colorMode)] \(width)x\(height) -> \(path) ok=\(ok)\n".utf8))
         return ok
     }
 

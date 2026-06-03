@@ -11,7 +11,7 @@ struct GradientStop: Codable {
 /// modelled; any extra keys in the JSON (layer2*, loop*, gradientName, …) are
 /// ignored by the synthesized decoder.
 struct Preset: Codable {
-    let name: String
+    let name: String?          // bundled presets carry one; live editor params don't
     let width: Int
     let height: Int
     let scaleX: Double
@@ -57,7 +57,10 @@ struct Preset: Codable {
     let layer2Mix: Double?
 
     /// Title-cased display label for the menu.
-    var label: String { name.prefix(1).uppercased() + name.dropFirst() }
+    var label: String {
+        guard let name = name, !name.isEmpty else { return "Custom" }
+        return name.prefix(1).uppercased() + name.dropFirst()
+    }
 
     /// 0 gradient, 1 posterize, 2 hsv, 3 rgb, 4 flow. Unknown → gradient.
     var colorModeIndex: Int32 {

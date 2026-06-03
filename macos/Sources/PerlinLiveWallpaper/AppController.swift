@@ -12,7 +12,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var manager: WallpaperWindowManager?
     private var power: PowerMonitor!
     private var statusItem: NSStatusItem!
-    private var activeIndex = 0
+    private let editor = EditorWindowController()
+    private var activeIndex = 0           // -1 = a custom (editor) look is active
     private var animateOnBattery = false
 
     private static let acFrameRate = 30.0
@@ -27,7 +28,12 @@ final class AppController: NSObject, NSApplicationDelegate {
             setupStatusItem()   // still give the user a way to quit
             return
         }
-        manager = WallpaperWindowManager(preset: store.presets[activeIndex], gpu: gpu)
+        // Restore the last-applied custom look, if any; else the first preset.
+        let persisted = Persistence.load()
+        if persisted != nil { activeIndex = -1 }
+        manager = WallpaperWindowManager(preset: persisted ?? store.presets[0], gpu: gpu)
+
+        editor.onParams = { [weak self] json in self?.applyEditorParams(json) }
 
         power = PowerMonitor()
         power.onChange = { [weak self] onBattery in self?.applyPowerPolicy(onBattery: onBattery) }
@@ -35,6 +41,15 @@ final class AppController: NSObject, NSApplicationDelegate {
 
         setupStatusItem()
         applyPowerPolicy(onBattery: power.onBattery)
+    }
+
+    /// Live params from the embedded editor: apply to the wallpaper + persist.
+    private func applyEditorParams(_ json: String) {
+        guard let manager = manager,
+              let preset = try? JSONDecoder().decode(Preset.self, from: Data(json.utf8)) else { return }
+        manager.apply(preset: preset)
+        Persistence.save(json: json)
+        if activeIndex != -1 { activeIndex = -1; rebuildMenu() }   // clear built-in selection once
     }
 
     /// Apply the AC/battery policy to the (power) pause reason and the frame rate.
@@ -65,6 +80,12 @@ final class AppController: NSObject, NSApplicationDelegate {
         let header = NSMenuItem(title: "Perlin Live Wallpaper", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
+        menu.addItem(.separator())
+
+        let edit = NSMenuItem(title: "Open Editor…", action: #selector(openEditor), keyEquivalent: "e")
+        edit.target = self
+        edit.isEnabled = enabled
+        menu.addItem(edit)
         menu.addItem(.separator())
 
         if !enabled {
@@ -121,6 +142,8 @@ final class AppController: NSObject, NSApplicationDelegate {
         animateOnBattery.toggle()
         applyPowerPolicy(onBattery: power?.onBattery ?? false)
     }
+
+    @objc private func openEditor() { editor.show() }
 
     @objc private func quit() { NSApp.terminate(nil) }
 }

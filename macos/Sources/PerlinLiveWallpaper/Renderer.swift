@@ -236,7 +236,7 @@ final class Renderer {
         var allPass = true
         for preset in presets {
             guard let renderer = Renderer(gpu: gpu, preset: preset) else {
-                log("selftest: \(preset.name) renderer init failed"); allPass = false; continue
+                log("selftest: \(preset.label) renderer init failed"); allPass = false; continue
             }
             let rpd = MTLRenderPassDescriptor()
             rpd.colorAttachments[0].texture = tex
@@ -260,7 +260,7 @@ final class Renderer {
             }
             let pass = anyNonBlack && varied
             if !pass { allPass = false }
-            log("selftest: \(preset.name) [\(preset.colorMode)] nonBlack=\(anyNonBlack) varied=\(varied) -> \(pass ? "PASS" : "FAIL")")
+            log("selftest: \(preset.label) [\(preset.colorMode)] nonBlack=\(anyNonBlack) varied=\(varied) -> \(pass ? "PASS" : "FAIL")")
         }
         log("selftest: \(allPass ? "ALL PASS" : "FAILURES") (\(presets.count) presets)")
         return allPass
