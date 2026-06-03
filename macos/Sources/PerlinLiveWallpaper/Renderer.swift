@@ -3,8 +3,8 @@ import MetalKit
 import simd
 
 // Mirrors `struct Uniforms` in NoiseShader.swift exactly (field order + types).
-// float2 forces 8-byte alignment at offset 0; the trailing Int32s keep the
-// stride a multiple of 8. Don't reorder without re-checking the MSL struct.
+// float2 first (8-byte aligned at offset 0), then all Float (4-byte), then all
+// Int32 (4-byte). Don't reorder without re-checking the MSL struct.
 private struct WallpaperUniforms {
     var resolution: SIMD2<Float>
     var tz: Float            // time folded by scaleT, CPU-side (see encode)
@@ -14,14 +14,32 @@ private struct WallpaperUniforms {
     var lacunarity: Float
     var warpStrength: Float
     var warpScale: Float
+    var presetHeight: Float
     var hsvHueShift: Float
     var hsvHueRange: Float
     var hsvSat: Float
     var hsvVal: Float
-    var presetHeight: Float
+    var rScale: Float
+    var gScale: Float
+    var bScale: Float
+    var flowHueShift: Float
+    var flowSat: Float
+    var flowGain: Float
+    var flowFloor: Float
+    var flowEps: Float
+    var layer2ScaleX: Float
+    var layer2ScaleY: Float
+    var layer2Mix: Float
     var octaves: Int32
     var colorMode: Int32
     var posterizeSteps: Int32
+    var rgbMultiChannel: Int32
+    var rInvert: Int32
+    var gInvert: Int32
+    var bInvert: Int32
+    var layer2On: Int32
+    var layer2Octaves: Int32
+    var layer2BlendMode: Int32
 }
 
 /// Renders one view's frames. Holds only the cheap per-preset GPU resources
@@ -35,16 +53,21 @@ private struct WallpaperUniforms {
 final class Renderer {
     private let gpu: GPUContext
     private var permBuffer: MTLBuffer
+    private var permBuffer2: MTLBuffer   // layer-2 permutation (layer2Base)
     private var gradientTexture: MTLTexture
     private var preset: Preset
     private var permBase: Int
+    private var permBase2: Int
 
     init?(gpu: GPUContext, preset: Preset) {
         self.gpu = gpu
         self.preset = preset
         self.permBase = preset.base
-        guard let pb = Renderer.makePermBuffer(device: gpu.device, base: preset.base) else { return nil }
+        self.permBase2 = preset.layer2Base ?? 0
+        guard let pb = Renderer.makePermBuffer(device: gpu.device, base: permBase) else { return nil }
         self.permBuffer = pb
+        guard let pb2 = Renderer.makePermBuffer(device: gpu.device, base: permBase2) else { return nil }
+        self.permBuffer2 = pb2
         guard let gt = Renderer.makeGradientTexture(device: gpu.device, preset: preset) else { return nil }
         self.gradientTexture = gt
     }
@@ -55,6 +78,11 @@ final class Renderer {
         if preset.base != permBase, let pb = Renderer.makePermBuffer(device: gpu.device, base: preset.base) {
             permBase = preset.base
             permBuffer = pb
+        }
+        let base2 = preset.layer2Base ?? 0
+        if base2 != permBase2, let pb2 = Renderer.makePermBuffer(device: gpu.device, base: base2) {
+            permBase2 = base2
+            permBuffer2 = pb2
         }
         if let gt = Renderer.makeGradientTexture(device: gpu.device, preset: preset) {
             gradientTexture = gt
@@ -81,6 +109,7 @@ final class Renderer {
         // or preset change resets it. Accepted low-severity tradeoff; a bounded
         // wrap can't be seamless for non-integer lacunarity, so it's avoided.
         let tz = time * preset.scaleT
+        func flag(_ b: Bool?) -> Int32 { (b ?? false) ? 1 : 0 }
         var u = WallpaperUniforms(
             resolution: SIMD2<Float>(Float(size.width), Float(size.height)),
             tz: Float(tz),
@@ -90,18 +119,37 @@ final class Renderer {
             lacunarity: Float(preset.lacunarity),
             warpStrength: Float(preset.warpStrength ?? 0),
             warpScale: Float(preset.warpScale ?? 1),
+            presetHeight: Float(preset.height),
             hsvHueShift: Float(preset.hsvHueShift ?? 0),
             hsvHueRange: Float(preset.hsvHueRange ?? 1),
             hsvSat: Float(preset.hsvSat ?? 0.8),
             hsvVal: Float(preset.hsvVal ?? 1.0),
-            presetHeight: Float(preset.height),
+            rScale: Float(preset.rScale ?? 1),
+            gScale: Float(preset.gScale ?? 1),
+            bScale: Float(preset.bScale ?? 1),
+            flowHueShift: Float(preset.flowHueShift ?? 0),
+            flowSat: Float(preset.flowSat ?? 0.85),
+            flowGain: Float(preset.flowGain ?? 1),
+            flowFloor: Float(preset.flowFloor ?? 0),
+            flowEps: Float(preset.flowEps ?? 0.6),
+            layer2ScaleX: Float(preset.layer2ScaleX ?? preset.scaleX),
+            layer2ScaleY: Float(preset.layer2ScaleY ?? preset.scaleY),
+            layer2Mix: Float(preset.layer2Mix ?? 0),
             octaves: Int32(preset.octaves),
             colorMode: preset.colorModeIndex,
-            posterizeSteps: Int32(preset.posterizeSteps ?? 5)
+            posterizeSteps: Int32(preset.posterizeSteps ?? 5),
+            rgbMultiChannel: flag(preset.rgbMultiChannel),
+            rInvert: flag(preset.rInvert),
+            gInvert: flag(preset.gInvert),
+            bInvert: flag(preset.bInvert),
+            layer2On: flag(preset.layer2On),
+            layer2Octaves: Int32(preset.layer2Octaves ?? preset.octaves),
+            layer2BlendMode: preset.layer2BlendModeIndex
         )
         enc.setRenderPipelineState(gpu.pipeline)
         enc.setFragmentBytes(&u, length: MemoryLayout<WallpaperUniforms>.stride, index: 0)
         enc.setFragmentBuffer(permBuffer, offset: 0, index: 1)
+        enc.setFragmentBuffer(permBuffer2, offset: 0, index: 2)
         enc.setFragmentTexture(gradientTexture, index: 0)
         enc.setFragmentSamplerState(gpu.sampler, index: 0)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)

@@ -13,10 +13,9 @@ const fs = require("fs");
 
 const { BUILTIN_PRESETS, resolveParams } = require("../../perlin-presets.js");
 
-// v1 bundles only presets whose colour mode the MSL shader supports today:
-// gradient / posterize / hsv. `nebula` (rgbMultiChannel) and `flow` are
-// deferred — see the design spec.
-const NAMES = ["default", "lava", "aurora", "clouds", "terrain", "circuit", "marble", "composite"];
+// The MSL shader now covers every studio colour mode except tile / image-mask:
+// gradient / posterize / hsv / rgb (incl. per-channel nebula) / flow + layer2.
+const NAMES = ["default", "lava", "aurora", "clouds", "terrain", "circuit", "marble", "composite", "nebula", "flow"];
 
 const outDir = path.join(__dirname, "..", "Sources", "PerlinLiveWallpaper", "Resources", "presets");
 fs.mkdirSync(outDir, { recursive: true });

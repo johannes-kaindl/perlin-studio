@@ -13,8 +13,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
   window behind the icons — no private APIs; macOS has no third-party live-
   wallpaper API), renders on all displays, and auto-pauses when covered or on
   battery. Noise *parameters* stay single-source in `perlin-presets.js`
-  (exported to JSON); the noise *algorithm* is ported to Metal Shading Language.
-  v1 ships 8 presets (gradient / posterize / hsv modes). Separate artifact —
+  (exported to JSON); the noise *algorithm* is ported to Metal Shading Language,
+  covering every studio colour mode except tile / image-mask (gradient /
+  posterize / hsv / rgb incl. per-channel nebula / flow + domain warp + layer2),
+  with 10 bundled presets. Separate artifact —
   the zero-build, `file://`-safe web studio is unchanged. See
   `macos/README.md` and the design spec under `docs/superpowers/specs/`.
 

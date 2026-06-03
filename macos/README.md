@@ -57,6 +57,7 @@ bundled preset to an offscreen buffer, asserting a non-trivial varied field
 Noise **parameters** stay single-source in the studio's `perlin-presets.js`;
 `scripts/export-presets.js` resolves them to JSON the app decodes. The noise
 **algorithm** is re-implemented in Metal Shading Language (`NoiseShader.swift`),
-a direct port of `perlin.js` (non-tiling 3D advancing-time path). v1 supports
-the gradient / posterize / hsv colour modes; `flow` and per-channel RGB are
-deferred.
+a direct port of `perlin.js` (non-tiling 3D advancing-time path). It covers
+every studio colour mode except `tile` and image `mask`: gradient / posterize /
+hsv / rgb (incl. per-channel "nebula") / flow, plus the domain warp and `layer2`
+compositing.

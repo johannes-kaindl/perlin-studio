@@ -6,7 +6,7 @@ final class PresetStore {
     let presets: [Preset]
 
     // Fixed display order; also guarantees presence (a missing file is skipped).
-    private static let order = ["default", "lava", "aurora", "clouds", "terrain", "circuit", "marble", "composite"]
+    private static let order = ["default", "lava", "aurora", "clouds", "terrain", "circuit", "marble", "composite", "nebula", "flow"]
 
     init() {
         let decoder = JSONDecoder()
@@ -34,6 +34,11 @@ final class PresetStore {
             GradientStop(pos: 1.0, color: [253, 231, 37]),
         ],
         warpStrength: 0, warpScale: 1, posterizeSteps: nil,
-        hsvHueShift: nil, hsvHueRange: nil, hsvSat: nil, hsvVal: nil
+        hsvHueShift: nil, hsvHueRange: nil, hsvSat: nil, hsvVal: nil,
+        rgbMultiChannel: nil, rScale: nil, gScale: nil, bScale: nil,
+        rInvert: nil, gInvert: nil, bInvert: nil,
+        flowHueShift: nil, flowSat: nil, flowGain: nil, flowFloor: nil, flowEps: nil,
+        layer2On: nil, layer2ScaleX: nil, layer2ScaleY: nil, layer2Octaves: nil,
+        layer2Base: nil, layer2BlendMode: nil, layer2Mix: nil
     )
 }
