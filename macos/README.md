@@ -39,6 +39,9 @@ source is untouched). Your last look is remembered across launches. An **image
 mask** set in the editor also drives the wallpaper: the window goes non-opaque so
 your real desktop wallpaper shows through where the mask hides the noise.
 
+**Save Current as…** stores the current look (params + mask) as a named preset in
+the menu; saved looks apply as a complete look on click (hold Option to remove).
+
 Frames are driven by the app's own run-loop timer (MTKView's internal display
 link doesn't fire reliably for a desktop-level window). Power policy follows the
 power *source*: on AC it runs at 30 fps; on battery it pauses by default, or runs

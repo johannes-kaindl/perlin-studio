@@ -22,6 +22,12 @@ enum Persistence {
         return try? JSONDecoder().decode(Preset.self, from: data)
     }
 
+    /// The raw current-look JSON (for re-saving as a named custom preset).
+    static func loadRaw() -> String? {
+        guard let url = file("current.json"), let data = try? Data(contentsOf: url) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
     // MARK: Image mask
 
     static func saveMask(image: String?, invert: Bool) {

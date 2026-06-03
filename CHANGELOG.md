@@ -25,6 +25,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
   wallpaper too: the window goes non-opaque so the real desktop wallpaper shows
   through where the mask hides the noise (premultiplied alpha; alpha-or-luminance
   matching the studio; invert supported; persisted across launches).
+- **Custom-preset library** (macOS app) — "Save Current as…" stores the current
+  look (params + mask) under a name; saved looks appear in the menu and apply as
+  a complete look on click (hold Option to remove). Stored as UUID-named JSON
+  under Application Support.
   Separate artifact — the zero-build, `file://`-safe web studio is unchanged.
   See `macos/README.md` and the design specs under `docs/superpowers/specs/`.
 

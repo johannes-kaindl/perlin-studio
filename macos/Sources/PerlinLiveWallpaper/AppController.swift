@@ -15,6 +15,9 @@ final class AppController: NSObject, NSApplicationDelegate {
     private let editor = EditorWindowController()
     private var activeIndex = 0           // -1 = a custom (editor) look is active
     private var animateOnBattery = false
+    private var currentParamsJSON: String?                     // the look currently applied
+    private var currentMask: (image: String, invert: Bool)?   // its active image mask
+    private var activeCustomId: String?                        // the applied custom preset, if any
 
     private static let acFrameRate = 30.0
     private static let batteryFrameRate = 10.0
@@ -33,7 +36,13 @@ final class AppController: NSObject, NSApplicationDelegate {
         if persisted != nil { activeIndex = -1 }
         let manager = WallpaperWindowManager(preset: persisted ?? store.presets[0], gpu: gpu)
         self.manager = manager
-        if let mask = Persistence.loadMask() { manager.setMask(base64Png: mask.image, invert: mask.invert) }
+        // Only trust the raw string when it actually decoded, so the "save"
+        // snapshot always matches the rendered look.
+        currentParamsJSON = (persisted != nil ? Persistence.loadRaw() : nil) ?? encodeJSON(store.presets[0])
+        if let mask = Persistence.loadMask() {
+            currentMask = mask
+            manager.setMask(base64Png: mask.image, invert: mask.invert)
+        }
 
         editor.onParams = { [weak self] json in self?.applyEditorParams(json) }
         editor.onMask = { [weak self] json in self?.applyMask(json) }
@@ -52,7 +61,13 @@ final class AppController: NSObject, NSApplicationDelegate {
               let preset = try? JSONDecoder().decode(Preset.self, from: Data(json.utf8)) else { return }
         manager.apply(preset: preset)
         Persistence.save(json: json)
-        if activeIndex != -1 { activeIndex = -1; rebuildMenu() }   // clear built-in selection once
+        currentParamsJSON = json
+        // Editing diverges from any built-in/custom selection. Rebuild only on the
+        // transition (not on every 250ms poll) to clear the checkmark.
+        let needsRebuild = activeIndex != -1 || activeCustomId != nil
+        activeIndex = -1
+        activeCustomId = nil
+        if needsRebuild { rebuildMenu() }
     }
 
     /// Image mask from the editor: `{image,invert}` to set, `{clear:true}` to clear.
@@ -62,11 +77,18 @@ final class AppController: NSObject, NSApplicationDelegate {
         if obj["clear"] as? Bool == true {
             manager.setMask(base64Png: nil, invert: false)
             Persistence.saveMask(image: nil, invert: false)
+            currentMask = nil
         } else if let image = obj["image"] as? String {
             let invert = obj["invert"] as? Bool ?? false
             manager.setMask(base64Png: image, invert: invert)
             Persistence.saveMask(image: image, invert: invert)
+            currentMask = (image, invert)
         }
+    }
+
+    private func encodeJSON(_ preset: Preset) -> String? {
+        guard let data = try? JSONEncoder().encode(preset) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     /// Apply the AC/battery policy to the (power) pause reason and the frame rate.
@@ -121,6 +143,35 @@ final class AppController: NSObject, NSApplicationDelegate {
         }
         menu.addItem(.separator())
 
+        // Custom presets (saved looks). Hold Option to reveal a "Remove" action.
+        let customs = CustomPresetStore.list()
+        if !customs.isEmpty {
+            let customHeader = NSMenuItem(title: "Custom", action: nil, keyEquivalent: "")
+            customHeader.isEnabled = false
+            menu.addItem(customHeader)
+            for cp in customs {
+                let item = NSMenuItem(title: cp.name, action: #selector(selectCustom(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = cp.id
+                item.state = (activeIndex == -1 && activeCustomId == cp.id) ? .on : .off
+                item.isEnabled = enabled
+                menu.addItem(item)
+
+                let remove = NSMenuItem(title: "Remove “\(cp.name)”", action: #selector(removeCustom(_:)), keyEquivalent: "")
+                remove.target = self
+                remove.representedObject = cp.id
+                remove.isAlternate = true
+                remove.keyEquivalentModifierMask = .option
+                remove.isEnabled = enabled
+                menu.addItem(remove)
+            }
+        }
+        let saveItem = NSMenuItem(title: "Save Current as…", action: #selector(saveCurrentAs), keyEquivalent: "")
+        saveItem.target = self
+        saveItem.isEnabled = enabled && (currentParamsJSON != nil)
+        menu.addItem(saveItem)
+        menu.addItem(.separator())
+
         let pause = NSMenuItem(
             title: (manager?.isManuallyPaused ?? false) ? "Resume" : "Pause",
             action: #selector(togglePause), keyEquivalent: "")
@@ -145,7 +196,61 @@ final class AppController: NSObject, NSApplicationDelegate {
     @objc private func selectPreset(_ sender: NSMenuItem) {
         guard let manager = manager else { return }
         activeIndex = sender.tag
-        manager.apply(preset: store.presets[activeIndex])
+        activeCustomId = nil
+        let preset = store.presets[activeIndex]
+        manager.apply(preset: preset)
+        currentParamsJSON = encodeJSON(preset)   // a built-in leaves any active mask untouched
+        rebuildMenu()
+    }
+
+    // MARK: Custom presets
+
+    @objc private func selectCustom(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let cp = CustomPresetStore.list().first(where: { $0.id == id }) else { return }
+        applyCustom(cp)
+    }
+
+    private func applyCustom(_ cp: CustomPreset) {
+        guard let manager = manager,
+              let preset = try? JSONDecoder().decode(Preset.self, from: Data(cp.paramsJSON.utf8)) else { return }
+        manager.apply(preset: preset)
+        manager.setMask(base64Png: cp.maskImage, invert: cp.maskInvert)   // complete look: params + mask
+        Persistence.save(json: cp.paramsJSON)
+        Persistence.saveMask(image: cp.maskImage, invert: cp.maskInvert)
+        currentParamsJSON = cp.paramsJSON
+        currentMask = cp.maskImage.map { ($0, cp.maskInvert) }
+        activeIndex = -1
+        activeCustomId = cp.id
+        rebuildMenu()
+    }
+
+    @objc private func removeCustom(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        CustomPresetStore.delete(id: id)
+        if activeCustomId == id { activeCustomId = nil }
+        rebuildMenu()
+    }
+
+    @objc private func saveCurrentAs() {
+        guard let json = currentParamsJSON else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Save current look"
+        alert.informativeText = "Name this preset:"
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.stringValue = "My Look"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        let id = CustomPresetStore.save(name: name, paramsJSON: json,
+                                        maskImage: currentMask?.image, maskInvert: currentMask?.invert ?? false)
+        activeIndex = -1
+        activeCustomId = id            // check the just-saved preset
         rebuildMenu()
     }
 
