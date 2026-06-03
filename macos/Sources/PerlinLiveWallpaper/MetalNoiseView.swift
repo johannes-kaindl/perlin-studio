@@ -17,11 +17,16 @@ final class MetalNoiseView: MTKView, MTKViewDelegate {
     private var pauseReasons: Set<String> = []
     private var frameTimer: Timer?
     private var frameRate: Double = 30.0
+    private var opaqueState = true
 
     init(gpu: GPUContext, preset: Preset) {
         super.init(frame: .zero, device: gpu.device)
         colorPixelFormat = .bgra8Unorm
         framebufferOnly = true
+        // Opaque by default (cheap compositing). A mask flips us non-opaque so
+        // the real desktop wallpaper shows through where the mask hides the noise.
+        clearColor = MTLClearColorMake(0, 0, 0, 1)
+        (layer as? CAMetalLayer)?.isOpaque = true
         isPaused = true               // we drive draws ourselves
         enableSetNeedsDisplay = false
         delegate = self
@@ -35,7 +40,23 @@ final class MetalNoiseView: MTKView, MTKViewDelegate {
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("not used") }
 
+    override var isOpaque: Bool { opaqueState }
+
+    // The CAMetalLayer can be recreated on backing changes; re-assert opacity.
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        (layer as? CAMetalLayer)?.isOpaque = opaqueState
+    }
+
     func apply(preset: Preset) { renderer?.update(preset: preset) }
+
+    func setMask(base64Png: String?, invert: Bool) {
+        let on = base64Png != nil
+        opaqueState = !on
+        (layer as? CAMetalLayer)?.isOpaque = !on
+        clearColor = on ? MTLClearColorMake(0, 0, 0, 0) : MTLClearColorMake(0, 0, 0, 1)
+        renderer?.setMask(base64Png: base64Png, invert: invert)
+    }
 
     /// Change the target frame rate (e.g. 30 on AC, 10 on battery). Restarts the
     /// timer if it's currently running.

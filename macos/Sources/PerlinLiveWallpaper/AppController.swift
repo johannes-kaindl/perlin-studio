@@ -31,9 +31,12 @@ final class AppController: NSObject, NSApplicationDelegate {
         // Restore the last-applied custom look, if any; else the first preset.
         let persisted = Persistence.load()
         if persisted != nil { activeIndex = -1 }
-        manager = WallpaperWindowManager(preset: persisted ?? store.presets[0], gpu: gpu)
+        let manager = WallpaperWindowManager(preset: persisted ?? store.presets[0], gpu: gpu)
+        self.manager = manager
+        if let mask = Persistence.loadMask() { manager.setMask(base64Png: mask.image, invert: mask.invert) }
 
         editor.onParams = { [weak self] json in self?.applyEditorParams(json) }
+        editor.onMask = { [weak self] json in self?.applyMask(json) }
 
         power = PowerMonitor()
         power.onChange = { [weak self] onBattery in self?.applyPowerPolicy(onBattery: onBattery) }
@@ -50,6 +53,20 @@ final class AppController: NSObject, NSApplicationDelegate {
         manager.apply(preset: preset)
         Persistence.save(json: json)
         if activeIndex != -1 { activeIndex = -1; rebuildMenu() }   // clear built-in selection once
+    }
+
+    /// Image mask from the editor: `{image,invert}` to set, `{clear:true}` to clear.
+    private func applyMask(_ json: String) {
+        guard let manager = manager,
+              let obj = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else { return }
+        if obj["clear"] as? Bool == true {
+            manager.setMask(base64Png: nil, invert: false)
+            Persistence.saveMask(image: nil, invert: false)
+        } else if let image = obj["image"] as? String {
+            let invert = obj["invert"] as? Bool ?? false
+            manager.setMask(base64Png: image, invert: invert)
+            Persistence.saveMask(image: image, invert: invert)
+        }
     }
 
     /// Apply the AC/battery policy to the (power) pause reason and the frame rate.

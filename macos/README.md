@@ -35,8 +35,9 @@ pause/resume, and toggle **Animate on battery**. It renders on all displays.
 
 **Open Editor…** (⌘E) runs the full Perlin Studio in a window; editing live-drives
 the wallpaper (an injected bridge forwards the studio's parameters — the web
-source is untouched). Your last look is remembered across launches. Image masks
-currently affect only the editor preview, not the wallpaper.
+source is untouched). Your last look is remembered across launches. An **image
+mask** set in the editor also drives the wallpaper: the window goes non-opaque so
+your real desktop wallpaper shows through where the mask hides the noise.
 
 Frames are driven by the app's own run-loop timer (MTKView's internal display
 link doesn't fire reliably for a desktop-level window). Power policy follows the

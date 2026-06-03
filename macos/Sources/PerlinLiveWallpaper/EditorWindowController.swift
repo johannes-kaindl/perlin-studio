@@ -8,6 +8,8 @@ import WebKit
 final class EditorWindowController: NSObject, WKUIDelegate {
     /// Called with the raw resolved-preset JSON whenever the editor's params change.
     var onParams: ((String) -> Void)?
+    /// Called with `{image,invert}` or `{clear:true}` JSON when the mask changes.
+    var onMask: ((String) -> Void)?
 
     private var window: NSWindow?
     private let handler = BridgeMessageHandler()
@@ -20,9 +22,11 @@ final class EditorWindowController: NSObject, WKUIDelegate {
         }
 
         handler.onParams = { [weak self] json in self?.onParams?(json) }
+        handler.onMask = { [weak self] json in self?.onMask?(json) }
 
         let contentController = WKUserContentController()
         contentController.add(handler, name: "perlinWallpaper")
+        contentController.add(handler, name: "perlinMask")
         contentController.addUserScript(WKUserScript(
             source: EditorWindowController.bridgeSource,
             injectionTime: .atDocumentEnd, forMainFrameOnly: true))
@@ -69,30 +73,58 @@ final class EditorWindowController: NSObject, WKUIDelegate {
     // handler there). Polls every 250 ms and posts the resolved params on change.
     private static let bridgeSource = """
     (function () {
-      if (!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.perlinWallpaper)) return;
+      var mh = window.webkit && window.webkit.messageHandlers;
+      if (!(mh && mh.perlinWallpaper)) return;
+
       var last = "";
       function tick() {
         try {
           if (typeof gatherParams === "function" && window.MTPerlinPresets) {
             var resolved = window.MTPerlinPresets.resolveParams(gatherParams());
             var json = JSON.stringify(resolved);
-            if (json !== last) {
-              last = json;
-              window.webkit.messageHandlers.perlinWallpaper.postMessage(json);
-            }
+            if (json !== last) { last = json; mh.perlinWallpaper.postMessage(json); }
           }
         } catch (e) {}
       }
       setInterval(tick, 250);
+
+      // The image mask isn't part of gatherParams — read it from the studio's
+      // `state` and forward it (rasterised) only when it changes.
+      var lastMaskKey = "";
+      function maskTick() {
+        try {
+          var st = (typeof state !== "undefined") ? state : null;
+          var applied = !!(st && st.maskApplied && st.maskSourceImage);
+          var img = applied ? st.maskSourceImage : null;
+          var invert = applied ? !!st.maskInvert : false;
+          // Key includes the source dimensions so a different image with the
+          // same filename (the studio allows re-picking the same name) still
+          // re-forwards.
+          var key = applied ? ((st.maskName || "?") + "|" + img.width + "x" + img.height + "|" + invert) : "";
+          if (key === lastMaskKey) return;
+          lastMaskKey = key;
+          if (!applied) { mh.perlinMask.postMessage(JSON.stringify({ clear: true })); return; }
+          var s = Math.min(1, 2048 / Math.max(img.width, img.height));
+          var w = Math.max(1, Math.round(img.width * s));
+          var h = Math.max(1, Math.round(img.height * s));
+          var cv = document.createElement("canvas");
+          cv.width = w; cv.height = h;
+          cv.getContext("2d").drawImage(img, 0, 0, w, h);
+          mh.perlinMask.postMessage(JSON.stringify({ image: cv.toDataURL("image/png"), invert: invert }));
+        } catch (e) {}
+      }
+      if (mh.perlinMask) setInterval(maskTick, 400);
     })();
     """
 }
 
-/// A leaf message handler — holds only a callback, never a back-reference to the
+/// A leaf message handler — holds only callbacks, never a back-reference to the
 /// controller, so the WKUserContentController's strong retain can't form a cycle.
 private final class BridgeMessageHandler: NSObject, WKScriptMessageHandler {
     var onParams: ((String) -> Void)?
+    var onMask: ((String) -> Void)?
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
-        if let json = message.body as? String { onParams?(json) }
+        guard let json = message.body as? String else { return }
+        if message.name == "perlinMask" { onMask?(json) } else { onParams?(json) }
     }
 }

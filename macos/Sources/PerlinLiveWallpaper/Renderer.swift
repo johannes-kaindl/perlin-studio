@@ -1,6 +1,8 @@
 import Metal
 import MetalKit
 import simd
+import CoreGraphics
+import ImageIO
 
 // Mirrors `struct Uniforms` in NoiseShader.swift exactly (field order + types).
 // float2 first (8-byte aligned at offset 0), then all Float (4-byte), then all
@@ -40,6 +42,8 @@ private struct WallpaperUniforms {
     var layer2On: Int32
     var layer2Octaves: Int32
     var layer2BlendMode: Int32
+    var maskOn: Int32
+    var maskInvert: Int32
 }
 
 /// Renders one view's frames. Holds only the cheap per-preset GPU resources
@@ -55,6 +59,9 @@ final class Renderer {
     private var permBuffer: MTLBuffer
     private var permBuffer2: MTLBuffer   // layer-2 permutation (layer2Base)
     private var gradientTexture: MTLTexture
+    private var maskTexture: MTLTexture   // 1x1 white dummy when no mask
+    private var maskOn = false
+    private var maskInvert = false
     private var preset: Preset
     private var permBase: Int
     private var permBase2: Int
@@ -70,6 +77,22 @@ final class Renderer {
         self.permBuffer2 = pb2
         guard let gt = Renderer.makeGradientTexture(device: gpu.device, preset: preset) else { return nil }
         self.gradientTexture = gt
+        guard let dummy = Renderer.makeWhiteMask(device: gpu.device) else { return nil }
+        self.maskTexture = dummy
+    }
+
+    /// Set or clear the image mask. `base64Png` is a (data-URL or bare) PNG; the
+    /// alpha-or-luminance is baked into an R8 texture exactly like the studio.
+    func setMask(base64Png: String?, invert: Bool) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        maskInvert = invert
+        if let b64 = base64Png, let tex = Renderer.makeMaskTexture(device: gpu.device, base64Png: b64) {
+            maskTexture = tex
+            maskOn = true
+        } else {
+            maskOn = false
+            if let dummy = Renderer.makeWhiteMask(device: gpu.device) { maskTexture = dummy }
+        }
     }
 
     func update(preset: Preset) {
@@ -144,13 +167,16 @@ final class Renderer {
             bInvert: flag(preset.bInvert),
             layer2On: flag(preset.layer2On),
             layer2Octaves: Int32(preset.layer2Octaves ?? preset.octaves),
-            layer2BlendMode: preset.layer2BlendModeIndex
+            layer2BlendMode: preset.layer2BlendModeIndex,
+            maskOn: maskOn ? 1 : 0,
+            maskInvert: maskInvert ? 1 : 0
         )
         enc.setRenderPipelineState(gpu.pipeline)
         enc.setFragmentBytes(&u, length: MemoryLayout<WallpaperUniforms>.stride, index: 0)
         enc.setFragmentBuffer(permBuffer, offset: 0, index: 1)
         enc.setFragmentBuffer(permBuffer2, offset: 0, index: 2)
         enc.setFragmentTexture(gradientTexture, index: 0)
+        enc.setFragmentTexture(maskTexture, index: 1)
         enc.setFragmentSamplerState(gpu.sampler, index: 0)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
@@ -193,6 +219,61 @@ final class Renderer {
         GradientStop(pos: 0, color: [0, 0, 0]),
         GradientStop(pos: 1, color: [255, 255, 255]),
     ]
+
+    // 1x1 fully-white R8 mask — used when no mask is set (alpha stays 1).
+    private static func makeWhiteMask(device: MTLDevice) -> MTLTexture? {
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm, width: 1, height: 1, mipmapped: false)
+        td.usage = .shaderRead
+        guard let tex = device.makeTexture(descriptor: td) else { return nil }
+        var white: UInt8 = 255
+        tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &white, bytesPerRow: 1)
+        return tex
+    }
+
+    // Bake a PNG into an R8 mask: the image's alpha, or its Rec.709 luminance if
+    // the image is fully opaque — exactly the studio's rule. Flipped so row 0 is
+    // the top, matching the shader's top-left screen sampling.
+    private static func makeMaskTexture(device: MTLDevice, base64Png: String) -> MTLTexture? {
+        let b64: String
+        if base64Png.hasPrefix("data:"), let comma = base64Png.firstIndex(of: ",") {
+            b64 = String(base64Png[base64Png.index(after: comma)...])
+        } else {
+            b64 = base64Png
+        }
+        guard let data = Data(base64Encoded: b64),
+              let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let cg = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return nil }
+        let w = cg.width, h = cg.height
+        guard w > 0, h > 0 else { return nil }
+
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8,
+                                  bytesPerRow: w * 4, space: cs,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        // No flip: CGBitmapContext lays out row 0 = top, which matches the
+        // shader's top-down screen sampling (in.position.y = 0 at the top).
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        var mask = [UInt8](repeating: 0, count: w * h)
+        var anyTransparent = false
+        for i in 0..<(w * h) {
+            let a = px[i * 4 + 3]
+            if a < 255 { anyTransparent = true }
+            mask[i] = a
+        }
+        if !anyTransparent {
+            for i in 0..<(w * h) {
+                let r = Double(px[i * 4 + 0]), g = Double(px[i * 4 + 1]), b = Double(px[i * 4 + 2])
+                mask[i] = UInt8((0.2126 * r + 0.7152 * g + 0.0722 * b).rounded())
+            }
+        }
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm, width: w, height: h, mipmapped: false)
+        td.usage = .shaderRead
+        guard let tex = device.makeTexture(descriptor: td) else { return nil }
+        tex.replace(region: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0, withBytes: mask, bytesPerRow: w)
+        return tex
+    }
 
     // Exact port of gradientLookup — piecewise-linear over sorted stops.
     private static func gradientLookup(_ stops: [GradientStop], _ tIn: Double) -> (Int, Int, Int) {
@@ -262,8 +343,67 @@ final class Renderer {
             if !pass { allPass = false }
             log("selftest: \(preset.label) [\(preset.colorMode)] nonBlack=\(anyNonBlack) varied=\(varied) -> \(pass ? "PASS" : "FAIL")")
         }
-        log("selftest: \(allPass ? "ALL PASS" : "FAILURES") (\(presets.count) presets)")
+        if !checkMask(gpu: gpu) { allPass = false }
+        log("selftest: \(allPass ? "ALL PASS" : "FAILURES") (\(presets.count) presets + mask)")
         return allPass
+    }
+
+    /// Verifies the mask path end-to-end across both axes and both source rules.
+    /// Test 1 (opaque -> luminance): a 2x2 checkerboard (top [black,white],
+    /// bottom [white,black]) catches an X- or Y-flip. Test 2 (transparency ->
+    /// alpha branch): left opaque / right transparent, with invert. Masked-out
+    /// pixels must be premultiplied-alpha 0, visible ones 255.
+    private static func checkMask(gpu: GPUContext) -> Bool {
+        let dim = 64
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: dim, height: dim, mipmapped: false)
+        td.usage = [.renderTarget, .shaderRead]; td.storageMode = .shared
+        guard let tex = gpu.device.makeTexture(descriptor: td),
+              let renderer = Renderer(gpu: gpu, preset: PresetStore.fallback) else { return false }
+
+        func render(png: String, invert: Bool) -> [UInt8]? {
+            renderer.setMask(base64Png: png, invert: invert)
+            let rpd = MTLRenderPassDescriptor()
+            rpd.colorAttachments[0].texture = tex
+            rpd.colorAttachments[0].loadAction = .clear
+            rpd.colorAttachments[0].storeAction = .store
+            rpd.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+            renderer.encode(passDescriptor: rpd, drawableSize: CGSize(width: dim, height: dim), drawable: nil, time: 1.0)?.waitUntilCompleted()
+            var buf = [UInt8](repeating: 0, count: dim * dim * 4)
+            tex.getBytes(&buf, bytesPerRow: dim * 4, from: MTLRegionMake2D(0, 0, dim, dim), mipmapLevel: 0)
+            return buf
+        }
+        func a(_ buf: [UInt8], _ x: Int, _ y: Int) -> Int { Int(buf[(y * dim + x) * 4 + 3]) }
+
+        // Test 1: opaque luminance checkerboard (top black|white, bottom white|black).
+        let lum: [UInt8] = [0,0,0,255, 255,255,255,255,  255,255,255,255, 0,0,0,255]
+        guard let p1 = pngBase64(rgba: lum, width: 2, height: 2), let b1 = render(png: p1, invert: false) else { return false }
+        let tl = a(b1, 4, 4), tr = a(b1, dim - 5, 4), bl = a(b1, 4, dim - 5), br = a(b1, dim - 5, dim - 5)
+        let t1 = tl < 10 && tr > 245 && bl > 245 && br < 10
+
+        // Test 2: transparency-driven alpha (left opaque, right transparent) + invert.
+        let alp: [UInt8] = [255,255,255,255, 0,0,0,0,  255,255,255,255, 0,0,0,0]
+        guard let p2 = pngBase64(rgba: alp, width: 2, height: 2),
+              let b2 = render(png: p2, invert: false), let b2i = render(png: p2, invert: true) else { return false }
+        let l2 = a(b2, 4, 32), r2 = a(b2, dim - 5, 32), l2i = a(b2i, 4, 32), r2i = a(b2i, dim - 5, 32)
+        let t2 = l2 > 245 && r2 < 10 && l2i < 10 && r2i > 245
+
+        let pass = t1 && t2
+        log("masktest: lum[TL=\(tl) TR=\(tr) BL=\(bl) BR=\(br)] alpha[L=\(l2) R=\(r2) invL=\(l2i) invR=\(r2i)] -> \(pass ? "PASS" : "FAIL")")
+        return pass
+    }
+
+    private static func pngBase64(rgba: [UInt8], width: Int, height: Int) -> String? {
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let provider = CGDataProvider(data: Data(rgba) as CFData),
+              let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                               bytesPerRow: width * 4, space: cs,
+                               bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                               provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { return nil }
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, cg, nil)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        return (data as Data).base64EncodedString()
     }
 
     private static func log(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }

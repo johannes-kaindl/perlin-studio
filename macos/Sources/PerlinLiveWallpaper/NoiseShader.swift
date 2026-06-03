@@ -49,6 +49,8 @@ enum NoiseShader {
         int layer2On;         // 0/1
         int layer2Octaves;
         int layer2BlendMode;  // 0 multiply,1 add,2 screen,3 darken,4 lighten,5 difference
+        int maskOn;           // 0/1
+        int maskInvert;       // 0/1
     };
 
     // Ken Perlin's fade polynomial 6t^5 - 15t^4 + 10t^3.
@@ -147,6 +149,7 @@ enum NoiseShader {
                                        device const uint *perm  [[buffer(1)]],
                                        device const uint *perm2 [[buffer(2)]],
                                        texture2d<float> gradTex [[texture(0)]],
+                                       texture2d<float> maskTex [[texture(1)]],
                                        sampler samp [[sampler(0)]]) {
         // Map screen pixels to the preset's noise space, anchored on height so a
         // wider screen reveals more horizontally without stretching.
@@ -199,7 +202,18 @@ enum NoiseShader {
                 rgb = gradTex.sample(samp, float2(n, 0.5)).rgb;
             }
         }
-        return float4(rgb, 1.0);
+
+        // Image mask -> alpha. The image is stretched to the screen (matching the
+        // studio's stretch-to-canvas). Output premultiplied alpha so the
+        // non-opaque desktop window composites over the real wallpaper where the
+        // mask hides the noise.
+        float alpha = 1.0;
+        if (U.maskOn != 0) {
+            float2 muv = in.position.xy / U.resolution;
+            float m = maskTex.sample(samp, muv).r;
+            alpha = (U.maskInvert != 0) ? (1.0 - m) : m;
+        }
+        return float4(rgb * alpha, alpha);
     }
     """
 }

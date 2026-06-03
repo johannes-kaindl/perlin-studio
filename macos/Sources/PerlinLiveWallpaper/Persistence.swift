@@ -1,22 +1,43 @@
 import Foundation
 
-/// Persists the last-applied look (the raw resolved-preset JSON from the editor)
-/// under Application Support, and restores it on launch.
+/// Persists the last-applied look (the resolved-preset JSON from the editor) and
+/// the active image mask under Application Support, and restores them on launch.
 enum Persistence {
-    private static var fileURL: URL? {
+    private static func file(_ name: String) -> URL? {
         guard let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
         let appDir = dir.appendingPathComponent("PerlinLiveWallpaper", isDirectory: true)
         try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
-        return appDir.appendingPathComponent("current.json")
+        return appDir.appendingPathComponent(name)
     }
 
+    // MARK: Preset (params)
+
     static func save(json: String) {
-        guard let url = fileURL else { return }
+        guard let url = file("current.json") else { return }
         try? Data(json.utf8).write(to: url)
     }
 
     static func load() -> Preset? {
-        guard let url = fileURL, let data = try? Data(contentsOf: url) else { return nil }
+        guard let url = file("current.json"), let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(Preset.self, from: data)
+    }
+
+    // MARK: Image mask
+
+    static func saveMask(image: String?, invert: Bool) {
+        guard let url = file("mask.json") else { return }
+        if let image = image {
+            let dict: [String: Any] = ["image": image, "invert": invert]
+            if let data = try? JSONSerialization.data(withJSONObject: dict) { try? data.write(to: url) }
+        } else {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    static func loadMask() -> (image: String, invert: Bool)? {
+        guard let url = file("mask.json"), let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let image = obj["image"] as? String else { return nil }
+        return (image, obj["invert"] as? Bool ?? false)
     }
 }

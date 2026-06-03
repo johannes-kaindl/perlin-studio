@@ -17,7 +17,7 @@ final class DesktopWindow {
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
         window.ignoresMouseEvents = true
-        window.isOpaque = true
+        window.isOpaque = true           // flipped to non-opaque only when a mask is set
         window.backgroundColor = .black
         window.hasShadow = false
         window.isReleasedWhenClosed = false
@@ -30,6 +30,12 @@ final class DesktopWindow {
     func apply(preset: Preset) { noiseView.apply(preset: preset) }
     func setPaused(reason: String, _ active: Bool) { noiseView.setPaused(reason: reason, active) }
     func setFrameRate(_ fps: Double) { noiseView.setFrameRate(fps) }
+    func setMask(base64Png: String?, invert: Bool) {
+        let on = base64Png != nil
+        window.isOpaque = !on
+        window.backgroundColor = on ? .clear : .black
+        noiseView.setMask(base64Png: base64Png, invert: invert)
+    }
 
     func close() {
         noiseView.setPaused(reason: "closing", true)   // quiesce before teardown

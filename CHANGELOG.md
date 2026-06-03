@@ -21,7 +21,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - **Embedded editor** (macOS app) — "Open Editor…" runs the full Perlin Studio
   in a `WKWebView`; an injected bridge live-drives the wallpaper from the
   studio's parameters (the web source is untouched). The last-applied look is
-  remembered across launches. Image masks remain editor-preview-only for now.
+  remembered across launches. An **image mask** set in the editor now drives the
+  wallpaper too: the window goes non-opaque so the real desktop wallpaper shows
+  through where the mask hides the noise (premultiplied alpha; alpha-or-luminance
+  matching the studio; invert supported; persisted across launches).
   Separate artifact — the zero-build, `file://`-safe web studio is unchanged.
   See `macos/README.md` and the design specs under `docs/superpowers/specs/`.
 
