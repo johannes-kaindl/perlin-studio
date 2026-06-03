@@ -31,9 +31,12 @@ swift run
 ```
 
 It appears as a menu-bar icon (no Dock icon). The menu lets you pick a preset,
-pause/resume, and toggle **Pause on battery** (on by default). It renders on all
-displays and auto-pauses when fully covered (e.g. a fullscreen app) or on
-battery.
+pause/resume, and toggle **Animate on battery**. It renders on all displays.
+
+Frames are driven by the app's own run-loop timer (MTKView's internal display
+link doesn't fire reliably for a desktop-level window). Power policy follows the
+power *source*: on AC it runs at 30 fps; on battery it pauses by default, or runs
+at a reduced 10 fps if **Animate on battery** is enabled.
 
 A signed, notarized `.app` bundle for sharing is a later step; `swift run` is
 enough for personal use and on-device testing.

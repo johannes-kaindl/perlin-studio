@@ -9,6 +9,7 @@ final class WallpaperWindowManager {
     private var windows: [DesktopWindow] = []
     private var preset: Preset
     private var globalPauseReasons: Set<String> = []
+    private var frameRate: Double = 30
     private var pendingRebuild: DispatchWorkItem?
 
     init(preset: Preset, gpu: GPUContext) {
@@ -39,6 +40,7 @@ final class WallpaperWindowManager {
         windows.forEach { $0.close() }
         windows = NSScreen.screens.map { screen in
             let w = DesktopWindow(screen: screen, preset: preset, gpu: gpu)
+            w.setFrameRate(frameRate)
             for reason in globalPauseReasons { w.setPaused(reason: reason, true) }
             return w
         }
@@ -52,6 +54,11 @@ final class WallpaperWindowManager {
     func setPaused(reason: String, _ active: Bool) {
         if active { globalPauseReasons.insert(reason) } else { globalPauseReasons.remove(reason) }
         windows.forEach { $0.setPaused(reason: reason, active) }
+    }
+
+    func setFrameRate(_ fps: Double) {
+        frameRate = fps
+        windows.forEach { $0.setFrameRate(fps) }
     }
 
     var isManuallyPaused: Bool { globalPauseReasons.contains("manual") }

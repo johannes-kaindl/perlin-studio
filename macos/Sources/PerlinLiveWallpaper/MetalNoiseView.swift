@@ -1,32 +1,35 @@
 import MetalKit
 import QuartzCore
 
-/// An `MTKView` that renders the live noise. Owns its `Renderer`, advances a
-/// monotonic noise clock, caps the frame rate, and pauses on a set of named
-/// reasons (occlusion / battery / manual) so several conditions can hold it
-/// paused independently.
+/// An `MTKView` that renders the live noise. We do **not** use MTKView's own
+/// animation loop: its internal display link does not fire continuously for a
+/// desktop-level, non-activating window (it draws one frame, then freezes —
+/// the window's occlusion/visibility heuristic stops it). Instead the view runs
+/// in on-demand mode (`isPaused = true`, manual `draw()`) and a run-loop timer
+/// in `.common` mode drives frames, which fires reliably regardless of window
+/// level or occlusion.
+///
+/// Pausing (battery-low-power / manual / teardown) simply stops the timer.
 final class MetalNoiseView: MTKView, MTKViewDelegate {
     private var renderer: Renderer?
     private var lastTimestamp: CFTimeInterval = 0
     private var noiseTime: Double = 0
     private var pauseReasons: Set<String> = []
-
-    private static let fpsCap = 30
+    private var frameTimer: Timer?
+    private var frameRate: Double = 30.0
 
     init(gpu: GPUContext, preset: Preset) {
         super.init(frame: .zero, device: gpu.device)
         colorPixelFormat = .bgra8Unorm
         framebufferOnly = true
-        preferredFramesPerSecond = MetalNoiseView.fpsCap
+        isPaused = true               // we drive draws ourselves
         enableSetNeedsDisplay = false
-        isPaused = false
+        delegate = self
         renderer = Renderer(gpu: gpu, preset: preset)
         if renderer == nil {
-            // Nothing to draw — don't spin the display link doing no-op frames.
-            FileHandle.standardError.write(Data("Renderer init failed — pausing view\n".utf8))
-            setPaused(reason: "no-renderer", true)
+            FileHandle.standardError.write(Data("Renderer init failed — view will stay blank\n".utf8))
         }
-        delegate = self
+        updateRunning()
     }
 
     @available(*, unavailable)
@@ -34,13 +37,43 @@ final class MetalNoiseView: MTKView, MTKViewDelegate {
 
     func apply(preset: Preset) { renderer?.update(preset: preset) }
 
-    /// Toggle one pause reason; the view runs only when no reason is active.
+    /// Change the target frame rate (e.g. 30 on AC, 10 on battery). Restarts the
+    /// timer if it's currently running.
+    func setFrameRate(_ fps: Double) {
+        guard fps != frameRate, fps > 0 else { return }
+        frameRate = fps
+        if frameTimer != nil {
+            frameTimer?.invalidate()
+            frameTimer = nil
+            updateRunning()
+        }
+    }
+
+    /// Toggle one pause reason; frames run only when no reason is active.
     func setPaused(reason: String, _ active: Bool) {
+        let wasRunning = pauseReasons.isEmpty
         if active { pauseReasons.insert(reason) } else { pauseReasons.remove(reason) }
-        let shouldPause = !pauseReasons.isEmpty
-        guard shouldPause != isPaused else { return }
-        isPaused = shouldPause
-        if !shouldPause { lastTimestamp = 0 }  // resume without a time jump
+        let isRunning = pauseReasons.isEmpty
+        guard wasRunning != isRunning else { return }
+        updateRunning()
+        FileHandle.standardError.write(Data(
+            "render: \(isRunning ? "RUNNING" : "PAUSED") reasons=\(pauseReasons.sorted())\n".utf8))
+    }
+
+    private func updateRunning() {
+        let shouldRun = pauseReasons.isEmpty && renderer != nil
+        if shouldRun {
+            guard frameTimer == nil else { return }
+            lastTimestamp = 0   // resume without a time jump
+            let timer = Timer(timeInterval: 1.0 / frameRate, repeats: true) { [weak self] _ in
+                self?.draw()    // MTKView.draw() forces a synchronous frame via the delegate
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            frameTimer = timer
+        } else {
+            frameTimer?.invalidate()
+            frameTimer = nil
+        }
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -52,4 +85,6 @@ final class MetalNoiseView: MTKView, MTKViewDelegate {
         lastTimestamp = now
         renderer?.draw(in: view, time: noiseTime)
     }
+
+    deinit { frameTimer?.invalidate() }
 }

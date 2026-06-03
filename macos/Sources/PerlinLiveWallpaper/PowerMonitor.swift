@@ -1,43 +1,37 @@
 import Foundation
 import IOKit.ps
 
-/// Reports whether the machine should be saving power — on battery or in Low
-/// Power Mode. Polls every 10s (latency is irrelevant for a wallpaper) and also
-/// reacts immediately to Low-Power-Mode toggles.
+/// Reports the power source — running on battery vs. plugged into AC. Drives the
+/// wallpaper's power policy: full rate on AC, paused (or reduced) on battery.
+/// Polls every few seconds; plug/unplug latency of a few seconds is irrelevant
+/// for a wallpaper, and polling avoids the IOPS C-callback dance.
 final class PowerMonitor {
-    /// Called with `true` when power-saving starts, `false` when it ends.
+    /// Called with `true` when the Mac goes onto battery, `false` when back on AC.
     var onChange: ((Bool) -> Void)?
-    private(set) var savingPower = false
+    private(set) var onBattery = false
     private var timer: Timer?
 
     func start() {
-        evaluate()
-        timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
-            self?.evaluate()
-        }
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(powerStateChanged),
-            name: .NSProcessInfoPowerStateDidChange, object: nil)
+        onBattery = PowerMonitor.isOnBattery()
+        let timer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in self?.evaluate() }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
-    deinit {
-        timer?.invalidate()
-        NotificationCenter.default.removeObserver(self)
-    }
-
-    @objc private func powerStateChanged() { evaluate() }
+    deinit { timer?.invalidate() }
 
     private func evaluate() {
-        let saving = PowerMonitor.isOnBattery() || ProcessInfo.processInfo.isLowPowerModeEnabled
-        guard saving != savingPower else { return }
-        savingPower = saving
-        onChange?(saving)
+        let battery = PowerMonitor.isOnBattery()
+        guard battery != onBattery else { return }
+        onBattery = battery
+        onChange?(battery)
     }
 
+    /// True when running on battery. A desktop Mac (no battery source) → false.
     static func isOnBattery() -> Bool {
         guard let blob = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let list = IOPSCopyPowerSourcesList(blob)?.takeRetainedValue() as? [CFTypeRef] else {
-            return false   // no battery (desktop Mac) → never "on battery"
+            return false
         }
         for source in list {
             guard let desc = IOPSGetPowerSourceDescription(blob, source)?.takeUnretainedValue() as? [String: Any],

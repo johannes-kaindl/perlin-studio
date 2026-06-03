@@ -22,25 +22,16 @@ final class DesktopWindow {
         window.hasShadow = false
         window.isReleasedWhenClosed = false
         window.orderFrontRegardless()
-
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(occlusionChanged),
-            name: NSWindow.didChangeOcclusionStateNotification, object: window)
-        // Seed occlusion from the live state: a window born already covered may
-        // never receive a "change" notification, so don't wait for one.
-        occlusionChanged()
-    }
-
-    @objc private func occlusionChanged() {
-        let visible = window.occlusionState.contains(.visible)
-        noiseView.setPaused(reason: "occluded", !visible)
+        // NB: occlusion-based pause was tried and removed — NSWindow.occlusionState
+        // is unreliable for a desktop-level window (observed oscillating
+        // visible/not-visible). Frames are driven by MetalNoiseView's own timer.
     }
 
     func apply(preset: Preset) { noiseView.apply(preset: preset) }
     func setPaused(reason: String, _ active: Bool) { noiseView.setPaused(reason: reason, active) }
+    func setFrameRate(_ fps: Double) { noiseView.setFrameRate(fps) }
 
     func close() {
-        NotificationCenter.default.removeObserver(self)
         noiseView.setPaused(reason: "closing", true)   // quiesce before teardown
         window.orderOut(nil)
     }
