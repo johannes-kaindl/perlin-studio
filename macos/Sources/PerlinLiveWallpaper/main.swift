@@ -3,7 +3,8 @@ import AppKit
 // Headless validation: compile the MSL, build the pipeline, render one
 // offscreen frame. Used by CI / local smoke checks (`swift run … --selftest`).
 if CommandLine.arguments.contains("--selftest") {
-    exit(Renderer.selfTest() ? 0 : 1)
+    let ok = Renderer.selfTest() && LivePhotoExporter.selfTest()
+    exit(ok ? 0 : 1)
 }
 
 // `--render <preset> <out.png>`: render one preset to a PNG and exit.
