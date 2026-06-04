@@ -20,6 +20,20 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var maskFillMode = false                           // false = fit (contain), true = fill (cover)
     private var activeCustomId: String?                        // the applied custom preset, if any
 
+    /// The Preset decoded from the currently-applied JSON, used by the Live
+    /// Photo exporter. Falls back to PresetStore.fallback if the JSON is absent
+    /// (Metal unavailable path) or cannot be decoded.
+    private var currentPreset: Preset {
+        guard let json = currentParamsJSON,
+              let preset = try? JSONDecoder().decode(Preset.self, from: Data(json.utf8))
+        else { return PresetStore.fallback }
+        return preset
+    }
+
+    private lazy var livePhotoController = LivePhotoExportController(presetProvider: { [weak self] in
+        self?.currentPreset ?? PresetStore.fallback
+    })
+
     private static let acFrameRate = 30.0
     private static let batteryFrameRate = 10.0
 
@@ -183,6 +197,13 @@ final class AppController: NSObject, NSApplicationDelegate {
         saveItem.target = self
         saveItem.isEnabled = enabled && (currentParamsJSON != nil)
         menu.addItem(saveItem)
+
+        // Export the current look as an Apple Live Photo pair for use as an
+        // iPhone wallpaper (delivered via Photos, or saved to a folder as fallback).
+        let exportLP = NSMenuItem(title: "Export Live Photo…", action: #selector(exportLivePhoto), keyEquivalent: "")
+        exportLP.target = self
+        exportLP.isEnabled = enabled && (currentParamsJSON != nil)
+        menu.addItem(exportLP)
         menu.addItem(.separator())
 
         let pause = NSMenuItem(
@@ -288,6 +309,8 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openEditor() { editor.show() }
+
+    @objc private func exportLivePhoto() { livePhotoController.present() }
 
     @objc private func quit() { NSApp.terminate(nil) }
 }
