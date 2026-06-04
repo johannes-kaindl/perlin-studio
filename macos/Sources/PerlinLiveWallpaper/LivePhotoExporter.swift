@@ -2,6 +2,9 @@ import Foundation
 import AVFoundation
 import CoreVideo
 import CoreMedia
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
 
 /// Builds an Apple Live Photo pair (HEIC still + paired QuickTime .mov) from a
 /// Perlin preset. The .mov carries the two markers Photos needs to treat it as a
@@ -152,6 +155,52 @@ enum LivePhotoExporter {
             metadataSpecifications: [spec] as CFArray,
             formatDescriptionOut: &desc)
         return desc
+    }
+
+    // MARK: - HEIC still
+
+    /// Apple maker-note key for the asset identifier that pairs still + video.
+    private static let kMakerAppleAssetID = "17"
+
+    /// Renders the still frame and writes it as HEIC carrying `identifier` in the
+    /// Apple maker-note dictionary (key 17), matching the .mov's content-id.
+    static func writeStill(preset: Preset, options o: LivePhotoExportOptions,
+                           identifier: String, stillURL: URL) -> Bool {
+        guard let gpu = GPUContext(pixelFormat: .bgra8Unorm) else { return false }
+        let time = Double(o.stillFrameIndex) / Double(o.fps)
+        guard var bgra = Renderer.renderBGRA(gpu: gpu, preset: preset, width: o.width, height: o.height, time: time) else { return false }
+        // BGRA (Metal) -> RGBA (CGImage), swapping B and R in place.
+        var i = 0
+        while i < bgra.count { bgra.swapAt(i, i + 2); i += 4 }
+        guard let cg = cgImage(rgba: bgra, width: o.width, height: o.height) else { return false }
+
+        try? FileManager.default.removeItem(at: stillURL)
+        guard let dest = CGImageDestinationCreateWithURL(stillURL as CFURL, UTType.heic.identifier as CFString, 1, nil) else { return false }
+        let props: [String: Any] = [
+            kCGImagePropertyMakerAppleDictionary as String: [kMakerAppleAssetID: identifier],
+        ]
+        CGImageDestinationAddImage(dest, cg, props as CFDictionary)
+        return CGImageDestinationFinalize(dest)
+    }
+
+    private static func cgImage(rgba: [UInt8], width: Int, height: Int) -> CGImage? {
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        guard let provider = CGDataProvider(data: Data(rgba) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: width * 4, space: cs, bitmapInfo: info,
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    /// Renders a complete pair (still + video) sharing one fresh UUID.
+    /// Returns the identifier on success, nil on failure.
+    @discardableResult
+    static func exportPair(preset: Preset, options o: LivePhotoExportOptions,
+                           stillURL: URL, videoURL: URL) -> String? {
+        let id = UUID().uuidString
+        guard writeStill(preset: preset, options: o, identifier: id, stillURL: stillURL),
+              writeVideo(preset: preset, options: o, identifier: id, videoURL: videoURL) else { return nil }
+        return id
     }
 
     /// Temporary smoke test (replaced by the full pair check in Task 5).
