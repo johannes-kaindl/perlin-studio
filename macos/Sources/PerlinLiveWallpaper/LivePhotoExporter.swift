@@ -36,6 +36,17 @@ enum LivePhotoExporter {
         guard writer.canAdd(videoInput) else { return false }
         writer.add(videoInput)
 
+        // Top-level movie identifier (pairs the .mov with the HEIC still).
+        writer.metadata = [contentIdentifierItem(identifier)]
+
+        // still-image-time timed-metadata track.
+        guard let stillDesc = stillTimeFormatDescription() else { return false }
+        let metaInput = AVAssetWriterInput(mediaType: .metadata, outputSettings: nil, sourceFormatHint: stillDesc)
+        metaInput.expectsMediaDataInRealTime = false
+        let metaAdaptor = AVAssetWriterInputMetadataAdaptor(assetWriterInput: metaInput)
+        guard writer.canAdd(metaInput) else { return false }
+        writer.add(metaInput)
+
         guard writer.startWriting() else { return false }
         writer.startSession(atSourceTime: .zero)
 
@@ -65,6 +76,13 @@ enum LivePhotoExporter {
         }
         done.wait()
 
+        // One metadata sample at the still frame's time, one frame long.
+        let stillStart = CMTime(value: Int64(o.stillFrameIndex), timescale: Int32(o.fps))
+        let stillRange = CMTimeRange(start: stillStart, duration: CMTime(value: 1, timescale: Int32(o.fps)))
+        let group = AVTimedMetadataGroup(items: [stillImageTimeItem()], timeRange: stillRange)
+        if metaAdaptor.append(group) == false { ok = false }
+        metaInput.markAsFinished()
+
         let finished = DispatchSemaphore(value: 0)
         writer.finishWriting { finished.signal() }
         finished.wait()
@@ -92,6 +110,48 @@ enum LivePhotoExporter {
             }
         }
         return pb
+    }
+
+    // MARK: - Live Photo metadata (mdta keyspace)
+
+    private static let kKeyContentID = "com.apple.quicktime.content.identifier"
+    private static let kKeyStillTime = "com.apple.quicktime.still-image-time"
+    private static let kKeySpaceMdta = "mdta"
+
+    /// Top-level movie metadata item binding this .mov to its still by UUID.
+    private static func contentIdentifierItem(_ id: String) -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.key = kKeyContentID as NSString
+        item.keySpace = AVMetadataKeySpace(rawValue: kKeySpaceMdta)
+        item.value = id as NSString
+        item.dataType = "com.apple.metadata.datatype.UTF-8"
+        return item
+    }
+
+    /// The single timed sample whose *timestamp* marks the still frame. The
+    /// int8 value is a placeholder (0); the timestamp carries the meaning.
+    private static func stillImageTimeItem() -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.key = kKeyStillTime as NSString
+        item.keySpace = AVMetadataKeySpace(rawValue: kKeySpaceMdta)
+        item.value = 0 as NSNumber
+        item.dataType = "com.apple.metadata.datatype.int8"
+        return item
+    }
+
+    /// Boxed-metadata format description for the still-image-time track.
+    private static func stillTimeFormatDescription() -> CMFormatDescription? {
+        let spec: [String: Any] = [
+            kCMMetadataFormatDescriptionMetadataSpecificationKey_Identifier as String: "\(kKeySpaceMdta)/\(kKeyStillTime)",
+            kCMMetadataFormatDescriptionMetadataSpecificationKey_DataType as String: "com.apple.metadata.datatype.int8",
+        ]
+        var desc: CMFormatDescription?
+        CMMetadataFormatDescriptionCreateWithMetadataSpecifications(
+            allocator: kCFAllocatorDefault,
+            metadataType: kCMMetadataFormatType_Boxed,
+            metadataSpecifications: [spec] as CFArray,
+            formatDescriptionOut: &desc)
+        return desc
     }
 
     /// Temporary smoke test (replaced by the full pair check in Task 5).
