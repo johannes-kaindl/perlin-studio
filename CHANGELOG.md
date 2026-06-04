@@ -24,7 +24,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
   remembered across launches. An **image mask** set in the editor now drives the
   wallpaper too: the window goes non-opaque so the real desktop wallpaper shows
   through where the mask hides the noise (premultiplied alpha; alpha-or-luminance
-  matching the studio; invert supported; persisted across launches).
+  matching the studio; invert supported; aspect-preserving **fit or fill** via a
+  menu toggle — never stretched; persisted across launches).
 - **Custom-preset library** (macOS app) — "Save Current as…" stores the current
   look (params + mask) under a name; saved looks appear in the menu and apply as
   a complete look on click (hold Option to remove). Stored as UUID-named JSON

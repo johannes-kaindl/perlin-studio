@@ -9,6 +9,7 @@ struct CustomPreset {
     let paramsJSON: String        // raw resolved-params JSON (decodes into Preset)
     let maskImage: String?        // PNG data URL, or nil
     let maskInvert: Bool
+    let maskFill: Bool
 }
 
 /// Named custom presets stored as UUID-named JSON files under Application Support.
@@ -34,7 +35,9 @@ enum CustomPresetStore {
             let name = (obj["name"] as? String) ?? url.deletingPathExtension().lastPathComponent
             let mask = obj["mask"] as? [String: Any]
             out.append(CustomPreset(id: url.lastPathComponent, name: name, paramsJSON: paramsJSON,
-                                    maskImage: mask?["image"] as? String, maskInvert: (mask?["invert"] as? Bool) ?? false))
+                                    maskImage: mask?["image"] as? String,
+                                    maskInvert: (mask?["invert"] as? Bool) ?? false,
+                                    maskFill: (mask?["fill"] as? Bool) ?? false))
         }
         return out.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
@@ -42,12 +45,12 @@ enum CustomPresetStore {
     /// Save, overwriting any existing preset with the same display name (else a new
     /// UUID file). Returns the file id of the saved preset.
     @discardableResult
-    static func save(name: String, paramsJSON: String, maskImage: String?, maskInvert: Bool) -> String? {
+    static func save(name: String, paramsJSON: String, maskImage: String?, maskInvert: Bool, maskFill: Bool) -> String? {
         guard let dir = dir,
               let paramsObj = try? JSONSerialization.jsonObject(with: Data(paramsJSON.utf8)) else { return nil }
         let id = list().first(where: { $0.name == name })?.id ?? (UUID().uuidString + ".json")
         var dict: [String: Any] = ["name": name, "params": paramsObj]
-        if let img = maskImage { dict["mask"] = ["image": img, "invert": maskInvert] }
+        if let img = maskImage { dict["mask"] = ["image": img, "invert": maskInvert, "fill": maskFill] }
         guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return nil }
         try? data.write(to: dir.appendingPathComponent(id))
         return id

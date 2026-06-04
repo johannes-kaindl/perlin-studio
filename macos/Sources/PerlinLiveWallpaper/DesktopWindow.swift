@@ -30,11 +30,11 @@ final class DesktopWindow {
     func apply(preset: Preset) { noiseView.apply(preset: preset) }
     func setPaused(reason: String, _ active: Bool) { noiseView.setPaused(reason: reason, active) }
     func setFrameRate(_ fps: Double) { noiseView.setFrameRate(fps) }
-    func setMask(base64Png: String?, invert: Bool) {
+    func setMask(base64Png: String?, invert: Bool, fill: Bool) {
         let on = base64Png != nil
         window.isOpaque = !on
         window.backgroundColor = on ? .clear : .black
-        noiseView.setMask(base64Png: base64Png, invert: invert)
+        noiseView.setMask(base64Png: base64Png, invert: invert, fill: fill)
     }
 
     func close() {

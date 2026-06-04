@@ -12,6 +12,7 @@ final class WallpaperWindowManager {
     private var frameRate: Double = 30
     private var maskPng: String?
     private var maskInvert = false
+    private var maskFill = false
     private var pendingRebuild: DispatchWorkItem?
 
     init(preset: Preset, gpu: GPUContext) {
@@ -43,7 +44,7 @@ final class WallpaperWindowManager {
         windows = NSScreen.screens.map { screen in
             let w = DesktopWindow(screen: screen, preset: preset, gpu: gpu)
             w.setFrameRate(frameRate)
-            if maskPng != nil { w.setMask(base64Png: maskPng, invert: maskInvert) }
+            if maskPng != nil { w.setMask(base64Png: maskPng, invert: maskInvert, fill: maskFill) }
             for reason in globalPauseReasons { w.setPaused(reason: reason, true) }
             return w
         }
@@ -64,10 +65,11 @@ final class WallpaperWindowManager {
         windows.forEach { $0.setFrameRate(fps) }
     }
 
-    func setMask(base64Png: String?, invert: Bool) {
+    func setMask(base64Png: String?, invert: Bool, fill: Bool) {
         maskPng = base64Png
         maskInvert = invert
-        windows.forEach { $0.setMask(base64Png: base64Png, invert: invert) }
+        maskFill = fill
+        windows.forEach { $0.setMask(base64Png: base64Png, invert: invert, fill: fill) }
     }
 
     var isManuallyPaused: Bool { globalPauseReasons.contains("manual") }

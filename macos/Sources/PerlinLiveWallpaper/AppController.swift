@@ -17,6 +17,7 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var animateOnBattery = false
     private var currentParamsJSON: String?                     // the look currently applied
     private var currentMask: (image: String, invert: Bool)?   // its active image mask
+    private var maskFillMode = false                           // false = fit (contain), true = fill (cover)
     private var activeCustomId: String?                        // the applied custom preset, if any
 
     private static let acFrameRate = 30.0
@@ -40,8 +41,9 @@ final class AppController: NSObject, NSApplicationDelegate {
         // snapshot always matches the rendered look.
         currentParamsJSON = (persisted != nil ? Persistence.loadRaw() : nil) ?? encodeJSON(store.presets[0])
         if let mask = Persistence.loadMask() {
-            currentMask = mask
-            manager.setMask(base64Png: mask.image, invert: mask.invert)
+            currentMask = (mask.image, mask.invert)
+            maskFillMode = mask.fill
+            manager.setMask(base64Png: mask.image, invert: mask.invert, fill: mask.fill)
         }
 
         editor.onParams = { [weak self] json in self?.applyEditorParams(json) }
@@ -75,14 +77,18 @@ final class AppController: NSObject, NSApplicationDelegate {
         guard let manager = manager,
               let obj = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else { return }
         if obj["clear"] as? Bool == true {
-            manager.setMask(base64Png: nil, invert: false)
-            Persistence.saveMask(image: nil, invert: false)
+            manager.setMask(base64Png: nil, invert: false, fill: maskFillMode)
+            Persistence.saveMask(image: nil, invert: false, fill: maskFillMode)
+            let had = currentMask != nil
             currentMask = nil
+            if had { rebuildMenu() }   // drop the "Mask: Fill screen" item
         } else if let image = obj["image"] as? String {
             let invert = obj["invert"] as? Bool ?? false
-            manager.setMask(base64Png: image, invert: invert)
-            Persistence.saveMask(image: image, invert: invert)
+            manager.setMask(base64Png: image, invert: invert, fill: maskFillMode)
+            Persistence.saveMask(image: image, invert: invert, fill: maskFillMode)
+            let isNew = currentMask == nil
             currentMask = (image, invert)
+            if isNew { rebuildMenu() }   // show the "Mask: Fill screen" item
         }
     }
 
@@ -125,6 +131,15 @@ final class AppController: NSObject, NSApplicationDelegate {
         edit.target = self
         edit.isEnabled = enabled
         menu.addItem(edit)
+
+        if currentMask != nil {
+            let fillItem = NSMenuItem(title: "Mask: Fill screen", action: #selector(toggleMaskFill), keyEquivalent: "")
+            fillItem.target = self
+            fillItem.state = maskFillMode ? .on : .off
+            fillItem.isEnabled = enabled
+            fillItem.toolTip = "On: cover the screen (crop). Off: fit the whole image (margins show your wallpaper)."
+            menu.addItem(fillItem)
+        }
         menu.addItem(.separator())
 
         if !enabled {
@@ -214,10 +229,11 @@ final class AppController: NSObject, NSApplicationDelegate {
     private func applyCustom(_ cp: CustomPreset) {
         guard let manager = manager,
               let preset = try? JSONDecoder().decode(Preset.self, from: Data(cp.paramsJSON.utf8)) else { return }
+        maskFillMode = cp.maskFill
         manager.apply(preset: preset)
-        manager.setMask(base64Png: cp.maskImage, invert: cp.maskInvert)   // complete look: params + mask
+        manager.setMask(base64Png: cp.maskImage, invert: cp.maskInvert, fill: cp.maskFill)   // complete look
         Persistence.save(json: cp.paramsJSON)
-        Persistence.saveMask(image: cp.maskImage, invert: cp.maskInvert)
+        Persistence.saveMask(image: cp.maskImage, invert: cp.maskInvert, fill: cp.maskFill)
         currentParamsJSON = cp.paramsJSON
         currentMask = cp.maskImage.map { ($0, cp.maskInvert) }
         activeIndex = -1
@@ -248,9 +264,19 @@ final class AppController: NSObject, NSApplicationDelegate {
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         let id = CustomPresetStore.save(name: name, paramsJSON: json,
-                                        maskImage: currentMask?.image, maskInvert: currentMask?.invert ?? false)
+                                        maskImage: currentMask?.image, maskInvert: currentMask?.invert ?? false,
+                                        maskFill: maskFillMode)
         activeIndex = -1
         activeCustomId = id            // check the just-saved preset
+        rebuildMenu()
+    }
+
+    @objc private func toggleMaskFill() {
+        guard let manager = manager, let mask = currentMask else { return }
+        maskFillMode.toggle()
+        manager.setMask(base64Png: mask.image, invert: mask.invert, fill: maskFillMode)
+        Persistence.saveMask(image: mask.image, invert: mask.invert, fill: maskFillMode)
+        activeCustomId = nil           // the look diverged from any saved preset
         rebuildMenu()
     }
 

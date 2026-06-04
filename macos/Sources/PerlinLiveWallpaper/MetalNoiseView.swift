@@ -50,12 +50,12 @@ final class MetalNoiseView: MTKView, MTKViewDelegate {
 
     func apply(preset: Preset) { renderer?.update(preset: preset) }
 
-    func setMask(base64Png: String?, invert: Bool) {
+    func setMask(base64Png: String?, invert: Bool, fill: Bool) {
         let on = base64Png != nil
         opaqueState = !on
         (layer as? CAMetalLayer)?.isOpaque = !on
         clearColor = on ? MTLClearColorMake(0, 0, 0, 0) : MTLClearColorMake(0, 0, 0, 1)
-        renderer?.setMask(base64Png: base64Png, invert: invert)
+        renderer?.setMask(base64Png: base64Png, invert: invert, fill: fill)
     }
 
     /// Change the target frame rate (e.g. 30 on AC, 10 on battery). Restarts the

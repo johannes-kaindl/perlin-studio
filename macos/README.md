@@ -37,7 +37,9 @@ pause/resume, and toggle **Animate on battery**. It renders on all displays.
 the wallpaper (an injected bridge forwards the studio's parameters — the web
 source is untouched). Your last look is remembered across launches. An **image
 mask** set in the editor also drives the wallpaper: the window goes non-opaque so
-your real desktop wallpaper shows through where the mask hides the noise.
+your real desktop wallpaper shows through where the mask hides the noise. The mask
+keeps its aspect ratio (never stretched) — toggle **Mask: Fill screen** to switch
+between fit (whole image, margins show your wallpaper) and fill (cover, cropped).
 
 **Save Current as…** stores the current look (params + mask) as a named preset in
 the menu; saved looks apply as a complete look on click (hold Option to remove).

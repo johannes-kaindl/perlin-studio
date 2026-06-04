@@ -39,6 +39,7 @@ enum NoiseShader {
         float layer2ScaleX;
         float layer2ScaleY;
         float layer2Mix;
+        float maskAspect;     // mask width / height (for aspect-correct fit/fill)
         int octaves;
         int colorMode;       // 0 gradient, 1 posterize, 2 hsv, 3 rgb, 4 flow
         int posterizeSteps;
@@ -51,6 +52,7 @@ enum NoiseShader {
         int layer2BlendMode;  // 0 multiply,1 add,2 screen,3 darken,4 lighten,5 difference
         int maskOn;           // 0/1
         int maskInvert;       // 0/1
+        int maskFill;         // 0 = fit (contain), 1 = fill (cover)
     };
 
     // Ken Perlin's fade polynomial 6t^5 - 15t^4 + 10t^3.
@@ -209,8 +211,22 @@ enum NoiseShader {
         // mask hides the noise.
         float alpha = 1.0;
         if (U.maskOn != 0) {
-            float2 muv = in.position.xy / U.resolution;
-            float m = maskTex.sample(samp, muv).r;
+            // Aspect-correct so the mask isn't stretched. fit (contain): whole
+            // image, centered, margins outside -> masked out. fill (cover): the
+            // image covers the screen, overflow cropped.
+            float2 uv = in.position.xy / U.resolution;
+            float screenA = U.resolution.x / U.resolution.y;
+            float maskA = U.maskAspect;
+            float2 muv = uv;
+            if (U.maskFill != 0) {
+                if (screenA > maskA) muv.y = (uv.y - 0.5) * (maskA / screenA) + 0.5;
+                else                 muv.x = (uv.x - 0.5) * (screenA / maskA) + 0.5;
+            } else {
+                if (screenA > maskA) muv.x = (uv.x - 0.5) * (screenA / maskA) + 0.5;
+                else                 muv.y = (uv.y - 0.5) * (maskA / screenA) + 0.5;
+            }
+            float m = (muv.x < 0.0 || muv.x > 1.0 || muv.y < 0.0 || muv.y > 1.0)
+                      ? 0.0 : maskTex.sample(samp, muv).r;
             alpha = (U.maskInvert != 0) ? (1.0 - m) : m;
         }
         return float4(rgb * alpha, alpha);

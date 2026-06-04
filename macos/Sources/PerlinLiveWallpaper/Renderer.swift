@@ -32,6 +32,7 @@ private struct WallpaperUniforms {
     var layer2ScaleX: Float
     var layer2ScaleY: Float
     var layer2Mix: Float
+    var maskAspect: Float
     var octaves: Int32
     var colorMode: Int32
     var posterizeSteps: Int32
@@ -44,6 +45,7 @@ private struct WallpaperUniforms {
     var layer2BlendMode: Int32
     var maskOn: Int32
     var maskInvert: Int32
+    var maskFill: Int32
 }
 
 /// Renders one view's frames. Holds only the cheap per-preset GPU resources
@@ -62,6 +64,8 @@ final class Renderer {
     private var maskTexture: MTLTexture   // 1x1 white dummy when no mask
     private var maskOn = false
     private var maskInvert = false
+    private var maskFill = false
+    private var maskAspect: Float = 1
     private var preset: Preset
     private var permBase: Int
     private var permBase2: Int
@@ -83,11 +87,13 @@ final class Renderer {
 
     /// Set or clear the image mask. `base64Png` is a (data-URL or bare) PNG; the
     /// alpha-or-luminance is baked into an R8 texture exactly like the studio.
-    func setMask(base64Png: String?, invert: Bool) {
+    func setMask(base64Png: String?, invert: Bool, fill: Bool) {
         dispatchPrecondition(condition: .onQueue(.main))
         maskInvert = invert
+        maskFill = fill
         if let b64 = base64Png, let tex = Renderer.makeMaskTexture(device: gpu.device, base64Png: b64) {
             maskTexture = tex
+            maskAspect = tex.height > 0 ? Float(tex.width) / Float(tex.height) : 1
             maskOn = true
         } else {
             maskOn = false
@@ -158,6 +164,7 @@ final class Renderer {
             layer2ScaleX: Float(preset.layer2ScaleX ?? preset.scaleX),
             layer2ScaleY: Float(preset.layer2ScaleY ?? preset.scaleY),
             layer2Mix: Float(preset.layer2Mix ?? 0),
+            maskAspect: maskAspect,
             octaves: Int32(preset.octaves),
             colorMode: preset.colorModeIndex,
             posterizeSteps: Int32(preset.posterizeSteps ?? 5),
@@ -169,7 +176,8 @@ final class Renderer {
             layer2Octaves: Int32(preset.layer2Octaves ?? preset.octaves),
             layer2BlendMode: preset.layer2BlendModeIndex,
             maskOn: maskOn ? 1 : 0,
-            maskInvert: maskInvert ? 1 : 0
+            maskInvert: maskInvert ? 1 : 0,
+            maskFill: maskFill ? 1 : 0
         )
         enc.setRenderPipelineState(gpu.pipeline)
         enc.setFragmentBytes(&u, length: MemoryLayout<WallpaperUniforms>.stride, index: 0)
@@ -344,8 +352,41 @@ final class Renderer {
             log("selftest: \(preset.label) [\(preset.colorMode)] nonBlack=\(anyNonBlack) varied=\(varied) -> \(pass ? "PASS" : "FAIL")")
         }
         if !checkMask(gpu: gpu) { allPass = false }
-        log("selftest: \(allPass ? "ALL PASS" : "FAILURES") (\(presets.count) presets + mask)")
+        if !checkMaskAspect(gpu: gpu) { allPass = false }
+        log("selftest: \(allPass ? "ALL PASS" : "FAILURES") (\(presets.count) presets + mask + aspect)")
         return allPass
+    }
+
+    /// Verifies aspect-correct mask placement on a non-square target. A square
+    /// all-white mask on a 2:1 screen: fit -> central half visible, left/right
+    /// margins masked out; fill -> covers the full width.
+    private static func checkMaskAspect(gpu: GPUContext) -> Bool {
+        let w = 128, h = 64
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        td.usage = [.renderTarget, .shaderRead]; td.storageMode = .shared
+        guard let tex = gpu.device.makeTexture(descriptor: td),
+              let renderer = Renderer(gpu: gpu, preset: PresetStore.fallback),
+              let white = pngBase64(rgba: [255,255,255,255, 255,255,255,255, 255,255,255,255, 255,255,255,255], width: 2, height: 2) else { return false }
+
+        func render(fill: Bool) -> [UInt8]? {
+            renderer.setMask(base64Png: white, invert: false, fill: fill)
+            let rpd = MTLRenderPassDescriptor()
+            rpd.colorAttachments[0].texture = tex
+            rpd.colorAttachments[0].loadAction = .clear
+            rpd.colorAttachments[0].storeAction = .store
+            rpd.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+            renderer.encode(passDescriptor: rpd, drawableSize: CGSize(width: w, height: h), drawable: nil, time: 1.0)?.waitUntilCompleted()
+            var buf = [UInt8](repeating: 0, count: w * h * 4)
+            tex.getBytes(&buf, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+            return buf
+        }
+        func a(_ buf: [UInt8], _ x: Int) -> Int { Int(buf[(32 * w + x) * 4 + 3]) }
+        guard let fit = render(fill: false), let fill = render(fill: true) else { return false }
+        let fL = a(fit, 4), fC = a(fit, 64), fR = a(fit, w - 5)
+        let cL = a(fill, 4), cC = a(fill, 64), cR = a(fill, w - 5)
+        let pass = fL < 10 && fC > 245 && fR < 10 && cL > 245 && cC > 245 && cR > 245
+        log("masktest-aspect: fit[L=\(fL) C=\(fC) R=\(fR)] fill[L=\(cL) C=\(cC) R=\(cR)] -> \(pass ? "PASS" : "FAIL")")
+        return pass
     }
 
     /// Verifies the mask path end-to-end across both axes and both source rules.
@@ -361,7 +402,7 @@ final class Renderer {
               let renderer = Renderer(gpu: gpu, preset: PresetStore.fallback) else { return false }
 
         func render(png: String, invert: Bool) -> [UInt8]? {
-            renderer.setMask(base64Png: png, invert: invert)
+            renderer.setMask(base64Png: png, invert: invert, fill: false)
             let rpd = MTLRenderPassDescriptor()
             rpd.colorAttachments[0].texture = tex
             rpd.colorAttachments[0].loadAction = .clear

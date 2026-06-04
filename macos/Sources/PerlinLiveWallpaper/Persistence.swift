@@ -30,20 +30,20 @@ enum Persistence {
 
     // MARK: Image mask
 
-    static func saveMask(image: String?, invert: Bool) {
+    static func saveMask(image: String?, invert: Bool, fill: Bool) {
         guard let url = file("mask.json") else { return }
         if let image = image {
-            let dict: [String: Any] = ["image": image, "invert": invert]
+            let dict: [String: Any] = ["image": image, "invert": invert, "fill": fill]
             if let data = try? JSONSerialization.data(withJSONObject: dict) { try? data.write(to: url) }
         } else {
             try? FileManager.default.removeItem(at: url)
         }
     }
 
-    static func loadMask() -> (image: String, invert: Bool)? {
+    static func loadMask() -> (image: String, invert: Bool, fill: Bool)? {
         guard let url = file("mask.json"), let data = try? Data(contentsOf: url),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let image = obj["image"] as? String else { return nil }
-        return (image, obj["invert"] as? Bool ?? false)
+        return (image, obj["invert"] as? Bool ?? false, obj["fill"] as? Bool ?? false)
     }
 }
