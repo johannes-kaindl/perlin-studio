@@ -203,20 +203,44 @@ enum LivePhotoExporter {
         return id
     }
 
-    /// Temporary smoke test (replaced by the full pair check in Task 5).
+    /// Re-reads a pair and asserts: the .mov has a top-level content-identifier;
+    /// it has a metadata track carrying a still-image-time item; and the HEIC's
+    /// maker-note asset id equals the .mov's content id. Returns true if valid.
+    static func verifyPair(stillURL: URL, videoURL: URL) -> Bool {
+        let asset = AVURLAsset(url: videoURL)
+
+        // 1) top-level content identifier
+        let movID = asset.metadata.first(where: { $0.key as? String == kKeyContentID })?.value as? String
+        guard let movID, !movID.isEmpty else { print("verify: no .mov content.identifier"); return false }
+
+        // 2) a metadata track exists (the still-image-time track)
+        let hasMetaTrack = !asset.tracks(withMediaType: .metadata).isEmpty
+        guard hasMetaTrack else { print("verify: no metadata track"); return false }
+
+        // 3) HEIC maker-note asset id matches
+        guard let src = CGImageSourceCreateWithURL(stillURL as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [String: Any],
+              let maker = props[kCGImagePropertyMakerAppleDictionary as String] as? [String: Any],
+              let stillID = maker[kMakerAppleAssetID] as? String else {
+            print("verify: no HEIC maker-note asset id"); return false
+        }
+        guard stillID == movID else { print("verify: id mismatch still=\(stillID) mov=\(movID)"); return false }
+        return true
+    }
+
     static func selfTest() -> Bool {
         let store = PresetStore()
         guard let preset = store.presets.first else { print("livephoto selftest: no presets"); return false }
         let tmp = FileManager.default.temporaryDirectory
+        let stillURL = tmp.appendingPathComponent("perlin-selftest.heic")
         let videoURL = tmp.appendingPathComponent("perlin-selftest.mov")
-        let opts = LivePhotoExportOptions(width: 256, height: 512, duration: 0.5, fps: 10)
-        let ok = writeVideo(preset: preset, options: opts, identifier: UUID().uuidString, videoURL: videoURL)
-        guard ok else { print("livephoto selftest: writeVideo failed"); return false }
-        let asset = AVURLAsset(url: videoURL)
-        let dur = CMTimeGetSeconds(asset.duration)
-        let pass = dur > 0.3 && dur < 0.8
-        print("livephoto selftest: video dur=\(dur)s -> \(pass ? "PASS" : "FAIL")")
-        try? FileManager.default.removeItem(at: videoURL)
-        return pass
+        let opts = LivePhotoExportOptions(width: 256, height: 512, duration: 0.6, fps: 10)
+        defer { try? FileManager.default.removeItem(at: stillURL); try? FileManager.default.removeItem(at: videoURL) }
+        guard exportPair(preset: preset, options: opts, stillURL: stillURL, videoURL: videoURL) != nil else {
+            print("livephoto selftest: export failed"); return false
+        }
+        let ok = verifyPair(stillURL: stillURL, videoURL: videoURL)
+        print("livephoto selftest: markers + uuid match -> \(ok ? "PASS" : "FAIL")")
+        return ok
     }
 }
