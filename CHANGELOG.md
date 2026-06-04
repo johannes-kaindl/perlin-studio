@@ -34,6 +34,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
   under Application Support.
   Separate artifact — the zero-build, `file://`-safe web studio is unchanged.
   See `macos/README.md` and the design specs under `docs/superpowers/specs/`.
+- **Live Photo export** (macOS app) — "Export Live Photo…" renders the current
+  preset to an Apple Live Photo (HEIC still + paired H.264 `.mov` with the
+  QuickTime content-identifier + still-image-time markers) and adds it to Photos
+  (syncs to iPhone via iCloud) or exports the pair to a folder for AirDrop. Set
+  it as an animated iPhone/iPad lock-screen wallpaper manually. The same Live
+  Photo also works as an animated Apple Watch *Photos* face. Headless
+  `--export-livephoto <preset> <out>` + a `--selftest` check that the pair is
+  structurally valid.
 
 ### Fixed
 - **Recording now works on Safari and iOS.** The recorder only ever offered

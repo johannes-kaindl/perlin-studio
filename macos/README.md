@@ -52,6 +52,18 @@ at a reduced 10 fps if **Animate on battery** is enabled.
 A signed, notarized `.app` bundle for sharing is a later step; `swift run` is
 enough for personal use and on-device testing.
 
+## Live Photo export (animated iPhone wallpaper)
+
+"Export Live Photo…" turns the current preset into an Apple Live Photo and adds
+it to Photos (with iCloud Photos on, it appears on your iPhone). Set it manually:
+**iPhone → Settings → Wallpaper → Add New Wallpaper → Photos → "Live Photo"
+filter → pick it → Add → Set as Wallpaper Pair**, with the Live-Photo play
+toggle ON. There is no API to set the wallpaper automatically. Headless:
+`swift run --package-path macos PerlinLiveWallpaper --export-livephoto <preset> <out-basename>`.
+
+The same Live Photo can be used as an animated Apple Watch *Photos* face (it
+animates on touch-and-hold, or on wrist-raise with Always-On Display off).
+
 ## Headless validation
 
 ```bash
