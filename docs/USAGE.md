@@ -52,7 +52,7 @@ behind the curtain see [ARCHITECTURE](ARCHITECTURE.md).
 │  08 · Mask                     │                                     │
 │  09 · Export                   │                                     │
 │   fps | frames                 │                                     │
-│   PNG | WebM | Download WebM   │                                     │
+│   PNG | Record | Download      │                                     │
 └────────────────────────────────┴─────────────────────────────────────┘
                                                   Topbar: brand · ☀/🌙
 ```
@@ -65,7 +65,7 @@ and colour, and finally export. Every input updates the preview live
 The main panel shows the canvas inside a framed area. A corner tag in
 the top-right reflects the real transport state — **LIVE** (green,
 pulsing) while playing, **PAUSED** (dim) when stopped, **REC** (red)
-while recording a WebM. Below the canvas sits the transport bar
+while recording. Below the canvas sits the transport bar
 (Play/Pause, Reset, the time slider), a status line, and an FPS pill.
 
 The two *advanced* sections — **Layer 2** and **Warp** — keep their
@@ -146,7 +146,7 @@ For a **named** palette, `gradientName` is the palette name (e.g.
 The canvas **fills its frame** and upscales with nearest-neighbour, so a
 small Width/Height renders as crisp pixel blocks — a deliberate retro /
 "Minecraft" look. The render is exactly `Width × Height` pixels; the
-display just scales those up. Export (PNG/WebM) always uses the native
+display just scales those up. Export (PNG/video) always uses the native
 `Width × Height`, so the file stays as small/large as you set.
 
 <table>
@@ -477,7 +477,7 @@ and **Loop**. If the field reads too dark, raise `gain` and `floor` (the
 - **On (loop mode):** 4D Perlin on a circular orbit. After `Loop
   duration` seconds the animation closes seamlessly back to the start.
 - **Off (linear mode):** 3D Perlin with linear time — ripples gently but
-  is not loopable (a WebM jumps at the end).
+  is not loopable (the video jumps at the end).
 
 The t-slider's range/labels switch with the checkbox:
 - Loop on: `[0, 1]` step 0.001, labelled *Loop progress*
@@ -614,7 +614,7 @@ alpha bytes; changing Width/Height rebuilds the cache. Match the mask's
 aspect to the canvas to avoid stretching.
 
 **Export behaviour:** PNG keeps the alpha (masked regions are
-transparent). **WebM is RGB-only** — masked regions render onto whatever
+transparent). **Recording is RGB-only** — masked regions render onto whatever
 is behind the canvas; the studio shows a hint at the Export button when a
 mask is active.
 
@@ -625,12 +625,12 @@ mask is active.
 
 ## 09 · Export
 
-The recording length and rate live here, next to the WebM button (they
+The recording length and rate live here, next to the Record button (they
 don't affect live playback, which renders at display rate):
 
 | Control | Range | Effect |
 |---------|-------|--------|
-| **fps** | 1–60 | WebM framerate |
+| **fps** | 1–60 | Recording framerate |
 | **frames** | 1–600 | Number of frames to record |
 
 ### PNG · current frame
@@ -638,13 +638,14 @@ don't affect live playback, which renders at display rate):
 Saves the visible frame as PNG (`perlin-<timestamp>.png`) at the native
 `Width × Height`. A masked render keeps its transparency.
 
-### WebM animation
+### Record animation
 
-Records `frames` frames at `fps` fps and exports WebM (VP9 when
-available, else VP8). While recording the button becomes **Stop
-recording** (cancel any time and keep the partial clip), a progress bar
-fills, and the corner tag reads **REC**. When done, the canvas is
-replaced by a `<video>` preview and **Download WebM** appears.
+Records `frames` frames at `fps` fps to **MP4 (H.264)** where the browser
+supports it (Safari, iOS, Chrome ≥ 126) and **WebM (VP9/VP8)** otherwise
+(Firefox). While recording the button becomes **Stop recording** (cancel
+any time and keep the partial clip), a progress bar fills, and the corner
+tag reads **REC**. When done, the canvas is replaced by a `<video>`
+preview and a **Download** button (labelled with the format) appears.
 
 **For a seamless looping video:**
 
@@ -654,7 +655,7 @@ replaced by a `<video>` preview and **Download WebM** appears.
 3. Set **frames = Loop duration × fps** (e.g. 6 s × 30 fps = 180 frames)
    so exactly one loop is captured.
 4. Export, then play it with `<video autoplay muted loop playsinline>` —
-   the WebM doesn't loop by itself; the `loop` attribute makes it repeat.
+   the video doesn't loop by itself; the `loop` attribute makes it repeat.
 
 (With **Seamless loop** *off* the export is linear — it ripples but snaps
 back where it repeats.)
@@ -668,7 +669,7 @@ back where it repeats.)
 | Long background video | 600 | 24 | 25 s | off |
 | Test / preview | 30 | 15 | 2 s | either |
 
-WebM files are roughly 50–500 KB for short loops at moderate resolution.
+The exported files are roughly 50–500 KB for short loops at moderate resolution.
 
 ---
 
@@ -714,7 +715,7 @@ only the chrome differs.
 
 ## Embedding (`<perlin-noise>`)
 
-Besides exporting a WebM, you can embed the *live* animation with the
+Besides exporting a video, you can embed the *live* animation with the
 `<perlin-noise>` custom element — a renderer with no controls.
 
 The scripts live at the **repo root** (`perlin.js`, `perlin-presets.js`,
@@ -797,7 +798,7 @@ el.play();   // or el.pause(); el.playing → boolean
 - **`max-resolution`** is the main dial — halving it quarters the work.
 - **Octaves** in the preset is the other big lever.
 - **Many instances:** each element spawns its own worker. One hero is
-  ideal; for a grid of many, prefer one larger element or exported WebM
+  ideal; for a grid of many, prefer one larger element or exported video
   thumbnails.
 
 A runnable demo lives in **[examples/embed.html](../examples/embed.html)**
@@ -812,7 +813,7 @@ A runnable demo lives in **[examples/embed.html](../examples/embed.html)**
 - **Live element:** embed `<perlin-noise preset="aurora" autoplay>` — it
   loops forever, scales to the container, respects reduced motion.
 - **Exported video:** load `clouds` or `aurora`, set `Loop duration`
-  6–10 s, size to your layout, export WebM (fps 24, frames 144 = 6 s),
+  6–10 s, size to your layout, export a clip (fps 24, frames 144 = 6 s),
   then `<video autoplay muted loop playsinline>`.
 
 ### "I want a seamlessly tileable texture"

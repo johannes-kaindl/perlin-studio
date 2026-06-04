@@ -35,6 +35,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
   Separate artifact — the zero-build, `file://`-safe web studio is unchanged.
   See `macos/README.md` and the design specs under `docs/superpowers/specs/`.
 
+### Fixed
+- **Recording now works on Safari and iOS.** The recorder only ever offered
+  WebM, which Safari records only from 18.4 on and iOS not at all before then,
+  so "Record animation" silently refused on Apple devices. It now prefers
+  **MP4/H.264** (recorded by Safari/iOS and Chrome 126+) and falls back to WebM
+  (Firefox, and Chrome builds without an H.264 encoder), picking the first the
+  browser actually accepts. The download name and the in-app labels follow the
+  real container, so a Chrome capture typically saves as `.mp4` (was `.webm`)
+  while a Firefox capture stays `.webm`. This also produces the H.264 clip the planned
+  iOS Live Photo path needs (it remuxes without re-encoding).
+
 ## [0.17.0] — 2026-06-02
 
 ### Changed

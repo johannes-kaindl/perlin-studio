@@ -1,7 +1,7 @@
 /**
  * perlin-studio.js — main-thread controller of Perlin Studio.
  *
- * Ties the UI, preset system, image mask, and WebM recorder to a PerlinEngine
+ * Ties the UI, preset system, image mask, and video recorder to a PerlinEngine
  * (perlin-engine.js) that owns the worker + RAF render loop. Pure vanilla JS,
  * no dependencies beyond `perlin.js` and `perlin-presets.js`.
  *
@@ -13,7 +13,7 @@
  *      progress via `onTick` (drives the slider) and `onFrame` (FPS readout),
  *      and calls `transformFrame` so the image mask is applied before paint.
  *
- * For WebM recording, `engine.renderFrameAndWait` is used so every frame lands
+ * For recording, `engine.renderFrameAndWait` is used so every frame lands
  * in the `MediaRecorder` stream — the normal skip logic would drop frames.
  *
  * @license AGPL-3.0-or-later
@@ -53,6 +53,7 @@ const state = {
   recordingCancel: false,
   recordedChunks: [],
   recordedBlob: null,
+  recordedExt: "webm",          // container of the last recording (drives the download name)
   recorder: null,
   firstFrameRendered: false,
 };
@@ -371,8 +372,8 @@ function updateWarpMode() {
   els.warpExtra.hidden = clampFloat(els.warpStrength.value, 0, 8, 0) <= 0;
 }
 
-// WebM is RGB-only and ignores the alpha mask. Surface that caveat right at
-// the export button (not just in the distant Mask section) while a mask is on.
+// Video recording is RGB-only and ignores the alpha mask. Surface that caveat
+// right at the export button (not just in the distant Mask section) while on.
 function updateWebmMaskHint() {
   if (els.webmMaskHint) els.webmMaskHint.hidden = !state.maskApplied;
 }
@@ -381,8 +382,8 @@ function updateWebmMaskHint() {
 // The mask is loaded once from a user-supplied PNG / JPG and re-rasterised
 // to the current canvas resolution on demand. The cached Uint8Array of
 // alpha bytes is what the render pipeline consumes per pixel — cheap.
-// PNG export inherits the alpha automatically; WebM export does not (the
-// codec is RGB-only), so masked frames in WebM render onto whatever's
+// PNG export inherits the alpha automatically; video recording does not (the
+// canvas stream is RGB-only), so masked frames render onto whatever's
 // behind the canvas at recording time.
 
 function loadMaskFile(file) {
@@ -754,7 +755,7 @@ function setTValue(v) {
   els.tDisplay.textContent = v.toFixed(2);
 }
 
-// After a WebM export the live canvas is hidden behind the <video> preview.
+// After a recording the live canvas is hidden behind the <video> preview.
 // Any fresh render (param edit, preset, reset) or return to playback must
 // retire that stale preview and bring the live canvas back — otherwise the
 // only escape is a page reload.
@@ -871,12 +872,34 @@ function exportPng() {
   setStatus(`PNG saved — ${els.canvas.width}×${els.canvas.height}.`);
 }
 
-function chooseRecorderMime() {
-  const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
-  for (const m of candidates) {
-    if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
-  }
-  return null;
+// Ordered MIME candidates for the canvas recorder, MP4/H.264 first. Why MP4
+// leads (it used to be WebM-only, which is the bug this fixes):
+//   - Safari/iOS recorded *only* MP4/H.264 before 18.4, so a WebM-only list made
+//     recording impossible there. MP4/H.264 also plays everywhere (Apple
+//     devices, QuickTime, editors) and remuxes cheaply — no re-encode — into the
+//     H.264 .mov an iOS Live Photo needs.
+//   - WebM stays as the required fallback: the only format Firefox can record,
+//     and the fallback on a Chrome build whose OS lacks an H.264 encoder.
+// Bare "video/mp4" (no codec pin) lets each browser pick an H.264 level that
+// fits the canvas (up to 1024²); pinning e.g. avc1.42E01E (Baseline L3.0) would
+// cap below that. Video-only strings — the canvas stream carries no audio.
+const RECORDER_MIME_CANDIDATES = [
+  "video/mp4",
+  "video/webm;codecs=vp9",
+  "video/webm;codecs=vp8",
+  "video/webm",
+];
+
+// Every candidate the browser accepts, in priority order. isTypeSupported() can
+// false-positive, so setupRecorder() still falls through if construction fails.
+function supportedRecorderMimes() {
+  if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return [];
+  return RECORDER_MIME_CANDIDATES.filter((m) => MediaRecorder.isTypeSupported(m));
+}
+
+// File extension / blob type follow the container that was actually recorded.
+function extForMime(mime) {
+  return /mp4/i.test(mime || "") ? "mp4" : "webm";
 }
 
 /**
@@ -907,36 +930,51 @@ function paramsForRecordingFrame(base, startSlider, frameIndex, totalFrames, fps
 /**
  * Initialises a `MediaRecorder` on the output canvas. Prefers
  * `captureStream(0)` + `track.requestFrame()` (exact frame control);
- * falls back to `captureStream(fps)` with browser-driven timing.
+ * falls back to `captureStream(fps)` with browser-driven timing. Picks the
+ * first supported MIME candidate that actually constructs and reports back the
+ * real container so callers can name the file correctly.
  *
- * @param {string} mime
  * @param {number} fps
- * @returns {{ recorder: MediaRecorder, track: MediaStreamTrack|null, canRequestFrame: boolean, stopped: Promise<void> }}
+ * @returns {{ recorder: MediaRecorder, mime: string, ext: string, track: MediaStreamTrack|null, canRequestFrame: boolean, stopped: Promise<void> }}
  */
-function setupRecorder(mime, fps) {
+function setupRecorder(fps) {
   const stream = els.canvas.captureStream(0);
   const track = stream.getVideoTracks()[0];
   const canRequestFrame = !!(track && typeof track.requestFrame === "function");
   const finalStream = canRequestFrame ? stream : els.canvas.captureStream(fps);
 
-  const recorder = new MediaRecorder(finalStream, { mimeType: mime });
+  // Walk the supported candidates until one constructs — isTypeSupported() may
+  // report a type the platform then refuses to instantiate (a known quirk).
+  let recorder = null, requestedMime = "", lastErr = null;
+  for (const m of supportedRecorderMimes()) {
+    try { recorder = new MediaRecorder(finalStream, { mimeType: m }); requestedMime = m; break; }
+    catch (e) { lastErr = e; }
+  }
+  if (!recorder) throw lastErr || new Error("No supported video recorder MIME type.");
+
+  // The real container can be more specific than what we asked for (or empty
+  // pre-start on some engines); trust the recorder, then the requested string.
+  const mime = recorder.mimeType || requestedMime;
   state.recordedChunks = [];
   recorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) state.recordedChunks.push(e.data);
   };
   const stopped = new Promise(res => recorder.onstop = res);
-  return { recorder, track, canRequestFrame, stopped };
+  return { recorder, mime, ext: extForMime(mime), track, canRequestFrame, stopped };
 }
 
 /**
- * Records a WebM animation. Pauses the live animation, deterministically
+ * Records the animation to video (MP4/H.264 where supported, else WebM — see
+ * RECORDER_MIME_CANDIDATES). Pauses the live animation, deterministically
  * renders one frame after the other synchronously in the worker, returns
  * the blob at the end, and displays it as a `<video>` in the output.
  */
 async function recordWebm() {
   if (state.recording) return;
-  const mime = chooseRecorderMime();
-  if (!mime) { setStatus("Your browser doesn't support a WebM recorder.", true); return; }
+  if (!window.MediaRecorder || supportedRecorderMimes().length === 0) {
+    setStatus("Your browser can't record video here (no supported codec).", true);
+    return;
+  }
 
   const wasPlaying = engine.playing;
   if (wasPlaying) pause();
@@ -946,7 +984,7 @@ async function recordWebm() {
   const startSlider = getTValue();
   const baseParams = gatherParams();
 
-  const { recorder, track, canRequestFrame, stopped } = setupRecorder(mime, fps);
+  const { recorder, mime, ext, track, canRequestFrame, stopped } = setupRecorder(fps);
   state.recorder = recorder;
   recorder.start();
   state.recording = true;
@@ -988,7 +1026,7 @@ async function recordWebm() {
     recorder.stop();
     await stopped;
     state.recording = false;
-    els.btnWebm.textContent = "WebM animation";
+    els.btnWebm.textContent = "Record animation";
     setProgress(null);
   }
 
@@ -1000,6 +1038,8 @@ async function recordWebm() {
     return;
   }
   state.recordedBlob = blob;
+  state.recordedExt = ext;
+  els.btnWebmDownload.textContent = "Download " + (ext === "mp4" ? "MP4" : "WebM");
   els.btnWebmDownload.hidden = false;
   els.btnWebmDownload.disabled = false;
   const sizeKb = (blob.size / 1024).toFixed(1);
@@ -1026,7 +1066,7 @@ async function recordWebm() {
 function downloadWebm() {
   if (!state.recordedBlob) return;
   const a = document.createElement("a");
-  a.download = `perlin-animation-${Date.now()}.webm`;
+  a.download = `perlin-animation-${Date.now()}.${state.recordedExt || extForMime(state.recordedBlob.type)}`;
   a.href = URL.createObjectURL(state.recordedBlob);
   a.click();
 }
@@ -1125,9 +1165,9 @@ function wireEvents() {
     if (state.recording) { state.recordingCancel = true; return; }
     recordWebm().catch((err) => {
       console.error(err);
-      setStatus(`WebM error: ${err.message}`, true);
+      setStatus(`Recording error: ${err.message}`, true);
       state.recording = false;
-      els.btnWebm.textContent = "WebM animation";
+      els.btnWebm.textContent = "Record animation";
       setProgress(null);
       setFrameState(engine.playing ? "live" : "paused");
     });

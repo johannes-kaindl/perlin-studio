@@ -14,7 +14,7 @@ for the broad overview.
 7. [Loop mechanics: circular orbit in 4D](#loop-mechanics-circular-orbit-in-4d)
 8. [Worker pipeline](#worker-pipeline)
 9. [Animation loop](#animation-loop)
-10. [WebM recording](#webm-recording)
+10. [Video recording](#video-recording)
 11. [Color modes](#color-modes)
 12. [Image mask](#image-mask)
 13. [Embeddable element (`<perlin-noise>`)](#embeddable-element-perlin-noise)
@@ -72,7 +72,7 @@ machinery in detail — it now lives in the engine, not the controller.
 `perlin-studio.js` is the **controller** — it reads UI state, hands
 params to the engine, manages the theme override, the custom gradient
 editor, the image mask (via `transformFrame`), the preset system, and
-WebM recording (via `engine.renderFrameAndWait`).
+video recording (via `engine.renderFrameAndWait`).
 
 `perlin-element.js` defines `<perlin-noise>` — a renderer-only custom
 element wrapping a `PerlinEngine` on a shadow-DOM canvas. See the
@@ -518,7 +518,7 @@ RAF loop renders anyway.
 
 ---
 
-## WebM recording
+## Video recording
 
 ### Pipeline
 
@@ -527,7 +527,8 @@ RAF loop renders anyway.
    - pause() if live animation is running
    - canvas.captureStream(0) — manual mode if `track.requestFrame` exists
      otherwise captureStream(fps) — browser ticks itself
-   - MediaRecorder with VP9 (fallback VP8)
+   - MediaRecorder with the first supported MIME (MP4/H.264 preferred,
+     else WebM/VP9/VP8) — see setupRecorder()
 
 2. For each frame i in [0, totalFrames):
    - params = paramsForRecordingFrame(...)
@@ -551,7 +552,7 @@ has `progress = startSlider + (N-1)/N`. Frame `N` would be `progress =
 startSlider` again — and isn't rendered, because the player jumps back
 to the first frame.
 
-→ The exported WebM is exactly one loop, closing cleanly.
+→ The exported clip is exactly one loop, closing cleanly.
 
 ### Loop off: consistent with live
 
@@ -565,10 +566,21 @@ exactly.
 
 ### Codec selection
 
-`chooseRecorderMime()` tries in this order:
-1. `video/webm;codecs=vp9` — best quality, safe in Chrome/Edge
-2. `video/webm;codecs=vp8` — Firefox-compatible
-3. `video/webm` — browser default
+`RECORDER_MIME_CANDIDATES` is probed in order, MP4 first:
+1. `video/mp4` — H.264 on Safari/iOS and Chrome 126+; the only format
+   Safari recorded before 18.4 (so a WebM-only list made recording
+   impossible there), and it remuxes cheaply — no re-encode — to the
+   H.264 `.mov` an iOS Live Photo needs. Bare (no codec pin) so the
+   browser picks an H.264 level that fits the canvas (up to 1024²).
+2. `video/webm;codecs=vp9` / `vp8` / `video/webm` — fallback for Firefox
+   (no MP4 muxer) and Chrome builds without an OS H.264 encoder.
+
+`supportedRecorderMimes()` returns every candidate `isTypeSupported()`
+accepts; `setupRecorder()` then constructs `MediaRecorder` with each in
+turn until one succeeds (guarding against `isTypeSupported` false-
+positives) and reads back the real `recorder.mimeType`, so the blob type,
+the `<video>` preview, and the download extension (`.mp4` / `.webm`) all
+agree on the container that was actually recorded.
 
 If none is supported, recording aborts with an error.
 
@@ -753,7 +765,7 @@ stays at original dimensions in memory; rebuilds are cheap (one
 - **PNG**: `canvas.toBlob()` preserves the alpha channel, so the
   exported PNG has the mask applied as transparency. Drop into an
   image editor — the noise appears only inside the mask shape.
-- **WebM**: the codec is RGB-only. Masked frames render onto
+- **Video**: the canvas stream is RGB-only. Masked frames render onto
   whatever's behind the canvas at recording time. The video itself
   is not transparent.
 

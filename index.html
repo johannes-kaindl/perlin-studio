@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Perlin Studio — parametric 3D/4D Perlin animations in the browser</title>
-  <meta name="description" content="Parametric 3D/4D Perlin animations in the browser. Vanilla JS, no dependencies, no build. Worker-accelerated, seamless loop, WebM export.">
+  <meta name="description" content="Parametric 3D/4D Perlin animations in the browser. Vanilla JS, no dependencies, no build. Worker-accelerated, seamless loop, video export.">
   <meta name="author" content="Johannes Kaindl">
   <meta name="theme-color" id="meta-theme-color" content="#060709">
 
@@ -16,7 +16,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://jkaindl.codeberg.page/perlin-studio/">
   <meta property="og:title" content="Perlin Studio">
-  <meta property="og:description" content="Parametric 3D/4D Perlin animations in the browser — Vanilla JS, seamless loop, WebM export.">
+  <meta property="og:description" content="Parametric 3D/4D Perlin animations in the browser — Vanilla JS, seamless loop, video export.">
   <meta property="og:image" content="https://jkaindl.codeberg.page/perlin-studio/assets/hero.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -25,7 +25,7 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Perlin Studio">
-  <meta name="twitter:description" content="Parametric 3D/4D Perlin animations in the browser — seamless loop, WebM export.">
+  <meta name="twitter:description" content="Parametric 3D/4D Perlin animations in the browser — seamless loop, video export.">
   <meta name="twitter:image" content="https://jkaindl.codeberg.page/perlin-studio/assets/hero.png">
 
   <link rel="stylesheet" href="styles.css">
@@ -297,7 +297,7 @@
 
       <section class="ctrl-section">
         <h2><span class="sec-num">08</span><span class="sec-name">Mask</span></h2>
-        <p class="sec-hint">Load a PNG / JPG. Transparent (or dark) regions hide the noise. Affects live preview and PNG export — WebM is RGB-only.</p>
+        <p class="sec-hint">Load a PNG / JPG. Transparent (or dark) regions hide the noise. Affects live preview and PNG export — video recording is RGB-only.</p>
         <div class="mask-controls">
           <button type="button" id="btn-mask-load">Load image</button>
           <button type="button" id="btn-mask-clear" disabled>Clear</button>
@@ -316,17 +316,17 @@
 
       <section class="ctrl-section">
         <h2><span class="sec-num">09</span><span class="sec-name">Export</span></h2>
-        <p class="sec-hint">Frames &amp; fps set the WebM recording length and rate.</p>
+        <p class="sec-hint">Frames &amp; fps set the recording length and rate.</p>
         <div class="grid-2">
           <label>fps<input type="number" id="p-fps" min="1" max="60" value="30"></label>
           <label>frames<input type="number" id="p-frames" min="1" max="600" value="120"></label>
         </div>
         <div class="export-actions">
           <button id="btn-png">PNG · current frame</button>
-          <button id="btn-webm" class="primary">WebM animation</button>
-          <button id="btn-webm-download" hidden disabled>Download WebM</button>
+          <button id="btn-webm" class="primary">Record animation</button>
+          <button id="btn-webm-download" hidden disabled>Download video</button>
         </div>
-        <p class="sec-hint webm-mask-hint" id="webm-mask-hint" hidden>WebM is RGB-only — the active mask is ignored in the recording.</p>
+        <p class="sec-hint webm-mask-hint" id="webm-mask-hint" hidden>Recording is RGB-only — the active mask is ignored.</p>
       </section>
 
     </aside>

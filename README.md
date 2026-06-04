@@ -1,7 +1,7 @@
 # Perlin Studio
 
 > Parametric 3D/4D Perlin animations in the browser — worker-accelerated,
-> WebM export, seamless loop. Fully client-side, no dependencies, no build.
+> video export, seamless loop. Fully client-side, no dependencies, no build.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-8a4dff?style=flat-square)](LICENSE)
 [![No build step](https://img.shields.io/badge/build-none-39ff7a?style=flat-square)](#quickstart)
@@ -72,7 +72,8 @@ live preview updates after every input.
   background texture
 - **Seamless loop** — 4D Perlin on a circular path in `(z, w)`, closes
   mathematically without any "breathing" artifact
-- **WebM export** at arbitrary length/framerate via `MediaRecorder`
+- **Video export** — MP4/H.264 where the browser supports it (Safari, iOS,
+  Chrome ≥ 126), WebM otherwise (Firefox) — at arbitrary length/framerate via `MediaRecorder`
 - **PNG snapshot** of the current frame
 - **Preset system** with 10 built-ins (default, lava, aurora, clouds,
   terrain, circuit, marble, nebula, flow, composite) and JSON import
@@ -147,7 +148,7 @@ Short version of the most important controls:
 | **▶ / Space** | Play / pause |
 | **⏮** | Slider back to 0 |
 | **t slider** | Time scrub (loop: `[0, 1)`, otherwise free) |
-| **fps / frames** | Only used for WebM export |
+| **fps / frames** | Only used for video export |
 
 ## Embedding
 
@@ -194,10 +195,10 @@ Full technical docs (math, pipeline, edge cases):
 
 | Browser | Status |
 |---------|--------|
-| Chrome / Edge (Chromium) ≥ 90 | ✅ full incl. worker + VP9 WebM |
-| Firefox ≥ 90 | ✅ full, WebM via VP8 |
-| Safari ≥ 14 | ✅ live preview; WebM export works; some versions block the worker under `file://` → falls back to main thread |
-| Mobile Safari / Chrome Mobile | ✅ live preview; export may require a longer touch gesture |
+| Chrome / Edge (Chromium) ≥ 90 | ✅ full incl. worker; exports MP4/H.264 (Chrome ≥ 126) or VP9 WebM |
+| Firefox ≥ 90 | ✅ full; exports WebM (VP8/VP9) — no MP4 muxer |
+| Safari ≥ 14 | ✅ live preview; exports MP4/H.264 (Safari ≥ 14.1 / iOS ≥ 14.5); some versions block the worker under `file://` → falls back to main thread |
+| Mobile Safari / Chrome Mobile | ✅ live preview; MP4 export (iOS ≥ 14.5); may require a longer touch gesture |
 
 The app is responsive and works on mobile — the worker path keeps the
 animation smooth even at low resolutions.
