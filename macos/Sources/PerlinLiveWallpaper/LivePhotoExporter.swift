@@ -204,7 +204,7 @@ enum LivePhotoExporter {
     }
 
     /// Re-reads a pair and asserts: the .mov has a top-level content-identifier;
-    /// it has a metadata track carrying a still-image-time item; and the HEIC's
+    /// it has a metadata track (the still-image-time track); and the HEIC's
     /// maker-note asset id equals the .mov's content id. Returns true if valid.
     static func verifyPair(stillURL: URL, videoURL: URL) -> Bool {
         let asset = AVURLAsset(url: videoURL)

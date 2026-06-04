@@ -19,6 +19,10 @@ if let i = CommandLine.arguments.firstIndex(of: "--export-livephoto"), i + 2 < C
     guard let preset = store.presets.first(where: { $0.name == CommandLine.arguments[i + 1] }) ?? store.presets.first else {
         FileHandle.standardError.write(Data("export: no presets\n".utf8)); exit(1)
     }
+    // Warn when the requested name didn't match any preset so the fallback is visible.
+    if store.presets.first(where: { $0.name == CommandLine.arguments[i + 1] }) == nil {
+        FileHandle.standardError.write(Data("export: preset \"\(CommandLine.arguments[i + 1])\" not found, using \"\(preset.label)\"\n".utf8))
+    }
     let still = URL(fileURLWithPath: base + ".heic")
     let video = URL(fileURLWithPath: base + ".mov")
     let id = LivePhotoExporter.exportPair(preset: preset, options: LivePhotoExportOptions(), stillURL: still, videoURL: video)

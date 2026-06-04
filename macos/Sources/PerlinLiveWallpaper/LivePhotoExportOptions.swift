@@ -3,14 +3,11 @@ import Foundation
 /// User-tunable parameters for a Live Photo export. Defaults match the spec
 /// (§6): iPhone-portrait, ~3 s, 30 fps, still at the clip midpoint.
 struct LivePhotoExportOptions {
-    enum Delivery { case addToPhotos, folder(URL) }
-
     var width: Int = 1290          // iPhone portrait default (e.g. 15/16 Pro)
     var height: Int = 2796
     var duration: Double = 3.0     // seconds
     var fps: Int = 30
     var stillFraction: Double = 0.5  // still frame position in [0,1)
-    var delivery: Delivery = .addToPhotos
 
     /// Total rendered frames (>= 1).
     var frameCount: Int { max(1, Int((duration * Double(fps)).rounded())) }

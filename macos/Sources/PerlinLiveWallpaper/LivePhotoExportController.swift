@@ -11,6 +11,13 @@ final class LivePhotoExportController: NSObject {
     init(presetProvider: @escaping () -> Preset) { self.presetProvider = presetProvider }
 
     func present() {
+        // If the window is already open, just bring it forward instead of
+        // spawning a second one and orphaning any in-progress export.
+        if let win = window, win.isVisible {
+            NSApp.activate(ignoringOtherApps: true)
+            win.makeKeyAndOrderFront(nil)
+            return
+        }
         let vc = LivePhotoExportViewController(preset: presetProvider())
         let win = NSWindow(contentViewController: vc)
         win.title = "Export Live Photo"
@@ -42,8 +49,10 @@ private final class LivePhotoExportViewController: NSViewController {
         stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
 
         LivePhotoExportOptions.resolutionPresets.forEach { resolutionPopUp.addItem(withTitle: $0.label) }
-        durationField.frame.size.width = 60
-        fpsField.frame.size.width = 60
+        // NSStackView ignores `frame.size.width` on arranged subviews; use
+        // Auto Layout constraints so the widths are actually honoured.
+        durationField.widthAnchor.constraint(equalToConstant: 60).isActive = true
+        fpsField.widthAnchor.constraint(equalToConstant: 60).isActive = true
         exportButton.target = self
         exportButton.action = #selector(runExport)
         exportButton.keyEquivalent = "\r"
