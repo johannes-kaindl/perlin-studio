@@ -26,5 +26,7 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>AGPL-3.0-or-later. © Johannes Kaindl.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Perlin Live Wallpaper saves the Live Photo you export here, so it can sync to your iPhone and be set as a lock-screen wallpaper.</string>
 </dict>
 </plist>
