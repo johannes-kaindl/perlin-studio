@@ -89,8 +89,10 @@ final class EditorWindowController: NSObject, WKUIDelegate {
       setInterval(tick, 250);
 
       // The image mask isn't part of gatherParams — read it from the studio's
-      // `state` and forward it (rasterised) only when it changes.
-      var lastMaskKey = "";
+      // `state` and forward it (rasterised) only when it changes. Start at null
+      // (not "") so the first poll always reports the editor's actual mask state
+      // — clearing any mask the wallpaper carried that the editor doesn't have.
+      var lastMaskKey = null;
       function maskTick() {
         try {
           var st = (typeof state !== "undefined") ? state : null;
