@@ -22,8 +22,12 @@ enum LivePhotoExporter {
 
         guard let writer = try? AVAssetWriter(outputURL: videoURL, fileType: .mov) else { return false }
 
+        // HEVC (hvc1) is required for iOS Lock Screen wallpaper animation; H.264
+        // is recognised as a Live Photo but its motion is rejected at the wallpaper
+        // path.  AVAssetWriter writes HEVC into a .mov container as hvc1, which is
+        // the Apple-compatible variant (vs hev1).
         let videoSettings: [String: Any] = [
-            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoCodecKey: AVVideoCodecType.hevc,
             AVVideoWidthKey: o.width,
             AVVideoHeightKey: o.height,
         ]
@@ -39,8 +43,16 @@ enum LivePhotoExporter {
         guard writer.canAdd(videoInput) else { return false }
         writer.add(videoInput)
 
-        // Top-level movie identifier (pairs the .mov with the HEIC still).
-        writer.metadata = [contentIdentifierItem(identifier)]
+        // Top-level movie identifier + vitality/auto-Live-Photo metadata.
+        // The vitality items mimic what the camera pipeline writes; the iOS
+        // wallpaper path reads them as an authenticity signal — without them the
+        // motion is rejected even with the correct markers and HEVC codec.
+        writer.metadata = [
+            contentIdentifierItem(identifier),
+            vitalityScoreItem(),
+            vitalityScoringVersionItem(),
+            autoLivePhotoItem(),
+        ]
 
         // still-image-time timed-metadata track.
         guard let stillDesc = stillTimeFormatDescription() else { return false }
@@ -123,6 +135,40 @@ enum LivePhotoExporter {
     private static let kKeyContentID = "com.apple.quicktime.content.identifier"
     private static let kKeyStillTime = "com.apple.quicktime.still-image-time"
     private static let kKeySpaceMdta = "mdta"
+
+    // MARK: - Vitality / auto Live-Photo metadata
+    // Camera Live Photos carry these; synthetic clips don't, and iOS uses them as
+    // an authenticity signal when deciding whether to allow motion at the Lock
+    // Screen.  Writing them here makes our output match the camera's structure.
+
+    /// Vitality score — 1.0 means the clip is considered "lively" and eligible
+    /// for auto-play.  Without this the wallpaper path may skip the animation.
+    private static func vitalityScoreItem() -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = .quickTimeMetadataLivePhotoVitalityScore
+        item.value = NSNumber(value: Float(1.0))
+        item.dataType = kCMMetadataBaseDataType_Float32 as String
+        return item
+    }
+
+    /// Version tag for the vitality-scoring algorithm (4 = current camera value).
+    private static func vitalityScoringVersionItem() -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = .quickTimeMetadataLivePhotoVitalityScoringVersion
+        item.value = NSNumber(value: Int64(4))
+        item.dataType = kCMMetadataBaseDataType_SInt64 as String
+        return item
+    }
+
+    /// Auto Live Photo flag — 0 means "manually captured" (not auto-triggered).
+    /// Camera clips write this even for manual shots; we match that pattern.
+    private static func autoLivePhotoItem() -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = .quickTimeMetadataAutoLivePhoto
+        item.value = NSNumber(value: Int8(0))
+        item.dataType = kCMMetadataBaseDataType_SInt8 as String
+        return item
+    }
 
     /// Top-level movie metadata item binding this .mov to its still by UUID.
     private static func contentIdentifierItem(_ id: String) -> AVMetadataItem {

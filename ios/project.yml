@@ -28,3 +28,5 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_FILE: Sources/Info.plist
         GENERATE_INFOPLIST_FILE: NO
+        DEVELOPMENT_TEAM: U9X7M39R56
+        CODE_SIGN_STYLE: Automatic
