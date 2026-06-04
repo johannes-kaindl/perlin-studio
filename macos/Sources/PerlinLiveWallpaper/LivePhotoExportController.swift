@@ -110,8 +110,14 @@ private final class LivePhotoExportViewController: NSViewController {
             panel.message = "Photos access denied — choose a folder to save the pair, then AirDrop it to your iPhone."
             guard panel.runModal() == .OK, let dir = panel.url else { self.finish("Cancelled."); return }
             do {
-                try FileManager.default.copyItem(at: still, to: dir.appendingPathComponent("perlin-livephoto.heic"))
-                try FileManager.default.copyItem(at: video, to: dir.appendingPathComponent("perlin-livephoto.mov"))
+                let stillDst = dir.appendingPathComponent("perlin-livephoto.heic")
+                let videoDst = dir.appendingPathComponent("perlin-livephoto.mov")
+                // Remove any prior export so re-export to the same folder never
+                // throws "file already exists".
+                try? FileManager.default.removeItem(at: stillDst)
+                try? FileManager.default.removeItem(at: videoDst)
+                try FileManager.default.copyItem(at: still, to: stillDst)
+                try FileManager.default.copyItem(at: video, to: videoDst)
                 self.finish("Exported the pair to \(dir.lastPathComponent). AirDrop both files to your iPhone, then set the Live Photo as your wallpaper.")
             } catch { self.finish("Folder export failed: \(error.localizedDescription)") }
         }

@@ -67,8 +67,8 @@ animates on touch-and-hold, or on wrist-raise with Always-On Display off).
 ## Headless validation
 
 ```bash
-swift run PerlinLiveWallpaper --selftest             # compile shader + render all presets offscreen
-swift run PerlinLiveWallpaper --render marble out.png # render one preset to a PNG (parity check)
+swift run --package-path macos PerlinLiveWallpaper --selftest             # compile shader + render all presets offscreen
+swift run --package-path macos PerlinLiveWallpaper --render marble out.png # render one preset to a PNG (parity check)
 ```
 
 `--selftest` compiles the runtime MSL, builds the pipeline and renders every

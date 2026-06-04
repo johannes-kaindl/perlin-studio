@@ -97,6 +97,9 @@ enum LivePhotoExporter {
     /// order matches Metal's bgra8Unorm exactly, so this is a straight copy.
     static func pixelBuffer(from bgra: [UInt8], width: Int, height: Int,
                             pool: CVPixelBufferPool) -> CVPixelBuffer? {
+        // A mismatch here would make baseAddress! invalid; reject early so the
+        // force-unwrap below is provably safe for any positive width/height.
+        guard bgra.count == width * height * 4 else { return nil }
         var pbOut: CVPixelBuffer?
         guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pbOut) == kCVReturnSuccess,
               let pb = pbOut else { return nil }
