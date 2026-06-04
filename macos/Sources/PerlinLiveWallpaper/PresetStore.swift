@@ -12,8 +12,13 @@ final class PresetStore {
         let decoder = JSONDecoder()
         var loaded: [Preset] = []
         for name in PresetStore.order {
+#if SWIFT_PACKAGE
             guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "presets"),
                   let data = try? Data(contentsOf: url) else { continue }
+#else
+            guard let url = Bundle.main.url(forResource: name, withExtension: "json"),
+                  let data = try? Data(contentsOf: url) else { continue }
+#endif
             do {
                 loaded.append(try decoder.decode(Preset.self, from: data))
             } catch {
