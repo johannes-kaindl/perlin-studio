@@ -69,6 +69,30 @@ Noise **parameters** stay single-source in the studio's `perlin-presets.js`;
 `scripts/export-presets.js` resolves them to JSON the app decodes. The noise
 **algorithm** is re-implemented in Metal Shading Language (`NoiseShader.swift`),
 a direct port of `perlin.js` (non-tiling 3D advancing-time path). It covers
-every studio colour mode except `tile` and image `mask`: gradient / posterize /
-hsv / rgb (incl. per-channel "nebula") / flow, plus the domain warp and `layer2`
-compositing.
+every studio colour mode — gradient / posterize / hsv / rgb (incl. per-channel
+"nebula") / flow — plus the domain warp, `layer2` compositing and the image mask
+(see above). Tileable noise is the only studio feature not ported.
+
+## Packaging a signed, notarized `.app`
+
+`scripts/build-app.sh` assembles `dist/Perlin Live Wallpaper.app` (menu-bar app,
+icon from the studio art), Developer-ID signs it with the hardened runtime, and
+— with `--notarize` — notarizes and staples it. `dist/` is gitignored.
+
+```bash
+cd macos
+./scripts/build-app.sh                 # build + assemble + Developer-ID sign
+```
+
+To notarize, set up a notarytool keychain profile once (it stores an
+app-specific password from appleid.apple.com — nothing secret lives in the repo):
+
+```bash
+xcrun notarytool store-credentials perlin-notary \
+  --apple-id you@example.com --team-id U9X7M39R56 --password <app-specific-pw>
+
+./scripts/build-app.sh --notarize      # build, sign, notarize, staple
+```
+
+The result is a double-clickable, Gatekeeper-approved `.app`. Override the
+signing identity or profile with `SIGN_ID=…` / `NOTARY_PROFILE=…`.
