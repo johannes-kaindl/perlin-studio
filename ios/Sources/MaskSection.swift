@@ -36,7 +36,7 @@ struct MaskSection: View {
 
     private func loadMask(_ item: PhotosPickerItem?) async {
         guard let item, let data = try? await item.loadTransferable(type: Data.self),
-              let img = UIImage(data: data), let png = img.pngData() else { return }
+              let img = UIImage(data: data)?.normalizedUp(), let png = img.pngData() else { return }
         await MainActor.run {
             model.maskImageData = png
             model.maskBase64 = png.base64EncodedString()

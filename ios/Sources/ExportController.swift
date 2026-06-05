@@ -55,7 +55,10 @@ final class ExportController: ObservableObject {
         let info = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         guard let ctx = CGContext(data: &buf, width: width, height: height, bitsPerComponent: 8,
                                   bytesPerRow: width * 4, space: cs, bitmapInfo: info),
-              let cg = img.cgImage else { return nil }
+              let cg = img.normalizedUp().cgImage else { return nil }
+        // CGContext is bottom-left origin; flip so row 0 = top, matching the
+        // top-first noise frame the composite blends against.
+        ctx.translateBy(x: 0, y: CGFloat(height)); ctx.scaleBy(x: 1, y: -1)
         // Aspect-fill the image into the frame.
         let iw = CGFloat(cg.width), ih = CGFloat(cg.height)
         let scale = max(CGFloat(width) / iw, CGFloat(height) / ih)
