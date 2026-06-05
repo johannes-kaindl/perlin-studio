@@ -35,6 +35,7 @@ struct EditorView: View {
                 Section("Motion") {
                     labeledSlider("Speed", value: $model.preset.scaleT, range: 0.0...0.6)
                 }
+                MaskSection(model: model)
             }
         }
     }
