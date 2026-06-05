@@ -22,6 +22,7 @@ targets:
       - path: ../macos/Sources/PerlinLiveWallpaper/LivePhotoExporter.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/LivePhotoExportOptions.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/PhotoLibraryDelivery.swift
+      - path: ../macos/Sources/PerlinLiveWallpaper/CustomPresetStore.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/Resources/presets
         buildPhase: resources
       - path: ../macos/Sources/PerlinLiveWallpaper/Resources/gradients.json
