@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditorView: View {
     @StateObject private var model = EditorModel()
+    @StateObject private var exporter = ExportController()
     private let presetNames = ["default","lava","aurora","clouds","terrain","circuit","marble","composite","nebula","flow"]
 
     var body: some View {
@@ -36,6 +37,11 @@ struct EditorView: View {
                     labeledSlider("Speed", value: $model.preset.scaleT, range: 0.0...0.6)
                 }
                 MaskSection(model: model)
+            }
+            Button(exporter.busy ? "Working…" : "Create Live Photo") { exporter.export(model) }
+                .buttonStyle(.borderedProminent).disabled(exporter.busy).padding(.vertical, 8)
+            if !exporter.status.isEmpty {
+                Text(exporter.status).font(.footnote).foregroundStyle(.secondary).padding(.bottom, 6)
             }
         }
     }
