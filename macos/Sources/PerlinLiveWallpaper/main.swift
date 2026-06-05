@@ -7,9 +7,14 @@ if CommandLine.arguments.contains("--selftest") {
     exit(ok ? 0 : 1)
 }
 
-// `--render <preset> <out.png>`: render one preset to a PNG and exit.
+// `--render <preset> <out.png> [width] [height] [time]`: render a preset to a PNG and exit.
+// Optional width/height (default 1200×750) allow square renders, e.g. for the app icon.
 if let i = CommandLine.arguments.firstIndex(of: "--render"), i + 2 < CommandLine.arguments.count {
-    exit(RenderCLI.renderPresetToPNG(name: CommandLine.arguments[i + 1], path: CommandLine.arguments[i + 2]) ? 0 : 1)
+    let a = CommandLine.arguments
+    let w = (i + 3 < a.count) ? (Int(a[i + 3]) ?? 1200) : 1200
+    let h = (i + 4 < a.count) ? (Int(a[i + 4]) ?? 750) : 750
+    let t = (i + 5 < a.count) ? (Double(a[i + 5]) ?? 10.0) : 10.0
+    exit(RenderCLI.renderPresetToPNG(name: a[i + 1], path: a[i + 2], width: w, height: h, time: t) ? 0 : 1)
 }
 
 // `--export-livephoto <preset> <out-basename>`: write <basename>.heic + <basename>.mov and exit.
