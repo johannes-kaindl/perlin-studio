@@ -11,6 +11,7 @@ targets:
     type: application
     platform: iOS
     sources:
+      - path: Sources/Assets.xcassets
       - path: Sources
       - path: ../macos/Sources/PerlinLiveWallpaper/NoiseShader.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/Renderer.swift
@@ -27,6 +28,7 @@ targets:
         buildPhase: resources
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: page.codeberg.jkaindl.PerlinLivePhoto
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_FILE: Sources/Info.plist
