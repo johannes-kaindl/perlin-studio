@@ -37,11 +37,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - **Live Photo export** (macOS app) — "Export Live Photo…" renders the current
   preset to an Apple Live Photo (HEIC still + paired H.264 `.mov` with the
   QuickTime content-identifier + still-image-time markers) and adds it to Photos
-  (syncs to iPhone via iCloud) or exports the pair to a folder for AirDrop. Set
-  it as an animated iPhone/iPad lock-screen wallpaper manually. The same Live
-  Photo also works as an animated Apple Watch *Photos* face. Headless
+  (syncs to iPhone via iCloud) or exports the pair to a folder for AirDrop. The
+  Live Photo animates in Photos; the *still* works as a lock-screen wallpaper
+  (iOS blocks *animated* Live Photo wallpapers for synthetic, non-camera
+  captures — see the native iOS app entry). Headless
   `--export-livephoto <preset> <out>` + a `--selftest` check that the pair is
   structurally valid.
+- **Native iOS/iPadOS app** (`ios/`) — *Perlin Live Photo*, a SwiftUI editor
+  that generates Live Photos on-device: a live Metal preview, curated controls
+  (preset, colour/gradient, zoom, detail, warp, speed), and **image masking**
+  (noise inside a picked shape, composited over black or the source image), with
+  one-tap save to Photos. Reuses the macOS app's portable Metal renderer + the
+  `AVAssetWriter` Live Photo exporter by file reference (single-sourced); built
+  via xcodegen, signed to a device with a Developer account. See `ios/README.md`.
 
 ### Fixed
 - **Recording now works on Safari and iOS.** The recorder only ever offered
