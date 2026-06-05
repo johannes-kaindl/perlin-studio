@@ -2,8 +2,8 @@ import Foundation
 
 /// One gradient colour stop, matching the studio's `{pos, color:[r,g,b]}`.
 struct GradientStop: Codable {
-    let pos: Double
-    let color: [Int]   // [r, g, b] in 0...255
+    var pos: Double
+    var color: [Int]   // [r, g, b] in 0...255
 }
 
 /// A resolved studio preset, decoded from the JSON produced by
@@ -11,50 +11,50 @@ struct GradientStop: Codable {
 /// modelled; any extra keys in the JSON (layer2*, loop*, gradientName, …) are
 /// ignored by the synthesized decoder.
 struct Preset: Codable {
-    let name: String?          // bundled presets carry one; live editor params don't
-    let width: Int
-    let height: Int
-    let scaleX: Double
-    let scaleY: Double
-    let scaleT: Double
-    let octaves: Int
-    let persistence: Double
-    let lacunarity: Double
-    let base: Int
-    let colorMode: String
-    let gradient: [GradientStop]?
-    let warpStrength: Double?
-    let warpScale: Double?
-    let posterizeSteps: Int?
-    let hsvHueShift: Double?
-    let hsvHueRange: Double?
-    let hsvSat: Double?
-    let hsvVal: Double?
+    var name: String?          // bundled presets carry one; live editor params don't
+    var width: Int
+    var height: Int
+    var scaleX: Double
+    var scaleY: Double
+    var scaleT: Double
+    var octaves: Int
+    var persistence: Double
+    var lacunarity: Double
+    var base: Int
+    var colorMode: String
+    var gradient: [GradientStop]?
+    var warpStrength: Double?
+    var warpScale: Double?
+    var posterizeSteps: Int?
+    var hsvHueShift: Double?
+    var hsvHueRange: Double?
+    var hsvSat: Double?
+    var hsvVal: Double?
 
     // rgb / nebula (per-channel)
-    let rgbMultiChannel: Bool?
-    let rScale: Double?
-    let gScale: Double?
-    let bScale: Double?
-    let rInvert: Bool?
-    let gInvert: Bool?
-    let bInvert: Bool?
+    var rgbMultiChannel: Bool?
+    var rScale: Double?
+    var gScale: Double?
+    var bScale: Double?
+    var rInvert: Bool?
+    var gInvert: Bool?
+    var bInvert: Bool?
 
     // flow field
-    let flowHueShift: Double?
-    let flowSat: Double?
-    let flowGain: Double?
-    let flowFloor: Double?
-    let flowEps: Double?
+    var flowHueShift: Double?
+    var flowSat: Double?
+    var flowGain: Double?
+    var flowFloor: Double?
+    var flowEps: Double?
 
     // layer 2
-    let layer2On: Bool?
-    let layer2ScaleX: Double?
-    let layer2ScaleY: Double?
-    let layer2Octaves: Int?
-    let layer2Base: Int?
-    let layer2BlendMode: String?
-    let layer2Mix: Double?
+    var layer2On: Bool?
+    var layer2ScaleX: Double?
+    var layer2ScaleY: Double?
+    var layer2Octaves: Int?
+    var layer2Base: Int?
+    var layer2BlendMode: String?
+    var layer2Mix: Double?
 
     /// Title-cased display label for the menu.
     var label: String {
