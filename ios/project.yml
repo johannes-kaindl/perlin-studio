@@ -17,10 +17,13 @@ targets:
       - path: ../macos/Sources/PerlinLiveWallpaper/GPUContext.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/Preset.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/PresetStore.swift
+      - path: ../macos/Sources/PerlinLiveWallpaper/Gradients.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/LivePhotoExporter.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/LivePhotoExportOptions.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/PhotoLibraryDelivery.swift
       - path: ../macos/Sources/PerlinLiveWallpaper/Resources/presets
+        buildPhase: resources
+      - path: ../macos/Sources/PerlinLiveWallpaper/Resources/gradients.json
         buildPhase: resources
     settings:
       base:

@@ -16,6 +16,22 @@ struct EditorView: View {
                         ForEach(presetNames, id: \.self) { Text($0.capitalized).tag($0) }
                     }
                 }
+                Section("Colour") {
+                    Picker("Mode", selection: $model.preset.colorMode) {
+                        Text("Gradient").tag("gradient"); Text("Posterize").tag("posterize")
+                        Text("HSV").tag("hsv"); Text("Flow").tag("flow"); Text("RGB").tag("rgb")
+                    }.pickerStyle(.menu)
+                    if model.preset.colorMode == "gradient" || model.preset.colorMode == "posterize" {
+                        Picker("Gradient", selection: gradientBinding) {
+                            ForEach(Gradients.all, id: \.name) { Text($0.name.capitalized).tag($0.name) }
+                        }
+                    }
+                }
+                Section("Shape") {
+                    labeledSlider("Zoom", value: zoomBinding, range: 0.003...0.05)
+                    labeledSlider("Detail", value: octavesBinding, range: 1...8)
+                    labeledSlider("Warp", value: warpBinding, range: 0...30)
+                }
                 Section("Motion") {
                     labeledSlider("Speed", value: $model.preset.scaleT, range: 0.0...0.6)
                 }
@@ -26,6 +42,23 @@ struct EditorView: View {
     private var presetBinding: Binding<String> {
         Binding(get: { model.preset.name ?? "default" },
                 set: { model.load(presetNamed: $0) })
+    }
+
+    @State private var gradientName: String = "fire"
+    private var gradientBinding: Binding<String> {
+        Binding(get: { gradientName },
+                set: { gradientName = $0; model.preset.gradient = Gradients.stops(named: $0) })
+    }
+    // One "zoom" master drives both scale axes equally.
+    private var zoomBinding: Binding<Double> {
+        Binding(get: { model.preset.scaleX },
+                set: { model.preset.scaleX = $0; model.preset.scaleY = $0 })
+    }
+    private var octavesBinding: Binding<Double> {
+        Binding(get: { Double(model.preset.octaves) }, set: { model.preset.octaves = Int($0.rounded()) })
+    }
+    private var warpBinding: Binding<Double> {
+        Binding(get: { model.preset.warpStrength ?? 0 }, set: { model.preset.warpStrength = $0 })
     }
 
     @ViewBuilder

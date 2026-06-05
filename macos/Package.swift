@@ -13,7 +13,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "PerlinLiveWallpaper",
-            resources: [.copy("Resources/presets"), .copy("Resources/studio")],
+            resources: [.copy("Resources/presets"), .copy("Resources/studio"), .copy("Resources/gradients.json")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
