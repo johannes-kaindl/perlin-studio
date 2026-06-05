@@ -44,10 +44,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
   `--export-livephoto <preset> <out>` + a `--selftest` check that the pair is
   structurally valid.
 - **Native iOS/iPadOS app** (`ios/`) — *Perlin Live Photo*, a SwiftUI editor
-  that generates Live Photos on-device: a live Metal preview, curated controls
-  (preset, colour/gradient, zoom, detail, warp, speed), and **image masking**
-  (noise inside a picked shape, composited over black or the source image), with
-  one-tap save to Photos. Reuses the macOS app's portable Metal renderer + the
+  that generates Live Photos on-device: a live Metal preview, the **full
+  parameter set** (noise, warp, layer 2, every colour-mode sub-parameter), a
+  **custom gradient editor**, **image masking** (noise inside a picked shape,
+  composited over black or the source image), **named saved looks**, and one-tap
+  save to Photos. Reuses the macOS app's portable Metal renderer + the
   `AVAssetWriter` Live Photo exporter by file reference (single-sourced); built
   via xcodegen, signed to a device with a Developer account. See `ios/README.md`.
 
