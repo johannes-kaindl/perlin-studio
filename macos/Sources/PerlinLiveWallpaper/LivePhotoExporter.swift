@@ -13,10 +13,43 @@ import UniformTypeIdentifiers
 /// metadata track. Frames are rendered offscreen via Renderer.renderBGRA.
 enum LivePhotoExporter {
 
+    /// Mask + background for a masked export. `backgroundBGRA`, when set, is a
+    /// width*height*4 BGRA buffer (e.g. the source image scaled to frame) used
+    /// where the mask hides the noise; nil means the solid colour `bg`.
+    struct Mask {
+        var base64: String
+        var invert: Bool
+        var fill: Bool
+        var bg: (b: UInt8, g: UInt8, r: UInt8) = (0, 0, 0)   // solid background (default black)
+        var backgroundBGRA: [UInt8]? = nil                   // optional per-pixel background
+    }
+
+    /// Composites premultiplied masked BGRA over an opaque background → opaque BGRA.
+    private static func composite(_ masked: [UInt8], over mask: Mask, width: Int, height: Int) -> [UInt8] {
+        var out = [UInt8](repeating: 0, count: width * height * 4)
+        var i = 0
+        while i < out.count {
+            let a = Int(masked[i + 3])                 // premultiplied alpha
+            let inv = 255 - a
+            let bgB: Int, bgG: Int, bgR: Int
+            if let buf = mask.backgroundBGRA, buf.count == out.count {
+                bgB = Int(buf[i]); bgG = Int(buf[i + 1]); bgR = Int(buf[i + 2])
+            } else {
+                bgB = Int(mask.bg.b); bgG = Int(mask.bg.g); bgR = Int(mask.bg.r)
+            }
+            out[i]     = UInt8(min(255, Int(masked[i])     + bgB * inv / 255))
+            out[i + 1] = UInt8(min(255, Int(masked[i + 1]) + bgG * inv / 255))
+            out[i + 2] = UInt8(min(255, Int(masked[i + 2]) + bgR * inv / 255))
+            out[i + 3] = 255
+            i += 4
+        }
+        return out
+    }
+
     /// Renders `preset` to a video file at `videoURL`. Returns true on success.
     /// (Metadata markers + still are layered on in later tasks.)
     static func writeVideo(preset: Preset, options o: LivePhotoExportOptions,
-                           identifier: String, videoURL: URL) -> Bool {
+                           identifier: String, videoURL: URL, mask: Mask? = nil) -> Bool {
         guard let gpu = GPUContext(pixelFormat: .bgra8Unorm) else { return false }
         try? FileManager.default.removeItem(at: videoURL)
 
@@ -78,8 +111,17 @@ enum LivePhotoExporter {
                     return
                 }
                 let time = Double(index) / Double(o.fps)
-                guard let bgra = Renderer.renderBGRA(gpu: gpu, preset: preset,
-                                                     width: o.width, height: o.height, time: time),
+                let frameBGRA: [UInt8]?
+                if let m = mask {
+                    // Masked path: render with transparent clear, then composite
+                    // the premultiplied result over the chosen background.
+                    frameBGRA = Renderer.renderMaskedBGRA(gpu: gpu, preset: preset, maskBase64: m.base64,
+                                                          invert: m.invert, fill: m.fill, width: o.width, height: o.height, time: time)
+                        .map { composite($0, over: m, width: o.width, height: o.height) }
+                } else {
+                    frameBGRA = Renderer.renderBGRA(gpu: gpu, preset: preset, width: o.width, height: o.height, time: time)
+                }
+                guard let bgra = frameBGRA,
                       let pool = adaptor.pixelBufferPool,
                       let pb = Self.pixelBuffer(from: bgra, width: o.width, height: o.height, pool: pool) else {
                     ok = false; videoInput.markAsFinished(); done.signal(); return
@@ -214,10 +256,19 @@ enum LivePhotoExporter {
     /// Renders the still frame and writes it as HEIC carrying `identifier` in the
     /// Apple maker-note dictionary (key 17), matching the .mov's content-id.
     static func writeStill(preset: Preset, options o: LivePhotoExportOptions,
-                           identifier: String, stillURL: URL) -> Bool {
+                           identifier: String, stillURL: URL, mask: Mask? = nil) -> Bool {
         guard let gpu = GPUContext(pixelFormat: .bgra8Unorm) else { return false }
         let time = Double(o.stillFrameIndex) / Double(o.fps)
-        guard var bgra = Renderer.renderBGRA(gpu: gpu, preset: preset, width: o.width, height: o.height, time: time) else { return false }
+        let rawBGRA: [UInt8]?
+        if let m = mask {
+            // Masked path: render with transparent clear, composite over background.
+            rawBGRA = Renderer.renderMaskedBGRA(gpu: gpu, preset: preset, maskBase64: m.base64,
+                                                invert: m.invert, fill: m.fill, width: o.width, height: o.height, time: time)
+                .map { composite($0, over: m, width: o.width, height: o.height) }
+        } else {
+            rawBGRA = Renderer.renderBGRA(gpu: gpu, preset: preset, width: o.width, height: o.height, time: time)
+        }
+        guard var bgra = rawBGRA else { return false }
         // BGRA (Metal) -> RGBA (CGImage), swapping B and R in place.
         var i = 0
         while i < bgra.count { bgra.swapAt(i, i + 2); i += 4 }
@@ -245,10 +296,10 @@ enum LivePhotoExporter {
     /// Returns the identifier on success, nil on failure.
     @discardableResult
     static func exportPair(preset: Preset, options o: LivePhotoExportOptions,
-                           stillURL: URL, videoURL: URL) -> String? {
+                           stillURL: URL, videoURL: URL, mask: Mask? = nil) -> String? {
         let id = UUID().uuidString
-        guard writeStill(preset: preset, options: o, identifier: id, stillURL: stillURL),
-              writeVideo(preset: preset, options: o, identifier: id, videoURL: videoURL) else { return nil }
+        guard writeStill(preset: preset, options: o, identifier: id, stillURL: stillURL, mask: mask),
+              writeVideo(preset: preset, options: o, identifier: id, videoURL: videoURL, mask: mask) else { return nil }
         return id
     }
 
@@ -290,6 +341,14 @@ enum LivePhotoExporter {
         }
         let ok = verifyPair(stillURL: stillURL, videoURL: videoURL)
         print("livephoto selftest: markers + uuid match -> \(ok ? "PASS" : "FAIL")")
-        return ok
+
+        // Masked path: a fully-white mask = noise everywhere, composited on black.
+        // The result must still be a valid Live Photo pair with correct markers.
+        let whitePNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        let m = Mask(base64: whitePNG, invert: false, fill: true)
+        let okMask = exportPair(preset: preset, options: opts, stillURL: stillURL, videoURL: videoURL, mask: m) != nil
+            && verifyPair(stillURL: stillURL, videoURL: videoURL)
+        print("livephoto selftest: masked export -> \(okMask ? "PASS" : "FAIL")")
+        return ok && okMask
     }
 }

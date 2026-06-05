@@ -449,6 +449,39 @@ final class Renderer {
 
     private static func log(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
 
+    /// Like renderBGRA but applies an image mask and clears transparent, so the
+    /// result is premultiplied BGRA with alpha=0 where the mask hides the noise.
+    /// The caller composites this over an opaque background.
+    static func renderMaskedBGRA(gpu: GPUContext, preset: Preset, maskBase64: String,
+                                 invert: Bool, fill: Bool, width: Int, height: Int, time: Double) -> [UInt8]? {
+        guard let renderer = Renderer(gpu: gpu, preset: preset) else { return nil }
+        // Apply the mask directly (bypassing the main-thread precondition in the
+        // public setMask — this static method is intentionally called off-main
+        // during export; it owns a fresh Renderer so no data race can occur).
+        if let tex = makeMaskTexture(device: gpu.device, base64Png: maskBase64) {
+            renderer.maskTexture = tex
+            renderer.maskAspect = tex.height > 0 ? Float(tex.width) / Float(tex.height) : 1
+            renderer.maskOn = true
+        } else {
+            renderer.maskOn = false
+        }
+        renderer.maskInvert = invert
+        renderer.maskFill = fill
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: width, height: height, mipmapped: false)
+        td.usage = [.renderTarget, .shaderRead]; td.storageMode = .shared
+        guard let tex = gpu.device.makeTexture(descriptor: td) else { return nil }
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = tex
+        rpd.colorAttachments[0].loadAction = .clear
+        rpd.colorAttachments[0].storeAction = .store
+        rpd.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)   // transparent
+        let cmd = renderer.encode(passDescriptor: rpd, drawableSize: CGSize(width: width, height: height), drawable: nil, time: time)
+        cmd?.waitUntilCompleted()
+        var buf = [UInt8](repeating: 0, count: width * height * 4)
+        tex.getBytes(&buf, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+        return buf
+    }
+
     /// Renders one preset offscreen and returns the raw BGRA8 bytes. Used by the
     /// `--render` CLI for PNG export and visual-parity checks against the studio.
     static func renderBGRA(gpu: GPUContext, preset: Preset, width: Int, height: Int, time: Double) -> [UInt8]? {
