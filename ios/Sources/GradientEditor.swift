@@ -5,12 +5,17 @@ import SwiftUI
 /// `model.preset.gradient`, which the live preview + export consume.
 struct GradientEditor: View {
     @ObservedObject var model: EditorModel
+    @State private var paletteText = ""
 
     var body: some View {
         let stops = model.preset.gradient ?? []
         ForEach(stops.indices, id: \.self) { i in
             HStack {
                 ColorPicker("", selection: colorBinding(i), supportsOpacity: false).labelsHidden()
+                TextField("#rrggbb", text: hexBinding(i))
+                    .font(.system(.caption, design: .monospaced))
+                    .autocorrectionDisabled().textInputAutocapitalization(.never)
+                    .frame(width: 90)
                 Slider(value: posBinding(i), in: 0...1)
                 if stops.count > 2 {
                     Button(role: .destructive) { remove(i) } label: { Image(systemName: "minus.circle") }
@@ -19,6 +24,27 @@ struct GradientEditor: View {
             }
         }
         Button { add() } label: { Label("Add stop", systemImage: "plus") }
+        HStack {
+            TextField("Paste palette (hex list)", text: $paletteText)
+                .font(.system(.caption, design: .monospaced)).autocorrectionDisabled().textInputAutocapitalization(.never)
+            Button("Apply") { applyPalette() }.disabled(Hex.parseList(paletteText).count < 2)
+        }
+    }
+
+    /// Two-way hex text ⇄ the stop's colour. Invalid text is ignored until valid.
+    private func hexBinding(_ i: Int) -> Binding<String> {
+        Binding(get: { Hex.string(model.preset.gradient?[i].color ?? [255, 255, 255]) },
+                set: { if let rgb = Hex.parse($0) { model.preset.gradient?[i].color = rgb } })
+    }
+    /// Pasted hex list → evenly-spread gradient (≥2, capped at 16).
+    private func applyPalette() {
+        let colors = Array(Hex.parseList(paletteText).prefix(16))
+        guard colors.count >= 2 else { return }
+        let n = colors.count
+        model.preset.gradient = colors.enumerated().map { idx, c in
+            GradientStop(pos: Double(idx) / Double(n - 1), color: c)
+        }
+        paletteText = ""
     }
 
     private func colorBinding(_ i: Int) -> Binding<Color> {
