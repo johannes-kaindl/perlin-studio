@@ -46,9 +46,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - **Native iOS/iPadOS app** (`ios/`) — *Perlin Live Photo*, a SwiftUI editor
   that generates Live Photos on-device: a live Metal preview, the **full
   parameter set** (noise, warp, layer 2, every colour-mode sub-parameter), a
-  **custom gradient editor**, **image masking** (noise inside a picked shape,
-  composited over black or the source image), **named saved looks**, and one-tap
-  save to Photos. Reuses the macOS app's portable Metal renderer + the
+  **custom gradient editor** (visual colour wells, hex input, paste-a-palette),
+  **image masking** (noise inside a picked shape, composited over black or the
+  source image), **named saved looks**, and export to Photos as a **Live Photo,
+  plain video, or still image** with configurable resolution / duration / fps.
+  Reuses the macOS app's portable Metal renderer + the
   `AVAssetWriter` Live Photo exporter by file reference (single-sourced); built
   via xcodegen, signed to a device with a Developer account. See `ios/README.md`.
 
