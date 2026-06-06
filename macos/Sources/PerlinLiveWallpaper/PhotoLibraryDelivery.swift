@@ -21,4 +21,20 @@ enum PhotoLibraryDelivery {
             }
         }
     }
+
+    /// Saves a single image file (e.g. PNG) to the Photos library.
+    static func addImage(url: URL, completion: @escaping (Result) -> Void) { addResource(.photo, url, completion) }
+
+    /// Saves a single video file (e.g. .mov) to the Photos library.
+    static func addVideo(url: URL, completion: @escaping (Result) -> Void) { addResource(.video, url, completion) }
+
+    // Shared helper: requests .addOnly auth, then adds the single resource.
+    private static func addResource(_ type: PHAssetResourceType, _ url: URL, _ completion: @escaping (Result) -> Void) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized else { completion(.denied); return }
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetCreationRequest.forAsset().addResource(with: type, fileURL: url, options: PHAssetResourceCreationOptions())
+            } completionHandler: { ok, err in completion(ok ? .added : .failed(err?.localizedDescription ?? "unknown error")) }
+        }
+    }
 }

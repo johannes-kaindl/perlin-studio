@@ -12,8 +12,11 @@ struct EditorView: View {
                     .frame(maxWidth: .infinity, maxHeight: 380)
                     .clipped()
                 ControlsView(model: model)
-                Button(exporter.busy ? "Working…" : "Create Live Photo") { exporter.export(model) }
-                    .buttonStyle(.borderedProminent).disabled(exporter.busy).padding(.vertical, 8)
+                HStack {
+                    Button("Live Photo") { exporter.export(model) }.buttonStyle(.borderedProminent)
+                    Button("Video") { exporter.exportVideo(model) }.buttonStyle(.bordered)
+                    Button("Image") { exporter.exportImage(model) }.buttonStyle(.bordered)
+                }.disabled(exporter.busy).padding(.vertical, 8)
                 if !exporter.status.isEmpty {
                     Text(exporter.status).font(.footnote).foregroundStyle(.secondary).padding(.bottom, 6)
                 }

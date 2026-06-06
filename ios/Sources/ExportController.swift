@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Runs a Live Photo export for the current EditorModel: builds the mask +
-/// background (incl. scaling the source image to the frame for the
+/// Runs Live Photo / video / PNG exports for the current EditorModel: builds the
+/// mask + background (incl. scaling the source image to the frame for the
 /// source-image background), renders off-main, and saves via PhotoKit.
 @MainActor
 final class ExportController: ObservableObject {
@@ -12,10 +12,8 @@ final class ExportController: ObservableObject {
     func export(_ model: EditorModel) {
         busy = true; status = "Rendering…"
         let preset = model.preset
-        let opts = LivePhotoExportOptions()
-        let w = opts.width, h = opts.height
-        let mask: LivePhotoExporter.Mask? = (model.maskOn && model.maskBase64 != nil)
-            ? makeMask(model, width: w, height: h) : nil
+        let opts = model.export
+        let mask = currentMask(model, width: opts.width, height: opts.height)
 
         Task.detached(priority: .userInitiated) {
             let dir = FileManager.default.temporaryDirectory
@@ -36,7 +34,46 @@ final class ExportController: ObservableObject {
         }
     }
 
+    func exportImage(_ model: EditorModel) {
+        busy = true; status = "Rendering image…"
+        let preset = model.preset, opts = model.export
+        let mask = currentMask(model, width: opts.width, height: opts.height)
+        Task.detached(priority: .userInitiated) {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("perlin.png")
+            guard LivePhotoExporter.exportStillImage(preset: preset, options: opts, mask: mask, pngURL: url) else {
+                await self.finish("Image render failed."); return
+            }
+            PhotoLibraryDelivery.addImage(url: url) { r in Task { @MainActor in self.report(r, "Image saved to Photos ✓") } }
+        }
+    }
+
+    func exportVideo(_ model: EditorModel) {
+        busy = true; status = "Rendering video…"
+        let preset = model.preset, opts = model.export
+        let mask = currentMask(model, width: opts.width, height: opts.height)
+        Task.detached(priority: .userInitiated) {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("perlin-video.mov")
+            guard LivePhotoExporter.writeVideo(preset: preset, options: opts, identifier: UUID().uuidString, videoURL: url, mask: mask) else {
+                await self.finish("Video render failed."); return
+            }
+            PhotoLibraryDelivery.addVideo(url: url) { r in Task { @MainActor in self.report(r, "Video saved to Photos ✓") } }
+        }
+    }
+
+    private func report(_ r: PhotoLibraryDelivery.Result, _ ok: String) {
+        switch r {
+        case .added: finish(ok)
+        case .denied: finish("Photos access denied — enable it in Settings → Photos.")
+        case .failed(let m): finish("Saved file but Photos add failed: \(m)")
+        }
+    }
+
     private func finish(_ m: String) { busy = false; status = m }
+
+    /// The export Mask for the current model, or nil when masking is off.
+    private func currentMask(_ model: EditorModel, width: Int, height: Int) -> LivePhotoExporter.Mask? {
+        (model.maskOn && model.maskBase64 != nil) ? makeMask(model, width: width, height: height) : nil
+    }
 
     /// Builds the Mask, scaling the picked image to width×height (fill) as the
     /// BGRA background when the user chose the source-image background.

@@ -283,6 +283,35 @@ enum LivePhotoExporter {
         return CGImageDestinationFinalize(dest)
     }
 
+    /// Renders the still frame (mask-composited if a mask is given) and writes it
+    /// as a PNG. Reuses the same render + composite as the Live Photo still.
+    static func exportStillImage(preset: Preset, options o: LivePhotoExportOptions, mask: Mask?, pngURL: URL) -> Bool {
+        guard let gpu = GPUContext(pixelFormat: .bgra8Unorm) else { return false }
+        let time = Double(o.stillFrameIndex) / Double(o.fps)
+        let bgra: [UInt8]?
+        if let m = mask {
+            bgra = Renderer.renderMaskedBGRA(gpu: gpu, preset: preset, maskBase64: m.base64, invert: m.invert,
+                                             fill: m.fill, width: o.width, height: o.height, time: time)
+                .map { composite($0, over: m, width: o.width, height: o.height) }
+        } else {
+            bgra = Renderer.renderBGRA(gpu: gpu, preset: preset, width: o.width, height: o.height, time: time)
+        }
+        guard var rgba = bgra else { return false }
+        // BGRA (Metal) → RGBA (CGImage), swapping B and R in place.
+        var i = 0
+        while i < rgba.count { rgba.swapAt(i, i + 2); i += 4 }
+        try? FileManager.default.removeItem(at: pngURL)
+        let cs = CGColorSpaceCreateDeviceRGB()
+        let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        guard let provider = CGDataProvider(data: Data(rgba) as CFData),
+              let cg = CGImage(width: o.width, height: o.height, bitsPerComponent: 8, bitsPerPixel: 32,
+                               bytesPerRow: o.width * 4, space: cs, bitmapInfo: info,
+                               provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent),
+              let dest = CGImageDestinationCreateWithURL(pngURL as CFURL, UTType.png.identifier as CFString, 1, nil) else { return false }
+        CGImageDestinationAddImage(dest, cg, nil)
+        return CGImageDestinationFinalize(dest)
+    }
+
     private static func cgImage(rgba: [UInt8], width: Int, height: Int) -> CGImage? {
         let cs = CGColorSpaceCreateDeviceRGB()
         let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
