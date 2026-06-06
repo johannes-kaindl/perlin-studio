@@ -15,6 +15,7 @@ struct ControlsView: View {
             warpSection
             layer2Section
             Section("Motion") { slider("Speed", $model.preset.scaleT, 0.0...0.6) }
+            exportSection
             MaskSection(model: model)
             LooksSection(model: model)
         }
@@ -104,6 +105,20 @@ struct ControlsView: View {
         }
     }
 
+    private var exportSection: some View {
+        Section("Export") {
+            Picker("Resolution", selection: resolutionBinding) {
+                ForEach(LivePhotoExportOptions.resolutionPresets.indices, id: \.self) { i in
+                    Text(LivePhotoExportOptions.resolutionPresets[i].label).tag(i)
+                }
+            }
+            slider("Duration (\(String(format: "%.1f", model.export.duration)) s)", $model.export.duration, 1...6)
+            Picker("FPS", selection: $model.export.fps) {
+                Text("24").tag(24); Text("30").tag(30); Text("60").tag(60)
+            }.pickerStyle(.segmented)
+        }
+    }
+
     // MARK: – Bindings
 
     private var presetBinding: Binding<String> {
@@ -122,6 +137,17 @@ struct ControlsView: View {
     }
     private var blendBinding: Binding<String> {
         Binding(get: { model.preset.layer2BlendMode ?? "multiply" }, set: { model.preset.layer2BlendMode = $0 })
+    }
+    /// Maps the resolution-preset index ⇄ the export width/height.
+    private var resolutionBinding: Binding<Int> {
+        Binding(get: {
+            LivePhotoExportOptions.resolutionPresets.firstIndex(where: {
+                $0.w == model.export.width && $0.h == model.export.height
+            }) ?? 0
+        }, set: { i in
+            let p = LivePhotoExportOptions.resolutionPresets[i]
+            model.export.width = p.w; model.export.height = p.h
+        })
     }
 
     // MARK: – KeyPath binding helpers for optional fields

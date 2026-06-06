@@ -17,6 +17,8 @@ final class EditorModel: ObservableObject {
     /// and the raw image for the "source image" background.
     @Published var maskBase64: String?
     @Published var maskImageData: Data?
+    /// Export parameters the user can tune before tapping "Export Live Photo".
+    @Published var export = LivePhotoExportOptions()
 
     init() {
         let store = PresetStore()
