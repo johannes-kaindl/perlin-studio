@@ -1,5 +1,9 @@
 # AGENTS.md — context for AI agents
 
+> **Workspace-Standards:** Die verbindliche Leitkonvention steht in `_docs/CONVENTIONS.md`
+> (am Workspace-Root `/Users/Shared/code/`), Modell comply-or-explain. Offene Punkte für
+> dieses Repo siehe Abschnitt "Offene Konventions-Punkte".
+
 This file is aimed at AI assistants (Claude Code, Cursor, Aider, …) that
 work on this repo. Humans contributing here will find what they need in
 [`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and
@@ -196,3 +200,14 @@ these, sync with the maintainer first so scope and approach are clear:
 - GIF export (`gif.js`, ~12 KB)
 - Obsidian plugin port
 - Web Component variant
+
+## Offene Konventions-Punkte
+
+Profile: web-static · native. Abgleich gegen `_docs/CONVENTIONS.md`.
+
+- [ ] CORE-META-08 — `LICENSE-DOCS` mit Text-/Doc-Lizenz CC BY-SA 4.0 anlegen.
+- [ ] CORE-GIT-01 — GitHub-Mirror-Remote (`github`) für das öffentliche Repo einrichten.
+- [ ] CORE-AGENT-01 — Kanonisches Sektions-Skelett (Project character · Architecture principles · Commands · Conventions · Gotchas · Memory · Abweichungen) als Überschriften ergänzen/angleichen.
+- [ ] PROF-WEB-03 — Automatisches `node --check`-Syntax-Gate (extrahiert `<script>` aus HTML) als Script + im CI ergänzen (aktuell nur Smoke-Test).
+- [ ] PROF-NAT-02 — version-bump-Script anlegen, das die Version und `Info.plist` (`CFBundleShortVersionString`) synchron hält.
+- [ ] PROF-NAT-03 — Signing/Notarization/Gatekeeper-Doku als `docs/MACOS-APP.md` (bzw. `docs/MACOS-INSTALL.md`) bereitstellen (Inhalt liegt derzeit in `macos/README.md`).
