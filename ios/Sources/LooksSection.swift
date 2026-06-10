@@ -5,7 +5,10 @@ import SwiftUI
 struct LooksSection: View {
     @ObservedObject var model: EditorModel
     @State private var name = ""
-    @State private var looks: [CustomPreset] = CustomPresetStore.list()
+    // Filled in onAppear: a default expression here would re-read the store
+    // from disk on every ControlsView body evaluation (i.e. every slider tick),
+    // because @State initial values are evaluated on each struct init.
+    @State private var looks: [CustomPreset] = []
 
     var body: some View {
         Section("Looks") {
@@ -14,6 +17,7 @@ struct LooksSection: View {
                 Button("Save") { save() }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            .onAppear { refresh() }
             ForEach(looks, id: \.id) { look in
                 Button(look.name) { load(look) }
             }
@@ -33,7 +37,10 @@ struct LooksSection: View {
         name = ""; refresh()
     }
     private func load(_ look: CustomPreset) {
-        if let p = try? JSONDecoder().decode(Preset.self, from: Data(look.paramsJSON.utf8)) { model.preset = p }
+        // Params and mask apply together or not at all — a half-applied look
+        // (old params + new mask) would silently misrepresent the saved state.
+        guard let p = try? JSONDecoder().decode(Preset.self, from: Data(look.paramsJSON.utf8)) else { return }
+        model.preset = p
         if let img = look.maskImage {
             model.maskBase64 = img
             model.maskImageData = Data(base64Encoded: img)
