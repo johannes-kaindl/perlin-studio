@@ -256,12 +256,19 @@ final class Renderer {
 
         var px = [UInt8](repeating: 0, count: w * h * 4)
         let cs = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8,
-                                  bytesPerRow: w * 4, space: cs,
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        // No flip: CGBitmapContext lays out row 0 = top, which matches the
-        // shader's top-down screen sampling (in.position.y = 0 at the top).
-        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        // Draw inside withUnsafeMutableBytes: an `&px` pointer is only valid
+        // for the CGContext initializer call itself — the draw afterwards
+        // needs the buffer explicitly pinned.
+        let drawn = px.withUnsafeMutableBytes { raw -> Bool in
+            guard let ctx = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8,
+                                      bytesPerRow: w * 4, space: cs,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            // No flip: CGBitmapContext lays out row 0 = top, which matches the
+            // shader's top-down screen sampling (in.position.y = 0 at the top).
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard drawn else { return nil }
 
         var mask = [UInt8](repeating: 0, count: w * h)
         var anyTransparent = false

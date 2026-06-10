@@ -87,20 +87,27 @@ final class ExportController: ObservableObject {
 
     /// Renders a UIImage into a width×height BGRA buffer (aspect-fill).
     private static func bgraBuffer(of img: UIImage, width: Int, height: Int) -> [UInt8]? {
+        guard let cg = img.normalizedUp().cgImage else { return nil }
         var buf = [UInt8](repeating: 0, count: width * height * 4)
         let cs = CGColorSpaceCreateDeviceRGB()
         let info = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        guard let ctx = CGContext(data: &buf, width: width, height: height, bitsPerComponent: 8,
-                                  bytesPerRow: width * 4, space: cs, bitmapInfo: info),
-              let cg = img.normalizedUp().cgImage else { return nil }
-        // CGContext is bottom-left origin; flip so row 0 = top, matching the
-        // top-first noise frame the composite blends against.
-        ctx.translateBy(x: 0, y: CGFloat(height)); ctx.scaleBy(x: 1, y: -1)
-        // Aspect-fill the image into the frame.
-        let iw = CGFloat(cg.width), ih = CGFloat(cg.height)
-        let scale = max(CGFloat(width) / iw, CGFloat(height) / ih)
-        let dw = iw * scale, dh = ih * scale
-        ctx.draw(cg, in: CGRect(x: (CGFloat(width) - dw) / 2, y: (CGFloat(height) - dh) / 2, width: dw, height: dh))
-        return buf
+        // The whole draw runs inside withUnsafeMutableBytes: an `&buf` pointer
+        // is only guaranteed valid for the CGContext *initializer* call itself,
+        // and the optimizer may even pass a temporary copy — the later draw
+        // would then silently hit dead memory.
+        let drawn = buf.withUnsafeMutableBytes { raw -> Bool in
+            guard let ctx = CGContext(data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: width * 4, space: cs, bitmapInfo: info) else { return false }
+            // CGContext is bottom-left origin; flip so row 0 = top, matching the
+            // top-first noise frame the composite blends against.
+            ctx.translateBy(x: 0, y: CGFloat(height)); ctx.scaleBy(x: 1, y: -1)
+            // Aspect-fill the image into the frame.
+            let iw = CGFloat(cg.width), ih = CGFloat(cg.height)
+            let scale = max(CGFloat(width) / iw, CGFloat(height) / ih)
+            let dw = iw * scale, dh = ih * scale
+            ctx.draw(cg, in: CGRect(x: (CGFloat(width) - dw) / 2, y: (CGFloat(height) - dh) / 2, width: dw, height: dh))
+            return true
+        }
+        return drawn ? buf : nil
     }
 }
