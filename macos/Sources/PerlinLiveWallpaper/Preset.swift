@@ -1,7 +1,9 @@
 import Foundation
 
 /// One gradient colour stop, matching the studio's `{pos, color:[r,g,b]}`.
-struct GradientStop: Codable {
+/// Equatable so UIs can recognise whether the active stops are still a named
+/// gradient or already a custom edit.
+struct GradientStop: Codable, Equatable {
     var pos: Double
     var color: [Int]   // [r, g, b] in 0...255
 }

@@ -5,7 +5,9 @@ import SwiftUI
 struct ControlsView: View {
     @ObservedObject var model: EditorModel
     private let presetNames = ["default","lava","aurora","clouds","terrain","circuit","marble","composite","nebula","flow"]
-    @State private var gradientName = "fire"
+    /// True once the user explicitly picked "Custom" — keeps the editor open
+    /// even while the stops still equal a named gradient.
+    @State private var customPicked = false
 
     var body: some View {
         Form {
@@ -42,7 +44,7 @@ struct ControlsView: View {
                     ForEach(Gradients.all, id: \.name) { Text($0.name.capitalized).tag($0.name) }
                     Text("Custom").tag("custom")
                 }
-                if gradientName == "custom" { GradientEditor(model: model) }
+                if gradientSelection == "custom" { GradientEditor(model: model) }
             }
             if model.preset.colorMode == "posterize" {
                 slider("Steps", intB(\.posterizeSteps, 5).double, 2...16)
@@ -122,11 +124,20 @@ struct ControlsView: View {
     // MARK: – Bindings
 
     private var presetBinding: Binding<String> {
-        Binding(get: { model.preset.name ?? "default" }, set: { model.load(presetNamed: $0) })
+        Binding(get: { model.preset.name ?? "default" },
+                set: { customPicked = false; model.load(presetNamed: $0) })
+    }
+    /// The picker selection is *derived* from the active stops (instead of a
+    /// parallel @State name) so loading a look or preset can never desync the
+    /// label from what actually renders.
+    private var gradientSelection: String {
+        if customPicked { return "custom" }
+        return Gradients.all.first(where: { $0.stops == model.preset.gradient })?.name ?? "custom"
     }
     private var gradientBinding: Binding<String> {
-        Binding(get: { gradientName },
-                set: { gradientName = $0; if $0 != "custom" { model.preset.gradient = Gradients.stops(named: $0) } })
+        Binding(get: { gradientSelection },
+                set: { customPicked = ($0 == "custom")
+                       if $0 != "custom" { model.preset.gradient = Gradients.stops(named: $0) } })
     }
     // One "zoom" master drives both scale axes equally.
     private var zoomBinding: Binding<Double> {
