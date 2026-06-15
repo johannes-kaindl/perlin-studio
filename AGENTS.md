@@ -44,6 +44,9 @@ Five plain scripts, each attaching a `window` global, loaded in order
    The studio is the full editor; `<perlin-noise>` is the embeddable
    renderer-only element. Keep render/animation logic in the engine, not
    duplicated in either consumer.
+5. `perlin-export.js` → `MTPerlinExport` — pure compositing helpers
+   (`computeFitRect`, `compositeOverColor`, `hexToRgb`) used by the studio's
+   video export. No DOM; Node-requirable (smoke-tested).
 
 ### Style boundaries
 
@@ -65,6 +68,7 @@ Five plain scripts, each attaching a `window` global, loaded in order
 ├── perlin-engine.js       # headless render engine (worker lifecycle + RAF loop)
 ├── perlin-studio.js       # controller (UI bindings, recording, presets) — consumes the engine
 ├── perlin-element.js      # <perlin-noise> embeddable renderer-only custom element
+├── perlin-export.js       # pure compositing math for video export (window.MTPerlinExport)
 ├── manifest.webmanifest   # PWA manifest (installable)
 ├── assets/                # static assets (favicon.svg, icon-{192,512}.png,
 │                          #   apple-touch-icon.png, hero.png, gallery-*.png

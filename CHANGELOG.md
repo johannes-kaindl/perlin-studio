@@ -7,6 +7,12 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Video export bakes the mask + a background** (web) — the recorder now
+  composites the active image mask and a chosen background (solid color,
+  imported image with cover/contain, or best-effort transparent) into the
+  exported frames, at a chosen export resolution (presets + custom) decoupled
+  from the on-screen canvas. New zero-dependency `perlin-export.js` holds the
+  compositing math.
 - **macOS companion app** (`macos/`) — *Perlin Live Wallpaper*, a native
   menu-bar app that renders the studio's noise live as an animated desktop
   background on the GPU via Metal. It uses only public AppKit (a desktop-level
