@@ -56,6 +56,11 @@ const state = {
   recordedExt: "webm",          // container of the last recording (drives the download name)
   recorder: null,
   firstFrameRendered: false,
+
+  // Export background image (separate from the mask; falls back to the mask).
+  bgSourceImage: null,
+  bgName: null,
+  exportCanvas: null,   // offscreen compositing canvas, created lazily
 };
 
 // ============= DOM =============
@@ -134,7 +139,21 @@ const els = {
   btnPng: $("btn-png"),
   btnWebm: $("btn-webm"),
   btnWebmDownload: $("btn-webm-download"),
-  webmMaskHint: $("webm-mask-hint"),
+  exportRes: $("p-export-res"),
+  exportCustomRes: $("export-custom-res"),
+  exportW: $("p-export-w"),
+  exportH: $("p-export-h"),
+  bgType: $("p-bg-type"),
+  bgColorRow: $("bg-color-row"),
+  bgColor: $("p-bg-color"),
+  bgImageRow: $("bg-image-row"),
+  btnBgLoad: $("btn-bg-load"),
+  btnBgClear: $("btn-bg-clear"),
+  bgFile: $("bg-file"),
+  bgName: $("bg-name"),
+  bgFit: $("p-bg-fit"),
+  bgTransparentHint: $("bg-transparent-hint"),
+  exportEstimate: $("export-estimate"),
 
   // Main output
   canvas: $("canvas-output"),
@@ -269,6 +288,46 @@ function gatherParams() {
       : (GRADIENTS[name] || GRADIENTS.viridis);
   }
   return base;
+}
+
+const EXPORT_RES_PRESETS = {
+  "1080x1920": [1080, 1920],
+  "1920x1080": [1920, 1080],
+  "1080x1080": [1080, 1080],
+  "1440x2560": [1440, 2560],
+  "2160x3840": [2160, 3840],
+};
+
+// Build the full export description from the UI. base.width/height are
+// overridden to the EXPORT resolution (decoupled from the live canvas size).
+function gatherExportSpec() {
+  const base = gatherParams();
+  let width, height;
+  const sel = els.exportRes.value;
+  if (sel === "canvas") {
+    width = base.width; height = base.height;
+  } else if (sel === "custom") {
+    width = clampInt(els.exportW.value, 16, 4096, 1080);
+    height = clampInt(els.exportH.value, 16, 4096, 1920);
+  } else {
+    const p = EXPORT_RES_PRESETS[sel] || [base.width, base.height];
+    width = p[0]; height = p[1];
+  }
+  base.width = width;
+  base.height = height;
+  return {
+    base, width, height,
+    fps: clampInt(els.fps.value, 1, 60, 30),
+    frames: clampInt(els.frames.value, 1, 600, 120),
+    loop: base.loop,
+    background: {
+      type: els.bgType.value,
+      color: els.bgColor.value || "#000000",
+      image: state.bgSourceImage || state.maskSourceImage || null,
+      fit: els.bgFit.value || "cover",
+    },
+    mask: state.maskApplied,
+  };
 }
 
 // ============= APPLY PARAMS (preset → UI) =============
