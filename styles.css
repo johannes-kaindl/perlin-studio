@@ -382,9 +382,6 @@ main {
   letter-spacing: 0.01em;
   line-height: 1.5;
 }
-/* A hint placed below controls (not under an h2) needs the gap above, not the
-   tuck the default negative top-margin gives. */
-.webm-mask-hint { margin: 8px 0 0; }
 
 /* ----- Form rows ----- */
 label {

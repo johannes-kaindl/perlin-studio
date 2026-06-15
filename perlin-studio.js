@@ -439,9 +439,7 @@ function updateExportResMode() {
 // Some browsers can't record an alpha video. Probe a WebM/VP-with-alpha
 // candidate; if absent, gray out "transparent" and explain.
 function transparentRecordingSupported() {
-  return !!(window.MediaRecorder && MediaRecorder.isTypeSupported &&
-    (MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ||
-     MediaRecorder.isTypeSupported("video/webm;codecs=vp8")));
+  return supportedRecorderMimes(ALPHA_MIME_CANDIDATES).length > 0;
 }
 
 // Show the right background controls for the selected type.
@@ -496,9 +494,9 @@ function updateExportEstimate() {
 // The mask is loaded once from a user-supplied PNG / JPG and re-rasterised
 // to the current canvas resolution on demand. The cached Uint8Array of
 // alpha bytes is what the render pipeline consumes per pixel — cheap.
-// PNG export inherits the alpha automatically; video recording does not (the
-// canvas stream is RGB-only), so masked frames render onto whatever's
-// behind the canvas at recording time.
+// Both PNG export and video export honour the alpha: the video exporter
+// composites the masked noise over the chosen background (colour / image /
+// transparent) — see compositeExportFrame / recordVideo.
 
 function loadMaskFile(file) {
   const reader = new FileReader();
@@ -1002,11 +1000,18 @@ const RECORDER_MIME_CANDIDATES = [
   "video/webm",
 ];
 
+// Alpha-capable containers for transparent export. MP4/H.264 can't carry alpha,
+// so transparent recording must use a VP8/VP9 WebM track.
+const ALPHA_MIME_CANDIDATES = [
+  "video/webm;codecs=vp9",
+  "video/webm;codecs=vp8",
+];
+
 // Every candidate the browser accepts, in priority order. isTypeSupported() can
 // false-positive, so setupRecorder() still falls through if construction fails.
-function supportedRecorderMimes() {
+function supportedRecorderMimes(candidates = RECORDER_MIME_CANDIDATES) {
   if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return [];
-  return RECORDER_MIME_CANDIDATES.filter((m) => MediaRecorder.isTypeSupported(m));
+  return candidates.filter((m) => MediaRecorder.isTypeSupported(m));
 }
 
 // File extension / blob type follow the container that was actually recorded.
@@ -1049,7 +1054,7 @@ function paramsForRecordingFrame(base, startSlider, frameIndex, totalFrames, fps
  * @param {number} fps
  * @returns {{ recorder: MediaRecorder, mime: string, ext: string, track: MediaStreamTrack|null, canRequestFrame: boolean, stopped: Promise<void> }}
  */
-function setupRecorder(canvas, fps) {
+function setupRecorder(canvas, fps, candidates = RECORDER_MIME_CANDIDATES) {
   const stream = canvas.captureStream(0);
   const track = stream.getVideoTracks()[0];
   const canRequestFrame = !!(track && typeof track.requestFrame === "function");
@@ -1058,7 +1063,7 @@ function setupRecorder(canvas, fps) {
   // Walk the supported candidates until one constructs — isTypeSupported() may
   // report a type the platform then refuses to instantiate (a known quirk).
   let recorder = null, requestedMime = "", lastErr = null;
-  for (const m of supportedRecorderMimes()) {
+  for (const m of supportedRecorderMimes(candidates)) {
     try { recorder = new MediaRecorder(finalStream, { mimeType: m }); requestedMime = m; break; }
     catch (e) { lastErr = e; }
   }
@@ -1104,12 +1109,17 @@ function compositeExportFrame(cctx, spec) {
  */
 async function recordVideo() {
   if (state.recording) return;
-  if (!window.MediaRecorder || supportedRecorderMimes().length === 0) {
-    setStatus("Your browser can't record video here (no supported codec).", true);
+
+  const spec = gatherExportSpec();
+  const transparent = spec.background.type === "transparent";
+  const mimeCandidates = transparent ? ALPHA_MIME_CANDIDATES : RECORDER_MIME_CANDIDATES;
+  if (!window.MediaRecorder || supportedRecorderMimes(mimeCandidates).length === 0) {
+    setStatus(transparent
+      ? "This browser can't record transparent video — choose a color or image background."
+      : "Your browser can't record video here (no supported codec).", true);
     return;
   }
 
-  const spec = gatherExportSpec();
   const wasPlaying = engine.playing;
   if (wasPlaying) pause();
 
@@ -1121,7 +1131,7 @@ async function recordVideo() {
   const cctx = cc.getContext("2d");
 
   const startSlider = getTValue();
-  const { recorder, mime, ext, track, canRequestFrame, stopped } = setupRecorder(cc, spec.fps);
+  const { recorder, mime, ext, track, canRequestFrame, stopped } = setupRecorder(cc, spec.fps, mimeCandidates);
   state.recorder = recorder;
   recorder.start();
   state.recording = true;
