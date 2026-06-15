@@ -7,7 +7,7 @@
 #   ./scripts/build-app.sh --notarize   …then notarize + staple
 #
 # Notarization needs a one-time keychain profile (no password is stored here):
-#   xcrun notarytool store-credentials perlin-notary \
+#   xcrun notarytool store-credentials jkaindl \
 #     --apple-id <you@example.com> --team-id U9X7M39R56 --password <app-specific-pw>
 # Override the profile name with NOTARY_PROFILE=… if you used a different one.
 #
@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."   # -> macos/
 APP_NAME="Perlin Live Wallpaper"
 EXEC="PerlinLiveWallpaper"
 SIGN_ID="${SIGN_ID:-Developer ID Application: Johannes Kaindl (U9X7M39R56)}"
-NOTARY_PROFILE="${NOTARY_PROFILE:-perlin-notary}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-jkaindl}"
 BUILD_DIR=".build/release"
 APP="dist/${APP_NAME}.app"
 

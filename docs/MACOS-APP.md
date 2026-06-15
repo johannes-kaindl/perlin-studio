@@ -68,7 +68,7 @@ opens by double-click **without any Gatekeeper warning**, online or offline.
    [account.apple.com](https://account.apple.com) — nothing secret lives in the
    repo):
    ```bash
-   xcrun notarytool store-credentials perlin-notary \
+   xcrun notarytool store-credentials jkaindl \
      --apple-id you@example.com --team-id U9X7M39R56 --password <app-specific-pw>
    ```
 

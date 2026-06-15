@@ -103,7 +103,7 @@ To notarize, set up a notarytool keychain profile once (it stores an
 app-specific password from appleid.apple.com — nothing secret lives in the repo):
 
 ```bash
-xcrun notarytool store-credentials perlin-notary \
+xcrun notarytool store-credentials jkaindl \
   --apple-id you@example.com --team-id U9X7M39R56 --password <app-specific-pw>
 
 ./scripts/build-app.sh --notarize      # build, sign, notarize, staple
