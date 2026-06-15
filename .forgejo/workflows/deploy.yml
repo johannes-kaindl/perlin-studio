@@ -25,6 +25,12 @@ jobs:
       - name: Checkout
         uses: https://code.forgejo.org/actions/checkout@v4
 
+      # Syntax gate: parse every deployable script (external perlin*.js +
+      # inline <script> in index.html/examples) without executing. Catches a
+      # typo before it ships a blank page.
+      - name: Syntax check
+        run: node scripts/check-syntax.mjs
+
       # Math smoke tests gate the deploy. perlin.js has documented bug
       # classes (loop-endpoint float-rounding, Z/W axis swap) that look
       # visually normal until a loop stops closing — better to fail the
