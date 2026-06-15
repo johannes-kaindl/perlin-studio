@@ -463,6 +463,7 @@ function loadBgFile(file) {
       els.btnBgClear.disabled = false;
       setStatus(`Background image loaded: ${file.name}`);
     } catch (err) {
+      console.error(err);
       setStatus(`Background load failed: ${err.message}`, true);
     }
   };
@@ -1309,7 +1310,7 @@ function wireEvents() {
   els.exportRes.addEventListener("change", () => { updateExportResMode(); updateExportEstimate(); });
   els.bgType.addEventListener("change", updateBgMode);
   els.btnBgLoad.addEventListener("click", () => els.bgFile.click());
-  els.bgFile.addEventListener("change", (e) => { if (e.target.files[0]) loadBgFile(e.target.files[0]); e.target.value = ""; });
+  els.bgFile.addEventListener("change", (e) => { const f = e.target.files?.[0]; if (f) loadBgFile(f); e.target.value = ""; });
   els.btnBgClear.addEventListener("click", clearBg);
   for (const el of [els.exportW, els.exportH, els.fps, els.frames]) {
     el.addEventListener("input", updateExportEstimate);
