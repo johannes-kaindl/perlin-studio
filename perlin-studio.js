@@ -1249,6 +1249,7 @@ function wireEvents() {
       state.recording = false;
       els.btnWebm.textContent = "Record animation";
       setProgress(null);
+      renderOnce();
       setFrameState(engine.playing ? "live" : "paused");
     });
   });
