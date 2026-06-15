@@ -565,6 +565,37 @@ const EX = global.window.MTPerlinExport;
   ok("computeFitRect contain y centered", con.y === 0, "got " + con.y);
 }
 
+// ----- EXPORT: hexToRgb -----
+{
+  const c = EX.hexToRgb("#0a0a18");
+  ok("hexToRgb r", c[0] === 10, "got " + c[0]);
+  ok("hexToRgb g", c[1] === 10, "got " + c[1]);
+  ok("hexToRgb b", c[2] === 24, "got " + c[2]);
+}
+
+// ----- EXPORT: compositeOverColor -----
+{
+  // One pixel, straight alpha. noise=[200,100,50] @ a=128 over bg black.
+  // out = round(noise * a/255 + bg * (1 - a/255)); a_out = 255.
+  const noise = new Uint8ClampedArray([200, 100, 50, 128]);
+  const out = EX.compositeOverColor(noise, [0, 0, 0]);
+  ok("compositeOverColor r", out[0] === Math.round(200 * 128 / 255), "got " + out[0]);
+  ok("compositeOverColor g", out[1] === Math.round(100 * 128 / 255), "got " + out[1]);
+  ok("compositeOverColor b", out[2] === Math.round(50 * 128 / 255), "got " + out[2]);
+  ok("compositeOverColor opaque", out[3] === 255, "got " + out[3]);
+
+  // alpha=0 -> pure background; alpha=255 -> pure noise.
+  const bgOnly = EX.compositeOverColor(new Uint8ClampedArray([200, 100, 50, 0]), [12, 34, 56]);
+  ok("compositeOverColor a=0 is bg", bgOnly[0] === 12 && bgOnly[1] === 34 && bgOnly[2] === 56);
+  const fg = EX.compositeOverColor(new Uint8ClampedArray([200, 100, 50, 255]), [12, 34, 56]);
+  ok("compositeOverColor a=255 is noise", fg[0] === 200 && fg[1] === 100 && fg[2] === 50);
+
+  // Does not mutate the input.
+  const inp = new Uint8ClampedArray([9, 9, 9, 100]);
+  EX.compositeOverColor(inp, [0, 0, 0]);
+  ok("compositeOverColor is pure", inp[0] === 9 && inp[3] === 100);
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");

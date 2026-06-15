@@ -21,5 +21,27 @@
     return { x: (dstW - w) / 2, y: (dstH - h) / 2, w, h };
   }
 
-  root.MTPerlinExport = { computeFitRect };
+  // "#rrggbb" -> [r, g, b] (0–255). Assumes the 7-char form an <input type=color> yields.
+  function hexToRgb(hex) {
+    const n = parseInt((hex || "#000000").slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  // Composite straight-alpha RGBA noise over an opaque [r,g,b] background.
+  // Returns a NEW opaque Uint8ClampedArray; does not mutate the input.
+  function compositeOverColor(noise, bg) {
+    const out = new Uint8ClampedArray(noise.length);
+    const br = bg[0], bg1 = bg[1], bb = bg[2];
+    for (let i = 0; i < noise.length; i += 4) {
+      const a = noise[i + 3] / 255;
+      const ia = 1 - a;
+      out[i]     = Math.round(noise[i]     * a + br  * ia);
+      out[i + 1] = Math.round(noise[i + 1] * a + bg1 * ia);
+      out[i + 2] = Math.round(noise[i + 2] * a + bb  * ia);
+      out[i + 3] = 255;
+    }
+    return out;
+  }
+
+  root.MTPerlinExport = { computeFitRect, compositeOverColor, hexToRgb };
 })(typeof window !== "undefined" ? window : globalThis);
