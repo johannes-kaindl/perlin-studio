@@ -431,10 +431,64 @@ function updateWarpMode() {
   els.warpExtra.hidden = clampFloat(els.warpStrength.value, 0, 8, 0) <= 0;
 }
 
-// Video recording is RGB-only and ignores the alpha mask. Surface that caveat
-// right at the export button (not just in the distant Mask section) while on.
-function updateWebmMaskHint() {
-  if (els.webmMaskHint) els.webmMaskHint.hidden = !state.maskApplied;
+// Reveal the custom width/height inputs only for the "custom" resolution.
+function updateExportResMode() {
+  els.exportCustomRes.hidden = els.exportRes.value !== "custom";
+}
+
+// Some browsers can't record an alpha video. Probe a WebM/VP-with-alpha
+// candidate; if absent, gray out "transparent" and explain.
+function transparentRecordingSupported() {
+  return !!(window.MediaRecorder && MediaRecorder.isTypeSupported &&
+    (MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ||
+     MediaRecorder.isTypeSupported("video/webm;codecs=vp8")));
+}
+
+// Show the right background controls for the selected type.
+function updateBgMode() {
+  const type = els.bgType.value;
+  els.bgColorRow.hidden = type !== "color";
+  els.bgImageRow.hidden = type !== "image";
+  els.bgTransparentHint.hidden = !(type === "transparent" && !transparentRecordingSupported());
+}
+
+function loadBgFile(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const bitmap = await createImageBitmap(new Blob([e.target.result]));
+      state.bgSourceImage = bitmap;
+      state.bgName = file.name;
+      els.bgName.textContent = `${file.name} · ${bitmap.width}×${bitmap.height}`;
+      els.btnBgClear.disabled = false;
+      setStatus(`Background image loaded: ${file.name}`);
+    } catch (err) {
+      setStatus(`Background load failed: ${err.message}`, true);
+    }
+  };
+  reader.onerror = () => setStatus("Background load failed: file unreadable", true);
+  reader.readAsArrayBuffer(file);
+}
+
+function clearBg() {
+  if (state.bgSourceImage && state.bgSourceImage.close) state.bgSourceImage.close();
+  state.bgSourceImage = null;
+  state.bgName = null;
+  els.bgName.textContent = "using mask image";
+  els.btnBgClear.disabled = true;
+  setStatus("Background image cleared.");
+}
+
+// Readout of export dimensions + duration, with a soft warning for very large
+// jobs (long clips at high resolution are slow and memory-heavy under
+// MediaRecorder).
+function updateExportEstimate() {
+  const spec = gatherExportSpec();
+  const secs = (spec.frames / spec.fps).toFixed(1);
+  const big = spec.width * spec.height * spec.frames > 1080 * 1920 * 300;
+  els.exportEstimate.textContent =
+    `${spec.width}×${spec.height} · ${spec.frames} frames · ${secs}s` +
+    (big ? " · large job — may be slow / memory-heavy" : "");
 }
 
 // ============= IMAGE MASK =============
@@ -464,7 +518,6 @@ function loadMaskFile(file) {
         els.maskApply.checked = true;
         state.maskApplied = true;
       }
-      updateWebmMaskHint();
       setStatus(`Mask loaded: ${file.name} (${bitmap.width}×${bitmap.height})`);
       renderOnce();
     } catch (err) {
@@ -487,7 +540,6 @@ function clearMask() {
   if (els.maskName) els.maskName.textContent = "no mask loaded";
   if (els.maskApply) { els.maskApply.checked = false; els.maskApply.disabled = true; }
   if (els.btnMaskClear) els.btnMaskClear.disabled = true;
-  updateWebmMaskHint();
   setStatus("Mask cleared.");
   renderOnce();
 }
@@ -1254,6 +1306,14 @@ function wireEvents() {
     });
   });
   els.btnWebmDownload.addEventListener("click", downloadWebm);
+  els.exportRes.addEventListener("change", () => { updateExportResMode(); updateExportEstimate(); });
+  els.bgType.addEventListener("change", updateBgMode);
+  els.btnBgLoad.addEventListener("click", () => els.bgFile.click());
+  els.bgFile.addEventListener("change", (e) => { if (e.target.files[0]) loadBgFile(e.target.files[0]); e.target.value = ""; });
+  els.btnBgClear.addEventListener("click", clearBg);
+  for (const el of [els.exportW, els.exportH, els.fps, els.frames]) {
+    el.addEventListener("input", updateExportEstimate);
+  }
 
   els.btnPresetSave.addEventListener("click", savePreset);
   els.btnPresetLoad.addEventListener("click", () => els.presetFile.click());
@@ -1273,7 +1333,6 @@ function wireEvents() {
   els.btnMaskClear.addEventListener("click", clearMask);
   els.maskApply.addEventListener("change", () => {
     state.maskApplied = els.maskApply.checked;
-    updateWebmMaskHint();
     renderOnce();
   });
   els.maskInvert.addEventListener("change", () => {
@@ -1333,6 +1392,9 @@ function initThemeToggle() {
   attachRangeReadouts();
   updateLayer2Mode();
   updateWarpMode();
+  updateExportResMode();
+  updateBgMode();
+  updateExportEstimate();
   wireEvents();
   initThemeToggle();
   setFrameState("paused");
