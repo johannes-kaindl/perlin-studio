@@ -546,6 +546,25 @@ function ok(label, cond, detail) {
      Array.isArray(lava.gradient));
 }
 
+// ----- EXPORT: computeFitRect -----
+global.window = global.window || {};
+require(path.join(__dirname, "..", "perlin-export.js"));
+const EX = global.window.MTPerlinExport;
+{
+  // cover: 100x100 into 200x100 -> scale 2 -> 200x200, centered vertically (y = -50)
+  const cov = EX.computeFitRect(100, 100, 200, 100, "cover");
+  ok("computeFitRect cover w", cov.w === 200, "got " + cov.w);
+  ok("computeFitRect cover h", cov.h === 200, "got " + cov.h);
+  ok("computeFitRect cover x centered", cov.x === 0, "got " + cov.x);
+  ok("computeFitRect cover y centered", cov.y === -50, "got " + cov.y);
+  // contain: 100x100 into 200x100 -> scale 1 -> 100x100, centered horizontally (x = 50)
+  const con = EX.computeFitRect(100, 100, 200, 100, "contain");
+  ok("computeFitRect contain w", con.w === 100, "got " + con.w);
+  ok("computeFitRect contain h", con.h === 100, "got " + con.h);
+  ok("computeFitRect contain x centered", con.x === 50, "got " + con.x);
+  ok("computeFitRect contain y centered", con.y === 0, "got " + con.y);
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");
