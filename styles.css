@@ -12,6 +12,11 @@
   --panel:     #0b0d11;  /* sidebar + main panel */
   --panel-2:   #11141a;  /* inset blocks, sub-sections */
   --panel-3:   #181c24;  /* hovered surfaces */
+  /* Canvas matte: theme-independent on purpose. A square render is letterboxed
+     in a wider frame; a theme-coloured matte turned the side bars cream in light
+     mode, which read as the image having inverted. A fixed dark matte presents
+     the artwork consistently in both themes (like a photo/video viewer). */
+  --canvas-matte: #060709;
 
   /* ----- Borders ----- */
   --border:        #3a414c;  /* hairline, lifted for resting visibility */
@@ -880,7 +885,7 @@ button.primary:hover:not(:disabled) {
 
 .canvas-frame {
   position: relative;
-  background: var(--bg);
+  background: var(--canvas-matte);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
