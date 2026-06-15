@@ -1219,3 +1219,8 @@ button.primary:hover:not(:disabled) {
   .canvas-loading { animation: none !important; }
   * { transition-duration: 0ms !important; }
 }
+
+/* Export background controls */
+#bg-color-row .color-row { display: flex; align-items: center; gap: 0.5rem; }
+#bg-color-row input[type="color"] { inline-size: 3rem; block-size: 1.8rem; padding: 0; }
+#export-estimate:empty { display: none; }

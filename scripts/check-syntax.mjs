@@ -29,6 +29,7 @@ const jsFiles = [
   'perlin.js',
   'perlin-presets.js',
   'perlin-engine.js',
+  'perlin-export.js',
   'perlin-studio.js',
   'perlin-element.js',
 ];
