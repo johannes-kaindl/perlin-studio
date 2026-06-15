@@ -762,6 +762,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 }
 #btn-mask-load { width: 100%; }
 #btn-mask-clear { width: 100%; }
+#btn-bg-load { width: 100%; }
+#btn-bg-clear { width: 100%; }
 
 /* ============================================================
    BUTTONS

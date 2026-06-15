@@ -318,7 +318,7 @@
         <h2><span class="sec-num">09</span><span class="sec-name">Export</span></h2>
         <p class="sec-hint">Render the animation to video. The mask and the chosen background are baked into the frames.</p>
 
-        <label>resolution
+        <label class="select-row">resolution
           <select id="p-export-res">
             <option value="canvas">Match canvas</option>
             <option value="1080x1920">1080×1920 · portrait</option>
@@ -339,7 +339,7 @@
           <label>frames<input type="number" id="p-frames" min="1" max="600" value="120"></label>
         </div>
 
-        <label>background
+        <label class="select-row">background
           <select id="p-bg-type">
             <option value="color">Solid color</option>
             <option value="image">Image</option>
@@ -355,7 +355,7 @@
             <button type="button" id="btn-bg-clear" disabled>Clear</button>
             <input type="file" id="bg-file" accept="image/png,image/jpeg,image/webp" hidden>
             <p class="mask-name" id="bg-name">using mask image</p>
-            <label>fit
+            <label class="select-row">fit
               <select id="p-bg-fit">
                 <option value="cover">Cover</option>
                 <option value="contain">Contain</option>
