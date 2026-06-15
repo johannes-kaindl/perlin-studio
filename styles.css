@@ -387,9 +387,6 @@ main {
   letter-spacing: 0.01em;
   line-height: 1.5;
 }
-/* A hint placed below controls (not under an h2) needs the gap above, not the
-   tuck the default negative top-margin gives. */
-.webm-mask-hint { margin: 8px 0 0; }
 
 /* ----- Form rows ----- */
 label {
@@ -767,6 +764,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 }
 #btn-mask-load { width: 100%; }
 #btn-mask-clear { width: 100%; }
+#btn-bg-load { width: 100%; }
+#btn-bg-clear { width: 100%; }
 
 /* ============================================================
    BUTTONS
@@ -1224,3 +1223,8 @@ button.primary:hover:not(:disabled) {
   .canvas-loading { animation: none !important; }
   * { transition-duration: 0ms !important; }
 }
+
+/* Export background controls */
+#bg-color-row .color-row { display: flex; align-items: center; gap: 0.5rem; }
+#bg-color-row input[type="color"] { inline-size: 3rem; block-size: 1.8rem; padding: 0; }
+#export-estimate:empty { display: none; }

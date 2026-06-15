@@ -297,7 +297,7 @@
 
       <section class="ctrl-section">
         <h2><span class="sec-num">08</span><span class="sec-name">Mask</span></h2>
-        <p class="sec-hint">Load a PNG / JPG. Transparent (or dark) regions hide the noise. Affects live preview and PNG export — video recording is RGB-only.</p>
+        <p class="sec-hint">Load a PNG / JPG. Transparent (or dark) regions hide the noise. Affects live preview, PNG export, and video export.</p>
         <div class="mask-controls">
           <button type="button" id="btn-mask-load">Load image</button>
           <button type="button" id="btn-mask-clear" disabled>Clear</button>
@@ -316,17 +316,61 @@
 
       <section class="ctrl-section">
         <h2><span class="sec-num">09</span><span class="sec-name">Export</span></h2>
-        <p class="sec-hint">Frames &amp; fps set the recording length and rate.</p>
+        <p class="sec-hint">Render the animation to video. The mask and the chosen background are baked into the frames.</p>
+
+        <label class="select-row">resolution
+          <select id="p-export-res">
+            <option value="canvas">Match canvas</option>
+            <option value="1080x1920">1080×1920 · portrait</option>
+            <option value="1920x1080">1920×1080 · landscape</option>
+            <option value="1080x1080">1080×1080 · square</option>
+            <option value="1440x2560">1440×2560 · portrait HiDPI</option>
+            <option value="2160x3840">2160×3840 · 4K portrait</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </label>
+        <div class="grid-2" id="export-custom-res" hidden>
+          <label>width<input type="number" id="p-export-w" min="16" max="4096" value="1080"></label>
+          <label>height<input type="number" id="p-export-h" min="16" max="4096" value="1920"></label>
+        </div>
+
         <div class="grid-2">
           <label>fps<input type="number" id="p-fps" min="1" max="60" value="30"></label>
           <label>frames<input type="number" id="p-frames" min="1" max="600" value="120"></label>
         </div>
+
+        <label class="select-row">background
+          <select id="p-bg-type">
+            <option value="color">Solid color</option>
+            <option value="image">Image</option>
+            <option value="transparent">Transparent (best-effort)</option>
+          </select>
+        </label>
+        <div id="bg-color-row">
+          <label class="color-row">color<input type="color" id="p-bg-color" value="#0a0a18"></label>
+        </div>
+        <div id="bg-image-row" hidden>
+          <div class="mask-controls">
+            <button type="button" id="btn-bg-load">Load background image</button>
+            <button type="button" id="btn-bg-clear" disabled>Clear</button>
+            <input type="file" id="bg-file" accept="image/png,image/jpeg,image/webp" hidden>
+            <p class="mask-name" id="bg-name">using mask image</p>
+            <label class="select-row">fit
+              <select id="p-bg-fit">
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <p class="sec-hint" id="bg-transparent-hint" hidden>This browser can't record transparent video — use a color or image background, or export with alpha on the native app (later phase).</p>
+
         <div class="export-actions">
           <button id="btn-png">PNG · current frame</button>
           <button id="btn-webm" class="primary">Record animation</button>
           <button id="btn-webm-download" hidden disabled>Download video</button>
         </div>
-        <p class="sec-hint webm-mask-hint" id="webm-mask-hint" hidden>Recording is RGB-only — the active mask is ignored.</p>
+        <p class="sec-hint" id="export-estimate"></p>
       </section>
 
     </aside>
@@ -388,6 +432,7 @@
   <script src="perlin.js" defer></script>
   <script src="perlin-presets.js" defer></script>
   <script src="perlin-engine.js" defer></script>
+  <script src="perlin-export.js" defer></script>
   <script src="perlin-studio.js" defer></script>
   <script src="perlin-element.js" defer></script>
 </body>

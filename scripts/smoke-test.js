@@ -546,6 +546,56 @@ function ok(label, cond, detail) {
      Array.isArray(lava.gradient));
 }
 
+// ----- EXPORT: computeFitRect -----
+global.window = global.window || {};
+require(path.join(__dirname, "..", "perlin-export.js"));
+const EX = global.window.MTPerlinExport;
+{
+  // cover: 100x100 into 200x100 -> scale 2 -> 200x200, centered vertically (y = -50)
+  const cov = EX.computeFitRect(100, 100, 200, 100, "cover");
+  ok("computeFitRect cover w", cov.w === 200, "got " + cov.w);
+  ok("computeFitRect cover h", cov.h === 200, "got " + cov.h);
+  ok("computeFitRect cover x centered", cov.x === 0, "got " + cov.x);
+  ok("computeFitRect cover y centered", cov.y === -50, "got " + cov.y);
+  // contain: 100x100 into 200x100 -> scale 1 -> 100x100, centered horizontally (x = 50)
+  const con = EX.computeFitRect(100, 100, 200, 100, "contain");
+  ok("computeFitRect contain w", con.w === 100, "got " + con.w);
+  ok("computeFitRect contain h", con.h === 100, "got " + con.h);
+  ok("computeFitRect contain x centered", con.x === 50, "got " + con.x);
+  ok("computeFitRect contain y centered", con.y === 0, "got " + con.y);
+}
+
+// ----- EXPORT: hexToRgb -----
+{
+  const c = EX.hexToRgb("#0a0a18");
+  ok("hexToRgb r", c[0] === 10, "got " + c[0]);
+  ok("hexToRgb g", c[1] === 10, "got " + c[1]);
+  ok("hexToRgb b", c[2] === 24, "got " + c[2]);
+}
+
+// ----- EXPORT: compositeOverColor -----
+{
+  // One pixel, straight alpha. noise=[200,100,50] @ a=128 over bg black.
+  // out = round(noise * a/255 + bg * (1 - a/255)); a_out = 255.
+  const noise = new Uint8ClampedArray([200, 100, 50, 128]);
+  const out = EX.compositeOverColor(noise, [0, 0, 0]);
+  ok("compositeOverColor r", out[0] === Math.round(200 * 128 / 255), "got " + out[0]);
+  ok("compositeOverColor g", out[1] === Math.round(100 * 128 / 255), "got " + out[1]);
+  ok("compositeOverColor b", out[2] === Math.round(50 * 128 / 255), "got " + out[2]);
+  ok("compositeOverColor opaque", out[3] === 255, "got " + out[3]);
+
+  // alpha=0 -> pure background; alpha=255 -> pure noise.
+  const bgOnly = EX.compositeOverColor(new Uint8ClampedArray([200, 100, 50, 0]), [12, 34, 56]);
+  ok("compositeOverColor a=0 is bg", bgOnly[0] === 12 && bgOnly[1] === 34 && bgOnly[2] === 56);
+  const fg = EX.compositeOverColor(new Uint8ClampedArray([200, 100, 50, 255]), [12, 34, 56]);
+  ok("compositeOverColor a=255 is noise", fg[0] === 200 && fg[1] === 100 && fg[2] === 50);
+
+  // Does not mutate the input.
+  const inp = new Uint8ClampedArray([9, 9, 9, 100]);
+  EX.compositeOverColor(inp, [0, 0, 0]);
+  ok("compositeOverColor is pure", inp[0] === 9 && inp[3] === 100);
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");

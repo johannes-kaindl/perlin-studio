@@ -56,6 +56,11 @@ const state = {
   recordedExt: "webm",          // container of the last recording (drives the download name)
   recorder: null,
   firstFrameRendered: false,
+
+  // Export background image (separate from the mask; falls back to the mask).
+  bgSourceImage: null,
+  bgName: null,
+  exportCanvas: null,   // offscreen compositing canvas, created lazily
 };
 
 // ============= DOM =============
@@ -134,7 +139,21 @@ const els = {
   btnPng: $("btn-png"),
   btnWebm: $("btn-webm"),
   btnWebmDownload: $("btn-webm-download"),
-  webmMaskHint: $("webm-mask-hint"),
+  exportRes: $("p-export-res"),
+  exportCustomRes: $("export-custom-res"),
+  exportW: $("p-export-w"),
+  exportH: $("p-export-h"),
+  bgType: $("p-bg-type"),
+  bgColorRow: $("bg-color-row"),
+  bgColor: $("p-bg-color"),
+  bgImageRow: $("bg-image-row"),
+  btnBgLoad: $("btn-bg-load"),
+  btnBgClear: $("btn-bg-clear"),
+  bgFile: $("bg-file"),
+  bgName: $("bg-name"),
+  bgFit: $("p-bg-fit"),
+  bgTransparentHint: $("bg-transparent-hint"),
+  exportEstimate: $("export-estimate"),
 
   // Main output
   canvas: $("canvas-output"),
@@ -271,6 +290,46 @@ function gatherParams() {
   return base;
 }
 
+const EXPORT_RES_PRESETS = {
+  "1080x1920": [1080, 1920],
+  "1920x1080": [1920, 1080],
+  "1080x1080": [1080, 1080],
+  "1440x2560": [1440, 2560],
+  "2160x3840": [2160, 3840],
+};
+
+// Build the full export description from the UI. base.width/height are
+// overridden to the EXPORT resolution (decoupled from the live canvas size).
+function gatherExportSpec() {
+  const base = gatherParams();
+  let width, height;
+  const sel = els.exportRes.value;
+  if (sel === "canvas") {
+    width = base.width; height = base.height;
+  } else if (sel === "custom") {
+    width = clampInt(els.exportW.value, 16, 4096, 1080);
+    height = clampInt(els.exportH.value, 16, 4096, 1920);
+  } else {
+    const p = EXPORT_RES_PRESETS[sel] || [base.width, base.height];
+    width = p[0]; height = p[1];
+  }
+  base.width = width;
+  base.height = height;
+  return {
+    base, width, height,
+    fps: clampInt(els.fps.value, 1, 60, 30),
+    frames: clampInt(els.frames.value, 1, 600, 120),
+    loop: base.loop,
+    background: {
+      type: els.bgType.value,
+      color: els.bgColor.value || "#000000",
+      image: state.bgSourceImage || state.maskSourceImage || null,
+      fit: els.bgFit.value || "cover",
+    },
+    mask: state.maskApplied,
+  };
+}
+
 // ============= APPLY PARAMS (preset → UI) =============
 /**
  * Inverse of `gatherParams`: writes a parameter snapshot back into the UI
@@ -372,19 +431,72 @@ function updateWarpMode() {
   els.warpExtra.hidden = clampFloat(els.warpStrength.value, 0, 8, 0) <= 0;
 }
 
-// Video recording is RGB-only and ignores the alpha mask. Surface that caveat
-// right at the export button (not just in the distant Mask section) while on.
-function updateWebmMaskHint() {
-  if (els.webmMaskHint) els.webmMaskHint.hidden = !state.maskApplied;
+// Reveal the custom width/height inputs only for the "custom" resolution.
+function updateExportResMode() {
+  els.exportCustomRes.hidden = els.exportRes.value !== "custom";
+}
+
+// Some browsers can't record an alpha video. Probe a WebM/VP-with-alpha
+// candidate; if absent, gray out "transparent" and explain.
+function transparentRecordingSupported() {
+  return supportedRecorderMimes(ALPHA_MIME_CANDIDATES).length > 0;
+}
+
+// Show the right background controls for the selected type.
+function updateBgMode() {
+  const type = els.bgType.value;
+  els.bgColorRow.hidden = type !== "color";
+  els.bgImageRow.hidden = type !== "image";
+  els.bgTransparentHint.hidden = !(type === "transparent" && !transparentRecordingSupported());
+}
+
+function loadBgFile(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const bitmap = await createImageBitmap(new Blob([e.target.result]));
+      state.bgSourceImage = bitmap;
+      state.bgName = file.name;
+      els.bgName.textContent = `${file.name} · ${bitmap.width}×${bitmap.height}`;
+      els.btnBgClear.disabled = false;
+      setStatus(`Background image loaded: ${file.name}`);
+    } catch (err) {
+      console.error(err);
+      setStatus(`Background load failed: ${err.message}`, true);
+    }
+  };
+  reader.onerror = () => setStatus("Background load failed: file unreadable", true);
+  reader.readAsArrayBuffer(file);
+}
+
+function clearBg() {
+  if (state.bgSourceImage && state.bgSourceImage.close) state.bgSourceImage.close();
+  state.bgSourceImage = null;
+  state.bgName = null;
+  els.bgName.textContent = "using mask image";
+  els.btnBgClear.disabled = true;
+  setStatus("Background image cleared.");
+}
+
+// Readout of export dimensions + duration, with a soft warning for very large
+// jobs (long clips at high resolution are slow and memory-heavy under
+// MediaRecorder).
+function updateExportEstimate() {
+  const spec = gatherExportSpec();
+  const secs = (spec.frames / spec.fps).toFixed(1);
+  const big = spec.width * spec.height * spec.frames > 1080 * 1920 * 300;
+  els.exportEstimate.textContent =
+    `${spec.width}×${spec.height} · ${spec.frames} frames · ${secs}s` +
+    (big ? " · large job — may be slow / memory-heavy" : "");
 }
 
 // ============= IMAGE MASK =============
 // The mask is loaded once from a user-supplied PNG / JPG and re-rasterised
 // to the current canvas resolution on demand. The cached Uint8Array of
 // alpha bytes is what the render pipeline consumes per pixel — cheap.
-// PNG export inherits the alpha automatically; video recording does not (the
-// canvas stream is RGB-only), so masked frames render onto whatever's
-// behind the canvas at recording time.
+// Both PNG export and video export honour the alpha: the video exporter
+// composites the masked noise over the chosen background (colour / image /
+// transparent) — see compositeExportFrame / recordVideo.
 
 function loadMaskFile(file) {
   const reader = new FileReader();
@@ -405,7 +517,6 @@ function loadMaskFile(file) {
         els.maskApply.checked = true;
         state.maskApplied = true;
       }
-      updateWebmMaskHint();
       setStatus(`Mask loaded: ${file.name} (${bitmap.width}×${bitmap.height})`);
       renderOnce();
     } catch (err) {
@@ -428,7 +539,6 @@ function clearMask() {
   if (els.maskName) els.maskName.textContent = "no mask loaded";
   if (els.maskApply) { els.maskApply.checked = false; els.maskApply.disabled = true; }
   if (els.btnMaskClear) els.btnMaskClear.disabled = true;
-  updateWebmMaskHint();
   setStatus("Mask cleared.");
   renderOnce();
 }
@@ -890,11 +1000,18 @@ const RECORDER_MIME_CANDIDATES = [
   "video/webm",
 ];
 
+// Alpha-capable containers for transparent export. MP4/H.264 can't carry alpha,
+// so transparent recording must use a VP8/VP9 WebM track.
+const ALPHA_MIME_CANDIDATES = [
+  "video/webm;codecs=vp9",
+  "video/webm;codecs=vp8",
+];
+
 // Every candidate the browser accepts, in priority order. isTypeSupported() can
 // false-positive, so setupRecorder() still falls through if construction fails.
-function supportedRecorderMimes() {
+function supportedRecorderMimes(candidates = RECORDER_MIME_CANDIDATES) {
   if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return [];
-  return RECORDER_MIME_CANDIDATES.filter((m) => MediaRecorder.isTypeSupported(m));
+  return candidates.filter((m) => MediaRecorder.isTypeSupported(m));
 }
 
 // File extension / blob type follow the container that was actually recorded.
@@ -937,16 +1054,16 @@ function paramsForRecordingFrame(base, startSlider, frameIndex, totalFrames, fps
  * @param {number} fps
  * @returns {{ recorder: MediaRecorder, mime: string, ext: string, track: MediaStreamTrack|null, canRequestFrame: boolean, stopped: Promise<void> }}
  */
-function setupRecorder(fps) {
-  const stream = els.canvas.captureStream(0);
+function setupRecorder(canvas, fps, candidates = RECORDER_MIME_CANDIDATES) {
+  const stream = canvas.captureStream(0);
   const track = stream.getVideoTracks()[0];
   const canRequestFrame = !!(track && typeof track.requestFrame === "function");
-  const finalStream = canRequestFrame ? stream : els.canvas.captureStream(fps);
+  const finalStream = canRequestFrame ? stream : canvas.captureStream(fps);
 
   // Walk the supported candidates until one constructs — isTypeSupported() may
   // report a type the platform then refuses to instantiate (a known quirk).
   let recorder = null, requestedMime = "", lastErr = null;
-  for (const m of supportedRecorderMimes()) {
+  for (const m of supportedRecorderMimes(candidates)) {
     try { recorder = new MediaRecorder(finalStream, { mimeType: m }); requestedMime = m; break; }
     catch (e) { lastErr = e; }
   }
@@ -963,63 +1080,87 @@ function setupRecorder(fps) {
   return { recorder, mime, ext: extForMime(mime), track, canRequestFrame, stopped };
 }
 
+// Draw the background, then the rendered masked-noise frame (already on the
+// engine canvas) on top, into the offscreen compositing canvas `cctx`.
+// Color path uses the tested pure compositor for an exact, opaque result;
+// image/transparent paths use canvas source-over (drawImage respects alpha).
+function compositeExportFrame(cctx, spec) {
+  const W = spec.width, H = spec.height, bg = spec.background;
+  cctx.clearRect(0, 0, W, H);
+  if (bg.type === "color") {
+    const src = engine.ctx.getImageData(0, 0, W, H);
+    const out = MTPerlinExport.compositeOverColor(src.data, MTPerlinExport.hexToRgb(bg.color));
+    cctx.putImageData(new ImageData(out, W, H), 0, 0);
+    return;
+  }
+  if (bg.type === "image" && bg.image) {
+    const r = MTPerlinExport.computeFitRect(bg.image.width, bg.image.height, W, H, bg.fit);
+    cctx.drawImage(bg.image, r.x, r.y, r.w, r.h);
+  }
+  // transparent: nothing drawn behind. image: bg already drawn. Now the noise:
+  cctx.drawImage(engine.canvas, 0, 0);
+}
+
 /**
- * Records the animation to video (MP4/H.264 where supported, else WebM — see
- * RECORDER_MIME_CANDIDATES). Pauses the live animation, deterministically
- * renders one frame after the other synchronously in the worker, returns
- * the blob at the end, and displays it as a `<video>` in the output.
+ * Records the animation to video (MP4/H.264 where supported, else WebM).
+ * Renders each frame at the EXPORT resolution via the engine (mask applied by
+ * transformFrame), composites it over the chosen background onto an offscreen
+ * canvas, and records THAT canvas. Restores the live canvas afterward.
  */
-async function recordWebm() {
+async function recordVideo() {
   if (state.recording) return;
-  if (!window.MediaRecorder || supportedRecorderMimes().length === 0) {
-    setStatus("Your browser can't record video here (no supported codec).", true);
+
+  const spec = gatherExportSpec();
+  const transparent = spec.background.type === "transparent";
+  const mimeCandidates = transparent ? ALPHA_MIME_CANDIDATES : RECORDER_MIME_CANDIDATES;
+  if (!window.MediaRecorder || supportedRecorderMimes(mimeCandidates).length === 0) {
+    setStatus(transparent
+      ? "This browser can't record transparent video — choose a color or image background."
+      : "Your browser can't record video here (no supported codec).", true);
     return;
   }
 
   const wasPlaying = engine.playing;
   if (wasPlaying) pause();
 
-  const totalFrames = clampInt(els.frames.value, 1, 600, 120);
-  const fps = clampInt(els.fps.value, 1, 60, 30);
-  const startSlider = getTValue();
-  const baseParams = gatherParams();
+  // Offscreen compositing canvas at export resolution — recorded instead of the
+  // live canvas, so export size is independent of the on-screen canvas.
+  const cc = state.exportCanvas || (state.exportCanvas = document.createElement("canvas"));
+  cc.width = spec.width;
+  cc.height = spec.height;
+  const cctx = cc.getContext("2d");
 
-  const { recorder, mime, ext, track, canRequestFrame, stopped } = setupRecorder(fps);
+  const startSlider = getTValue();
+  const { recorder, mime, ext, track, canRequestFrame, stopped } = setupRecorder(cc, spec.fps, mimeCandidates);
   state.recorder = recorder;
   recorder.start();
   state.recording = true;
   state.recordingCancel = false;
-  // Repurpose the button as a Stop control for the duration of the capture,
-  // and retire any prior download until this clip finishes.
   els.btnWebm.textContent = "Stop recording";
   els.btnWebmDownload.hidden = true;
   els.btnWebmDownload.disabled = true;
   setProgress(0);
   setFrameState("rec");
 
-  // The frame delay ensures `captureStream` sees the canvas state; without a
-  // pause some browsers capture before the repaint.
-  const frameDelayMs = 1000 / fps;
+  const frameDelayMs = 1000 / spec.fps;
   let lastAnnounced = -1;
 
   try {
-    for (let i = 0; i < totalFrames; i++) {
+    for (let i = 0; i < spec.frames; i++) {
       if (state.recordingCancel) break;
-      const params = paramsForRecordingFrame(baseParams, startSlider, i, totalFrames, fps);
+      const params = paramsForRecordingFrame(spec.base, startSlider, i, spec.frames, spec.fps);
       await engine.renderFrameAndWait(params);
+      compositeExportFrame(cctx, spec);
       if (canRequestFrame) track.requestFrame();
-      const pct = Math.round(((i + 1) / totalFrames) * 100);
+      const pct = Math.round(((i + 1) / spec.frames) * 100);
       setProgress(pct);
-      // Throttle the live-region status to ~10% steps so assistive tech isn't
-      // flooded with a per-frame announcement; the bar still moves every frame.
       const milestone = pct - (pct % 10);
-      if (milestone !== lastAnnounced || i + 1 === totalFrames) {
+      if (milestone !== lastAnnounced || i + 1 === spec.frames) {
         lastAnnounced = milestone;
-        setStatus(`Recording: ${pct}% — frame ${i + 1}/${totalFrames}${params.loop ? " (loop)" : ""}`);
+        setStatus(`Recording: ${pct}% — frame ${i + 1}/${spec.frames}${spec.loop ? " (loop)" : ""}`);
       }
       await new Promise(r => setTimeout(r, frameDelayMs));
     }
-    // Tail frame so the stream definitely captures the last image.
     if (canRequestFrame) track.requestFrame();
     await new Promise(r => setTimeout(r, frameDelayMs));
   } finally {
@@ -1034,6 +1175,7 @@ async function recordWebm() {
   const blob = new Blob(state.recordedChunks, { type: mime });
   if (blob.size === 0) {
     setStatus("Recording stopped before any frame was captured.", true);
+    renderOnce();
     if (wasPlaying) play(); else setFrameState("paused");
     return;
   }
@@ -1043,15 +1185,16 @@ async function recordWebm() {
   els.btnWebmDownload.hidden = false;
   els.btnWebmDownload.disabled = false;
   const sizeKb = (blob.size / 1024).toFixed(1);
-  // If the animation was running, resume live playback (the clip is available
-  // via Download). Otherwise show it inline as a <video> preview. The two are
-  // mutually exclusive: play() -> showLiveCanvas() retires the preview, so they
-  // must never both run on the same path.
+
+  // Restore the live canvas at the UI resolution (recording resized it to the
+  // export size). renderOnce() also retires any stale <video> preview.
+  renderOnce();
+
   if (wasPlaying) {
     play();
     setStatus(cancelled
       ? `Recording stopped — partial clip, ${sizeKb} KB (Download).`
-      : `Animation done — ${totalFrames} frames @ ${fps} fps, ${sizeKb} KB (Download).`);
+      : `Animation done — ${spec.frames} frames @ ${spec.fps} fps, ${spec.width}×${spec.height}, ${sizeKb} KB (Download).`);
   } else {
     els.animPreview.src = URL.createObjectURL(blob);
     els.animPreview.classList.add("ready");
@@ -1059,7 +1202,7 @@ async function recordWebm() {
     setFrameState("paused");
     setStatus(cancelled
       ? `Recording stopped — partial clip, ${sizeKb} KB.`
-      : `Animation done — ${totalFrames} frames @ ${fps} fps, ${sizeKb} KB.`);
+      : `Animation done — ${spec.frames} frames @ ${spec.fps} fps, ${spec.width}×${spec.height}, ${sizeKb} KB.`);
   }
 }
 
@@ -1163,16 +1306,25 @@ function wireEvents() {
   els.btnPng.addEventListener("click", exportPng);
   els.btnWebm.addEventListener("click", () => {
     if (state.recording) { state.recordingCancel = true; return; }
-    recordWebm().catch((err) => {
+    recordVideo().catch((err) => {
       console.error(err);
       setStatus(`Recording error: ${err.message}`, true);
       state.recording = false;
       els.btnWebm.textContent = "Record animation";
       setProgress(null);
+      renderOnce();
       setFrameState(engine.playing ? "live" : "paused");
     });
   });
   els.btnWebmDownload.addEventListener("click", downloadWebm);
+  els.exportRes.addEventListener("change", () => { updateExportResMode(); updateExportEstimate(); });
+  els.bgType.addEventListener("change", updateBgMode);
+  els.btnBgLoad.addEventListener("click", () => els.bgFile.click());
+  els.bgFile.addEventListener("change", (e) => { const f = e.target.files?.[0]; if (f) loadBgFile(f); e.target.value = ""; });
+  els.btnBgClear.addEventListener("click", clearBg);
+  for (const el of [els.exportW, els.exportH, els.fps, els.frames]) {
+    el.addEventListener("input", updateExportEstimate);
+  }
 
   els.btnPresetSave.addEventListener("click", savePreset);
   els.btnPresetLoad.addEventListener("click", () => els.presetFile.click());
@@ -1192,7 +1344,6 @@ function wireEvents() {
   els.btnMaskClear.addEventListener("click", clearMask);
   els.maskApply.addEventListener("change", () => {
     state.maskApplied = els.maskApply.checked;
-    updateWebmMaskHint();
     renderOnce();
   });
   els.maskInvert.addEventListener("change", () => {
@@ -1252,6 +1403,9 @@ function initThemeToggle() {
   attachRangeReadouts();
   updateLayer2Mode();
   updateWarpMode();
+  updateExportResMode();
+  updateBgMode();
+  updateExportEstimate();
   wireEvents();
   initThemeToggle();
   setFrameState("paused");
