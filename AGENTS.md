@@ -1,7 +1,8 @@
 # AGENTS.md — context for AI agents
 
-> **Workspace-Standards:** Die verbindliche Leitkonvention steht in `_docs/CONVENTIONS.md`
-> (am Workspace-Root `/Users/Shared/code/`), Modell comply-or-explain. Dokumentierte
+> **Workspace-Standards (maintainer-lokal):** Die verbindliche Leitkonvention steht in `_docs/CONVENTIONS.md`
+> im Multi-Projekt-Workspace des Maintainers, `../_docs` relativ zu diesem Repo — nicht Teil dieses Repos,
+> ignorieren falls im Klon nicht vorhanden. Modell comply-or-explain. Dokumentierte
 > Abweichungen + erledigte/offene Punkte siehe Abschnitt
 > [Abweichungen von der Leitkonvention](#abweichungen-von-der-leitkonvention).
 
@@ -151,7 +152,7 @@ There is **no full test suite**. Instead:
 3. **Manual browser test** — `python3 -m http.server` and click around.
 
 > Sandbox note: the permission setup may forbid starting an HTTP server from
-> `/Users/Shared/`. If you hit that, ask the user to test it themselves.
+> the repo's location. If you hit that, ask the user to test it themselves.
 
 ### macOS app
 
@@ -240,12 +241,23 @@ active.
 - **Project memory (Daemon pointer layer):**
   `~/.claude/projects/-Users-Shared-code-perlin-studio/memory/MEMORY.md` — the
   index loaded each session (CORE-AGENT-02).
-- **Coding-Cockpit (SSOT):** `10_Pallas/25_Coding/perlin-studio/perlin-studio.md`
-  in the Obsidian vault — status · tasks · decisions · history. The Daemon memory
-  points here.
+- **Coding-Cockpit (SSOT):** `$VAULT/25_Coding/perlin-studio/perlin-studio.md`
+  (CORE-META-14, maintainer-local; `$VAULT` = the maintainer's Obsidian vault) —
+  status · tasks · decisions · history. The Daemon memory points here.
 - **Session handoff:** `.remember/` (gitignored, CORE-AGENT-03) — `remember.md`
   handoff + `now.md` / `recent.md` / `archive.md` buffers.
-- **Specs & plans:** `docs/superpowers/{specs,plans}/` (CORE-AGENT-04).
+- **SDD artifacts (since 2026-07-16): Cockpit, not repo** — specs, plans and
+  task reports live in the maintainer's Coding-Cockpit
+  (`$VAULT/25_Coding/perlin-studio/_SDD/`, CORE-META-14, maintainer-local). They
+  carry working context (vault paths, sister-repo internals) that is of no use
+  in a public repo. The repo keeps the design essence in this file +
+  `CHANGELOG.md`.
+- **Legacy stock:** `docs/superpowers/{specs,plans}/` is frozen — do not add new
+  specs or plans there. Historical references to existing spec files stay valid
+  (the files remain).
+- **Never in the repo:** absolute paths outside the repo (`/Users/…`, vault
+  paths) — use placeholders (`$VAULT/…`, `~/…`, repo-relative). Provenance as
+  repo name + `file:line` is welcome.
 
 ## Abweichungen von der Leitkonvention
 

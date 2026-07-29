@@ -258,8 +258,8 @@ browser QA plus byte-equivalent reuse of the worker source.
 5. **Element QA:** `preset`, `src`, `.params`; autoplay; responsive resize;
    reduced-motion; off-screen pause; double-click under `file://`.
 
-Sandbox note: `python3 -m http.server` may be blocked from `/Users/Shared/`.
-If so, hand the QA checklist to the maintainer to run locally.
+Sandbox note: `python3 -m http.server` may be blocked from the maintainer's
+workspace. If so, hand the QA checklist to the maintainer to run locally.
 
 ## Risks
 
