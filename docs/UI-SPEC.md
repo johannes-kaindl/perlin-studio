@@ -19,8 +19,8 @@ backend, no server calls, no telemetry. Users include hobby
 generative-art people, designers grabbing a background loop, and
 developers prototyping textures.
 
-- **Live demo:** https://jkaindl.codeberg.page/perlin-studio/
-- **Repo:** https://codeberg.org/jkaindl/perlin-studio
+- **Live demo:** https://pages.jkaindl.de/perlin-studio/
+- **Repo:** https://git.jkaindl.de/jkaindl/perlin-studio
 - **Hero image (current render output):** [`assets/hero.png`](../assets/hero.png)
 - **Gallery (current render output):** [`assets/gallery-*.png`](../assets/)
 - **Full user guide (every control explained):** [`docs/USAGE.md`](USAGE.md)

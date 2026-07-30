@@ -1,0 +1,10 @@
+# Perlin Studio — security contact (RFC 9116)
+# Canonical position for the whole domain is https://pages.jkaindl.de/.well-known/security.txt;
+# this copy ships with the project so it is reachable under the project path too.
+
+Contact: mailto:security@jkaindl.de
+Contact: https://github.com/johannes-kaindl/perlin-studio/security/advisories/new
+Expires: 2027-07-30T00:00:00.000Z
+Preferred-Languages: en, de
+Canonical: https://pages.jkaindl.de/perlin-studio/.well-known/security.txt
+Policy: https://git.jkaindl.de/jkaindl/perlin-studio/src/branch/main/SECURITY.md

@@ -10,7 +10,7 @@ body:
     attributes:
       value: |
         Before you type — Perlin Studio is deliberately **lean** and has
-        clear guardrails (see [`AGENTS.md`](https://codeberg.org/jkaindl/perlin-studio/src/branch/main/AGENTS.md)):
+        clear guardrails (see [`AGENTS.md`](https://git.jkaindl.de/jkaindl/perlin-studio/src/branch/main/AGENTS.md)):
 
         - **no** framework (React/Vue/Svelte)
         - **no** build step (Webpack/Vite/esbuild)
@@ -56,7 +56,7 @@ body:
     attributes:
       label: Pre-flight checks
       options:
-        - label: I checked [existing issues](https://codeberg.org/jkaindl/perlin-studio/issues) for duplicates.
+        - label: I checked [existing issues](https://git.jkaindl.de/jkaindl/perlin-studio/issues) for duplicates.
           required: true
         - label: I understand the architectural guardrails from AGENTS.md.
           required: true

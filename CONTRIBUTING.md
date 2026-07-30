@@ -12,7 +12,7 @@ There's no build step and no dependencies. You only need:
 - Optional: Node.js for the sanity checks
 
 ```bash
-git clone https://codeberg.org/jkaindl/perlin-studio.git
+git clone https://git.jkaindl.de/jkaindl/perlin-studio.git
 cd perlin-studio
 python3 -m http.server 8000
 # → http://localhost:8000

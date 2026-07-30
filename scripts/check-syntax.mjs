@@ -10,7 +10,7 @@
 // globals like `document`/`window` never run). Exit code is non-zero iff a
 // block fails to parse.
 //
-// Scope = the deployable site (matches the Codeberg deploy `source: .`): the
+// Scope = the deployable site (matches what `deploy-page.sh` publishes): the
 // root perlin*.js files, the inline <script> blocks in index.html / any
 // examples/*.html, AND the Web Worker source — which ships to the browser as a
 // Blob worker (perlin-engine.js) but lives inside a template literal in

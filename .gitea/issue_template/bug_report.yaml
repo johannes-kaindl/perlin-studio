@@ -13,7 +13,7 @@ body:
         possible — the easier it is to reproduce, the faster the fix.
 
         **Security-relevant issues** don't belong here — see
-        [`SECURITY.md`](https://codeberg.org/jkaindl/perlin-studio/src/branch/main/SECURITY.md).
+        [`SECURITY.md`](https://git.jkaindl.de/jkaindl/perlin-studio/src/branch/main/SECURITY.md).
   - type: textarea
     id: what-happened
     attributes:
@@ -28,7 +28,7 @@ body:
       label: Reproduction
       description: Which steps reliably trigger the bug?
       placeholder: |
-        1. Opened the app at https://jkaindl.codeberg.page/perlin-studio/
+        1. Opened the app at https://pages.jkaindl.de/perlin-studio/
         2. Selected the "Lava" preset
         3. Clicked "Export WebM", waited 60s
         4. Downloaded file is 0 bytes
@@ -46,7 +46,7 @@ body:
     attributes:
       label: Which surface?
       options:
-        - Web (Codeberg Pages live demo)
+        - Web (live demo)
         - Web (local via index.html / python http.server)
         - WebM export
         - Other / not sure
@@ -73,7 +73,7 @@ body:
     attributes:
       label: Pre-flight checks
       options:
-        - label: I checked [existing issues](https://codeberg.org/jkaindl/perlin-studio/issues) for duplicates.
+        - label: I checked [existing issues](https://git.jkaindl.de/jkaindl/perlin-studio/issues) for duplicates.
           required: true
         - label: This is not a security issue (otherwise → SECURITY.md).
           required: true

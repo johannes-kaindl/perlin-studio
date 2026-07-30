@@ -802,7 +802,7 @@ el.play();   // or el.pause(); el.playing → boolean
   thumbnails.
 
 A runnable demo lives in **[examples/embed.html](../examples/embed.html)**
-([live](https://jkaindl.codeberg.page/perlin-studio/examples/embed.html)).
+([live](https://pages.jkaindl.de/perlin-studio/examples/embed.html)).
 
 ---
 

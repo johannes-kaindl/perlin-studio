@@ -80,6 +80,7 @@ Five plain scripts, each attaching a `window` global, loaded in order
 ├── scripts/
 │   ├── check-syntax.mjs        # syntax gate (external perlin*.js + inline <script>), gates the deploy
 │   ├── smoke-test.js           # math + resolveParams invariants, gates the deploy
+│   ├── check-no-abs-paths.mjs  # CORE-META-14 gate: no absolute paths in tracked *.md
 │   ├── deploy-page.sh          # publish committed HEAD to pages.jkaindl.de (rsync)
 │   ├── bump-version.sh         # native version bump (macos/packaging/Info.plist)
 │   ├── render-readme-images.js # renders assets/*.png from perlin.js
@@ -97,6 +98,8 @@ Five plain scripts, each attaching a `window` global, loaded in order
 │   ├── MACOS-APP.md       # native app distribution + Gatekeeper guide
 │   └── examples/          # rendered WebM loops (for README + embedding)
 ├── .editorconfig          # consistent indentation/encoding/EOL
+├── .well-known/
+│   └── security.txt       # RFC 9116 contact (deployed with the site)
 ├── .gitea/
 │   └── issue_template/    # bug report + feature request forms
 ├── README.md              # quickstart + entry point
@@ -148,7 +151,12 @@ There is **no full test suite**. Instead:
    `scripts/deploy-page.sh` gates on this — if smoke tests fail, the site does
    not get republished. For deeper investigations the same pattern
    (`global.window = {}` + require `perlin.js`) works for ad-hoc scripts.
-3. **Manual browser test** — `python3 -m http.server` and click around.
+3. **Path hygiene gate** — no absolute maintainer paths in tracked Markdown:
+   ```bash
+   node scripts/check-no-abs-paths.mjs
+   ```
+   Also run by `scripts/deploy-page.sh`.
+4. **Manual browser test** — `python3 -m http.server` and click around.
 
 > Sandbox note: the permission setup may forbid starting an HTTP server from
 > the repo's location. If you hit that, ask the user to test it themselves.
@@ -185,7 +193,7 @@ Native release version bump (from the **repo root**, before tagging):
 
 - **Everything is English**: UI strings, code comments, identifiers, commit
   messages, PR descriptions, issue templates, docs. Matches the rest of the
-  author's Codeberg repos.
+  author's public repos.
 - Math terms (Octaves, Persistence, Lacunarity, fBm) keep their standard form.
 - No emojis in code/docs unless the user explicitly asks.
 
@@ -193,9 +201,12 @@ Native release version bump (from the **repo root**, before tagging):
 
 - **Conventional Commits** (`feat/fix/docs/chore/refactor/test(scope): …`);
   commit body may be German (CORE-GIT-04).
-- **Codeberg primary** (`codeberg` remote = `codeberg.org/jkaindl/perlin-studio`),
-  **GitHub mirror** (`github` = `github.com/johannes-kaindl/perlin-studio`) for
-  the public repo (CORE-GIT-01). Push both on release.
+- **Self-hosted Forgejo primary** (`origin` =
+  `git@git.jkaindl.de:jkaindl/perlin-studio.git`, browsable at
+  `https://git.jkaindl.de/jkaindl/perlin-studio`), **GitHub mirror**
+  (`github` = `github.com/johannes-kaindl/perlin-studio`) for reach
+  (CORE-GIT-01). Push both on release. The repo moved off Codeberg on
+  2026-07-30; the old `jkaindl.codeberg.page` deploy is frozen, not live.
 - **Tags: SemVer without `v`-prefix** for new tags (`0.2.0`); existing `v`-tags
   stay (CORE-GIT-03).
 - Stage only touched files, **never `git add -A`** (CORE-GIT-06).

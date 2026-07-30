@@ -3,8 +3,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security report
-    url: https://codeberg.org/jkaindl/perlin-studio/src/branch/main/SECURITY.md
+    url: https://git.jkaindl.de/jkaindl/perlin-studio/src/branch/main/SECURITY.md
     about: Please don't report security issues publicly — see SECURITY.md.
   - name: Live demo
-    url: https://jkaindl.codeberg.page/perlin-studio/
+    url: https://pages.jkaindl.de/perlin-studio/
     about: Try the live version before filing an issue.

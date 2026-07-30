@@ -9,17 +9,17 @@
 [![Runtime: Browser](https://img.shields.io/badge/runtime-browser-orange?style=flat-square)](#browser-compatibility)
 
 <p align="center">
-  <a href="https://jkaindl.codeberg.page/perlin-studio/">
+  <a href="https://pages.jkaindl.de/perlin-studio/">
     <img alt="Launch the web app" src="https://img.shields.io/badge/Launch_Web_App-16e0e0?style=for-the-badge&logo=pwa&logoColor=060709">
   </a>
   &nbsp;
-  <a href="https://jkaindl.codeberg.page/perlin-studio/examples/embed.html">
+  <a href="https://pages.jkaindl.de/perlin-studio/examples/embed.html">
     <img alt="Live embedding demo" src="https://img.shields.io/badge/▶_Live_Embedding_Demo-8a4dff?style=for-the-badge&logoColor=fff">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://jkaindl.codeberg.page/perlin-studio/">
+  <a href="https://pages.jkaindl.de/perlin-studio/">
     <img src="assets/hero.png" alt="Perlin Studio — Lava preset, 1200×630" width="100%">
   </a>
 </p>
@@ -118,14 +118,14 @@ they show the range of colour modes and features.
 Three seamless 2.5-second loops, rendered from the built-in presets via
 [`scripts/render-readme-videos.js`](scripts/render-readme-videos.js).
 The WebMs live under [`docs/examples/`](docs/examples/) and are directly
-linkable from the [live demo](https://jkaindl.codeberg.page/perlin-studio/)
+linkable from the [live demo](https://pages.jkaindl.de/perlin-studio/)
 (handy for embedding into other docs).
 
 <table>
   <tr>
-    <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/lava-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
-    <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/aurora-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
-    <td width="33%"><video src="https://jkaindl.codeberg.page/perlin-studio/docs/examples/terrain-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
+    <td width="33%"><video src="https://pages.jkaindl.de/perlin-studio/docs/examples/lava-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
+    <td width="33%"><video src="https://pages.jkaindl.de/perlin-studio/docs/examples/aurora-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
+    <td width="33%"><video src="https://pages.jkaindl.de/perlin-studio/docs/examples/terrain-loop.webm" autoplay loop muted playsinline width="100%"></video></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Lava</b> · Fire gradient</sub></td>
@@ -171,7 +171,7 @@ default 1280), respects `prefers-reduced-motion`, and pauses while
 off-screen. Works from `file://` too — except `src`, which needs an HTTP
 server (use `preset` or `.params` locally).
 
-▶ **See it live:** [jkaindl.codeberg.page/perlin-studio/examples/embed.html](https://jkaindl.codeberg.page/perlin-studio/examples/embed.html)
+▶ **See it live:** [pages.jkaindl.de/perlin-studio/examples/embed.html](https://pages.jkaindl.de/perlin-studio/examples/embed.html)
 — source in [examples/embed.html](examples/embed.html).
 
 ## Architecture in one picture

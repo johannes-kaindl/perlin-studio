@@ -27,7 +27,7 @@ side of reporting.
 ## Out of scope
 
 - General bug reports without security impact — please file a public
-  issue: <https://codeberg.org/jkaindl/perlin-studio/issues>.
+  issue: <https://git.jkaindl.de/jkaindl/perlin-studio/issues>.
 - Browser bugs (Safari/Chrome/Firefox WebGL/WebM quirks with no security
   implication) — those belong with the vendors.
 - General hardening suggestions without a concrete attack scenario —
@@ -35,12 +35,18 @@ side of reporting.
 
 ## How to report
 
-**Preferred:** private Codeberg issue in this repo, or DM via Codeberg
-to [@jkaindl](https://codeberg.org/jkaindl). Codeberg supports private
-issues — tick the privacy box when filing.
+**Preferred:** email to **security@jkaindl.de**. Please don't open a
+public issue for anything with security impact — the issue tracker on
+`git.jkaindl.de` has no confidential mode, so a report filed there is
+world-readable from the moment you submit it.
 
-**Alternative:** email to the address listed on the
-[Codeberg profile](https://codeberg.org/jkaindl).
+**Alternative:** [private vulnerability report on the GitHub
+mirror](https://github.com/johannes-kaindl/perlin-studio/security/advisories/new)
+if you'd rather use a platform channel than email.
+
+Machine-readable contact info:
+[`.well-known/security.txt`](https://pages.jkaindl.de/perlin-studio/.well-known/security.txt)
+(RFC 9116).
 
 PGP isn't set up; for sensitive reports I can publish a key on request.
 
@@ -67,9 +73,12 @@ synced data) are very much in scope and especially welcome.
 
 ## Known design decisions that aren't bugs
 
-- **No CSP header on the live demo.** Codeberg Pages serves pages
-  without custom headers. Mitigation: no inline `<script>` constructs
-  with user input, no `eval`.
+- **No CSP header on the live demo.** The site is served as static files
+  by Caddy on `pages.jkaindl.de`, which currently sends no custom
+  security headers. Unlike the previous Codeberg Pages hosting this is
+  now a setting we control, so it may change; the code does not rely on
+  it either way. Mitigation: no inline `<script>` constructs with user
+  input, no `eval`.
 - **WebM export size is unbounded.** Long captures can grow to several
   hundred MB; that's intentional. Not a DoS bug.
 - **No update strategy for stored presets.** Users with presets in

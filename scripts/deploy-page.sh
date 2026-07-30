@@ -11,7 +11,9 @@
 #
 # Repo meta (AGENTS.md, docs/, scripts/, ios/, macos/, …) is excluded — it was
 # part of the old Codeberg Pages deploy but has no business on the public site.
-# dist/ (standalone perlin-noise.js bundle) stays: it may be hotlinked.
+# Two deliberate exceptions, both hotlinked from outside: dist/ (the standalone
+# perlin-noise.js bundle) and docs/examples/ (the rendered WebM loops the README
+# and the embedding docs point at).
 #
 # Auth is via the dedicated deploy key behind the `pages-deploy` SSH host alias
 # (~/.ssh/config) — restricted server-side to rsync into /srv/pages only.
@@ -40,6 +42,7 @@ cd "$(git rev-parse --show-toplevel)"
 echo "=== Gates ==="
 node scripts/check-syntax.mjs
 node scripts/smoke-test.js
+node scripts/check-no-abs-paths.mjs
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "NOTE: working tree has uncommitted changes — deploying committed HEAD, not the working tree." >&2
@@ -57,7 +60,9 @@ echo "=== Publishing via rsync ==="
   --exclude 'CONTRIBUTING.md' --exclude 'LICENSING.md' --exclude 'README.md' \
   --exclude 'SECURITY.md' --exclude '.editorconfig' --exclude '.gitignore' \
   --exclude '.forgejo/' --exclude '.gitea/' \
-  --exclude '_archiv/' --exclude 'docs/' --exclude 'scripts/' \
+  --exclude '_archiv/' --exclude 'scripts/' \
+  --include 'docs/' --include 'docs/examples/' --include 'docs/examples/**' \
+  --exclude 'docs/**' \
   --exclude 'ios/' --exclude 'macos/' \
   "$STAGE"/ "$DEST"
 

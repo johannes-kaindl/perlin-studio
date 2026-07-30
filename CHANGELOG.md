@@ -74,6 +74,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ## [0.17.0] — 2026-06-02
 
 ### Changed
+- **New home for the live demo and the repo.** The site now lives at
+  <https://pages.jkaindl.de/perlin-studio/> and the repo at
+  <https://git.jkaindl.de/jkaindl/perlin-studio> (self-hosted Forgejo);
+  <https://github.com/johannes-kaindl/perlin-studio> stays as the mirror. All
+  links, the canonical URL and the Open Graph tags were updated. The old
+  `jkaindl.codeberg.page` deploy is frozen and no longer receives updates.
+  The rendered WebM loops under `docs/examples/` are published on the new host
+  as well, so existing embeds of those files keep working once they are
+  repointed.
+- **Security contact.** Reports now go to `security@jkaindl.de` or, if you
+  prefer a platform channel, to the GitHub mirror's private advisory form —
+  the new issue tracker has no confidential mode. Machine-readable contact
+  info ships as `.well-known/security.txt` (RFC 9116).
 - **Refreshed the built-in presets** for more impact and to better show off
   the tool's range: `flow` is now a visible, saturated vector field (was
   nearly black); `nebula` a vivid magenta per-channel field; `composite` a
