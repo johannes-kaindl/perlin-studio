@@ -54,5 +54,5 @@ FIN_SHORT=$("$PB" -c "Print :CFBundleShortVersionString" "$PLIST")
 [ "$FIN_SHORT" = "$VER" ] || { echo "✗ version drift after write: Info.plist=$FIN_SHORT (wanted $VER)" >&2; exit 1; }
 
 echo "✓ version → $VER   (Info.plist CFBundleShortVersionString; CFBundleVersion $CUR → $((CUR + 1)))"
-echo "  next: git commit -am 'chore(release): $VER' && git tag $VER && git push codeberg main $VER"
-echo "        (mirror: git push github main $VER)"
+echo "  next: git commit -am 'chore(release): $VER' && git tag $VER && git push origin main $VER"
+echo "        (GitHub mirror follows automatically via the Forgejo push mirror)"
