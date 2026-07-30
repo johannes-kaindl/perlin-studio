@@ -78,8 +78,9 @@ Five plain scripts, each attaching a `window` global, loaded in order
 │   ├── embed.html         # <perlin-noise> embedding demo
 │   └── marble.json        # resolved preset export for the src demo
 ├── scripts/
-│   ├── check-syntax.mjs        # syntax gate (external perlin*.js + inline <script>), gates CI deploy
-│   ├── smoke-test.js           # math + resolveParams invariants, gates CI deploy
+│   ├── check-syntax.mjs        # syntax gate (external perlin*.js + inline <script>), gates the deploy
+│   ├── smoke-test.js           # math + resolveParams invariants, gates the deploy
+│   ├── deploy-page.sh          # publish committed HEAD to pages.jkaindl.de (rsync)
 │   ├── bump-version.sh         # native version bump (macos/packaging/Info.plist)
 │   ├── render-readme-images.js # renders assets/*.png from perlin.js
 │   ├── render-guide-images.js  # renders docs/images/*.png for USAGE.md
@@ -96,8 +97,6 @@ Five plain scripts, each attaching a `window` global, loaded in order
 │   ├── MACOS-APP.md       # native app distribution + Gatekeeper guide
 │   └── examples/          # rendered WebM loops (for README + embedding)
 ├── .editorconfig          # consistent indentation/encoding/EOL
-├── .forgejo/
-│   └── workflows/         # Codeberg Pages auto-deploy
 ├── .gitea/
 │   └── issue_template/    # bug report + feature request forms
 ├── README.md              # quickstart + entry point
@@ -138,21 +137,34 @@ There is **no full test suite**. Instead:
    ```bash
    node scripts/check-syntax.mjs
    ```
-   The Forgejo deploy workflow runs this before publishing.
+   `scripts/deploy-page.sh` runs this before publishing.
 2. **Math smoke tests** for Perlin changes:
    ```bash
    node scripts/smoke-test.js
    ```
    Covers permutation determinism, value range of `perlin3`/`perlin4`, loop
    identity at `progress=0` vs `progress=1` (both bytewise and bit-exact at the
-   float level), Z/W axis independence, and `colorize` range. The Forgejo deploy
-   workflow gates on this — if smoke tests fail, the site does not get
-   republished. For deeper investigations the same pattern
+   float level), Z/W axis independence, and `colorize` range.
+   `scripts/deploy-page.sh` gates on this — if smoke tests fail, the site does
+   not get republished. For deeper investigations the same pattern
    (`global.window = {}` + require `perlin.js`) works for ad-hoc scripts.
 3. **Manual browser test** — `python3 -m http.server` and click around.
 
 > Sandbox note: the permission setup may forbid starting an HTTP server from
 > the repo's location. If you hit that, ask the user to test it themselves.
+
+### Deploy
+
+```bash
+bash scripts/deploy-page.sh
+```
+
+Runs both gates, snapshots committed `HEAD` via `git archive` (so untracked
+files can never leak), and rsyncs it to `pages.jkaindl.de/perlin-studio/`.
+Needs real rsync 3.x — macOS ships `openrsync`, which the server-side `rrsync`
+wrapper rejects (`brew install rsync`). The script deliberately carries the
+four macOS deploy guards; don't remove them (see the maintainer's workspace
+convention CORE-OPS-01, `../_docs/CONVENTIONS.md`, maintainer-local).
 
 ### macOS app
 

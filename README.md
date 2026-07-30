@@ -4,7 +4,7 @@
 > video export, seamless loop. Fully client-side, no dependencies, no build.
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-8a4dff?style=flat-square)](LICENSE)
-[![No build step](https://img.shields.io/badge/build-none-39ff7a?style=flat-square)](#quickstart)
+[![No build step](https://img.shields.io/badge/build-none-39ff7a?style=flat-square)](#no-build-step)
 [![No dependencies](https://img.shields.io/badge/dependencies-0-16e0e0?style=flat-square)](#)
 [![Runtime: Browser](https://img.shields.io/badge/runtime-browser-orange?style=flat-square)](#browser-compatibility)
 
@@ -47,7 +47,7 @@ python3 -m http.server 8000
 Hit **▶** or **Space**, click a preset chip, or move any slider — the
 live preview updates after every input.
 
-## What it does
+## Features
 
 - **Live preview** of parametric Perlin animations (fBm with octaves,
   persistence, lacunarity, seed)
@@ -190,6 +190,36 @@ Main thread (UI)              Web Worker
 
 Full technical docs (math, pipeline, edge cases):
 **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
+## No build step
+
+There is nothing to compile, bundle, or install. The seven scripts you see in
+[Project layout](#project-layout) are the shipped artifact: plain ES5-compatible
+JavaScript, each attaching one `window` global, loaded in order by
+`index.html`. No `package.json`, no `node_modules`, no transpiler, no
+framework.
+
+That is a deliberate design constraint, not a gap:
+
+- **It runs from `file://`.** Double-clicking `index.html` gives you the full
+  tool — no server, no toolchain, no network. The Perlin worker is loaded from
+  an inline Blob (`MTPerlin.WORKER_SOURCE`), with an automatic main-thread
+  fallback where a browser's CSP blocks it.
+- **It deploys anywhere static.** `rsync` the directory onto any webhost and
+  it works. No CI step stands between the source and what visitors run.
+- **It stays embeddable.** `<perlin-noise>` drops into any page with four
+  `<script>` tags — no build tooling imposed on whoever embeds it.
+- **It stays readable.** What you read in the repo is exactly what runs in the
+  browser; a stack trace points at real source lines, not at bundle output.
+
+The cost is a deliberate one: no TypeScript, no npm ecosystem, and hand-rolled
+solutions where a dependency would be quicker. Quality is gated by
+`scripts/check-syntax.mjs` (parses every deployable script) and
+`scripts/smoke-test.js` (Perlin math invariants) rather than by a compiler —
+both run before the site is published.
+
+If you want to change this, talk to the maintainer first — see
+[AGENTS.md](AGENTS.md).
 
 ## Browser compatibility
 
