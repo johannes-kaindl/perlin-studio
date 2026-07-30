@@ -52,7 +52,7 @@ echo "=== Snapshot HEAD ==="
 git archive HEAD | tar -x -C "$STAGE"
 
 echo "=== Publishing via rsync ==="
-"$RSYNC" -az --delete \
+"$RSYNC" -az --delete --chmod=D755,F644 \
   --exclude 'AGENTS.md' --exclude 'CHANGELOG.md' --exclude 'CLA.md' \
   --exclude 'CONTRIBUTING.md' --exclude 'LICENSING.md' --exclude 'README.md' \
   --exclude 'SECURITY.md' --exclude '.editorconfig' --exclude '.gitignore' \
