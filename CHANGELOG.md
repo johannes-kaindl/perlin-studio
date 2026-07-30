@@ -478,8 +478,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 - Open-source publication on Codeberg:
-  <https://codeberg.org/jkaindl/perlin-studio>, live at
-  <https://jkaindl.codeberg.page/perlin-studio/>.
+  <https://git.jkaindl.de/jkaindl/perlin-studio>, live at
+  <https://pages.jkaindl.de/perlin-studio/>.
 - Open-source base files: `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`,
   `AGENTS.md`, `CHANGELOG.md`, `.gitignore`.
 - `docs/ARCHITECTURE.md` and `docs/USAGE.md` with detailed technical
