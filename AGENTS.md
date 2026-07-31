@@ -23,6 +23,10 @@ same noise live as an animated desktop background (Swift + Metal, public AppKit
 only). See [`macos/README.md`](macos/README.md) and the distribution guide
 [`docs/MACOS-APP.md`](docs/MACOS-APP.md).
 
+A native iOS/iPadOS companion (`ios/`) — *Perlin Live Photo* — turns the same
+noise into Apple Live Photos (SwiftUI + Metal; reuses the macOS portable core
+by file reference). See [`ios/README.md`](ios/README.md).
+
 Zero-dependency / no-build is a **deliberate feature** (PROF-WEB-01): the tool
 must stay statically deployable and embeddable as a Web Component. Don't migrate
 to TypeScript, a bundler, or a framework without discussing it with the
@@ -88,6 +92,9 @@ Five plain scripts, each attaching a `window` global, loaded in order
 │   ├── render-readme-videos.js # renders docs/examples/*.webm (Node → ffmpeg)
 │   └── build-standalone.js     # inlines the studio into a single HTML file
 ├── macos/                 # native companion app (Swift + Metal); see macos/README.md
+├── ios/                   # native iOS/iPadOS companion "Perlin Live Photo"; see ios/README.md
+├── dist/
+│   └── perlin-noise.js    # generated standalone bundle (scripts/build-standalone.js) — do not edit
 ├── _archiv/               # historical predecessors (READ-ONLY!)
 │   ├── perlin_noise/      # Python original
 │   ├── texturizer.ipynb   # Texturizer notebook
@@ -108,6 +115,8 @@ Five plain scripts, each attaching a `window` global, loaded in order
 ├── CHANGELOG.md
 ├── LICENSE                # AGPL-3.0 (code)
 ├── LICENSE-DOCS           # CC BY-SA 4.0 (documentation)
+├── LICENSING.md           # licensing overview / dual-license option
+├── CLA.md                 # contributor license agreement
 └── AGENTS.md              # this file
 ```
 
@@ -207,8 +216,9 @@ Native release version bump (from the **repo root**, before tagging):
   (`github` = `github.com/johannes-kaindl/perlin-studio`) for reach
   (CORE-GIT-01). Push both on release. The repo moved off Codeberg on
   2026-07-30; the old `jkaindl.codeberg.page` deploy is frozen, not live.
-- **Tags: SemVer without `v`-prefix** for new tags (`0.2.0`); existing `v`-tags
-  stay (CORE-GIT-03).
+- **Tags: SemVer with `v`-prefix** — the lived convention here (every tag from
+  `v0.4.0` through the current `v0.17.0` carries it). A documented deviation
+  from CORE-GIT-03's no-prefix default; keep new tags consistent (`vX.Y.Z`).
 - Stage only touched files, **never `git add -A`** (CORE-GIT-06).
 - AI-assisted commits carry the trailer
   `Co-Authored-By: Claude Opus <version> (1M context) <noreply@anthropic.com>`
