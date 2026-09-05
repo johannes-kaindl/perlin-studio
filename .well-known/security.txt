@@ -3,7 +3,6 @@
 # this copy ships with the project so it is reachable under the project path too.
 
 Contact: mailto:security@jkaindl.de
-Contact: https://github.com/johannes-kaindl/perlin-studio/security/advisories/new
 Expires: 2027-07-30T00:00:00.000Z
 Preferred-Languages: en, de
 Canonical: https://pages.jkaindl.de/.well-known/security.txt

@@ -40,9 +40,10 @@ public issue for anything with security impact — the issue tracker on
 `git.jkaindl.de` has no confidential mode, so a report filed there is
 world-readable from the moment you submit it.
 
-**Alternative:** [private vulnerability report on the GitHub
-mirror](https://github.com/johannes-kaindl/perlin-studio/security/advisories/new)
-if you'd rather use a platform channel than email.
+**There is no platform channel any more.** The GitHub mirror was removed on
+2026-09-05 (GitHub now stays only where the Obsidian store chain requires it),
+so email is the confidential route. If you would rather not use email, say so
+in a normal issue without any detail and we will arrange something.
 
 Machine-readable contact info:
 [`.well-known/security.txt`](https://pages.jkaindl.de/perlin-studio/.well-known/security.txt)

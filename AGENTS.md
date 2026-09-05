@@ -212,9 +212,11 @@ Native release version bump (from the **repo root**, before tagging):
   commit body may be German (CORE-GIT-04).
 - **Self-hosted Forgejo primary** (`origin` =
   `git@git.jkaindl.de:jkaindl/perlin-studio.git`, browsable at
-  `https://git.jkaindl.de/jkaindl/perlin-studio`), **GitHub mirror**
-  (`github` = `github.com/johannes-kaindl/perlin-studio`) for reach
-  (CORE-GIT-01). Push both on release. The repo moved off Codeberg on
+  `https://git.jkaindl.de/jkaindl/perlin-studio`) — **and nothing else since
+  2026-09-05**: the GitHub mirror was removed. GitHub now stays only where it is
+  functionally required (the Obsidian store chain), and this is not a plugin; the
+  account has also been flagged since 2026-08-30, so the mirror was anonymously
+  404 anyway. One remote, one push (CORE-GIT-01). The repo moved off Codeberg on
   2026-07-30; the old `jkaindl.codeberg.page` deploy is frozen, not live.
 - **Tags: SemVer with `v`-prefix** — the lived convention here (every tag from
   `v0.4.0` through the current `v0.17.0` carries it). A documented deviation
