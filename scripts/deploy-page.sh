@@ -9,7 +9,7 @@
 # (.forgejo/workflows/deploy.yml, removed — the self-hosted Forgejo runs no CI
 # runner by design).
 #
-# Repo meta (AGENTS.md, docs/, scripts/, ios/, macos/, …) is excluded — it was
+# Repo meta (AGENTS.md, ANGEBOT.md, .claude/, docs/, scripts/, ios/, macos/, …) is excluded — it was
 # part of the old Codeberg Pages deploy but has no business on the public site.
 # Two deliberate exceptions, both hotlinked from outside: dist/ (the standalone
 # perlin-noise.js bundle) and docs/examples/ (the rendered WebM loops the README
@@ -59,7 +59,7 @@ echo "=== Publishing via rsync ==="
   --exclude 'AGENTS.md' --exclude 'CHANGELOG.md' --exclude 'CLA.md' \
   --exclude 'CONTRIBUTING.md' --exclude 'LICENSING.md' --exclude 'README.md' \
   --exclude 'SECURITY.md' --exclude '.editorconfig' --exclude '.gitignore' \
-  --exclude '.forgejo/' --exclude '.gitea/' \
+  --exclude '.forgejo/' --exclude '.gitea/' --exclude '.claude/' --exclude 'ANGEBOT.md' \
   --exclude '_archiv/' --exclude 'scripts/' \
   --include 'docs/' --include 'docs/examples/' --include 'docs/examples/**' \
   --exclude 'docs/**' \

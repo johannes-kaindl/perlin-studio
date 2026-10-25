@@ -6,6 +6,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-26
+
 ### Added
 - **Cellular noise types** (web) — a *Noise type* select next to Perlin: `cells` (distance to the nearest point), `borders` (cell edges) and `smooth` (a smooth minimum, soft blobs), with a cell-jitter slider. The hash is the same permutation table as Perlin, so `base` seeds it and tiling wraps the cells; time moves each point on a circle inside its own cell, which makes the loop close exactly with a plain 3×3 search. Works with warp, tile, layer 2, relief lighting and every colour mode, on CPU and GPU (parity gate: six cases, a mutant on one hash constant turns all six red). The native apps ignore it and render Perlin.
 - **Relief lighting** (web) — an overlay for the colour modes: the noise is read as a height field and lit (relief strength, light direction and height, ambient, highlight, shininess). The slope comes from the same three-point stencil as the flow mode, so it works with warp, tiling, layer 2 and the loop; flow and per-channel RGB ignore it. CPU and GPU render it identically (parity gate, five new cases); the worker copy of the CPU path is now checked bytewise against the main-thread path for every case. The native apps ignore it.
