@@ -7,6 +7,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Relief lighting** (web) — an overlay for the colour modes: the noise is read as a height field and lit (relief strength, light direction and height, ambient, highlight, shininess). The slope comes from the same three-point stencil as the flow mode, so it works with warp, tiling, layer 2 and the loop; flow and per-channel RGB ignore it. CPU and GPU render it identically (parity gate, five new cases); the worker copy of the CPU path is now checked bytewise against the main-thread path for every case. The native apps ignore it.
 - **Cosine colour mode** (web) — a new colour mode `cosine`: `a + b·cos(2π(c·t+d))` per channel, seven built-in palettes (rainbow, dusk, rose, citrus, peach, neon, coral, after Inigo Quilez' *Simple color palettes*) and an editor for the twelve numbers with a live preview. Works on both renderers (the parity gate covers it); the native macOS and iOS apps do not know the mode yet and treat it as an unknown mode (they fall back to the gradient mode).
 - **GPU renderer (WebGL2)** (web) — new `perlin-gl.js` and a *Renderer* select
   in the studio (CPU · worker / GPU · WebGL2, remembered per browser, CPU stays

@@ -61,6 +61,11 @@ const cases = [
   ["cosine neon (c = 2, 1, 0), loop", { colorMode: "cosine", cosineName: "neon", loop: true, loopProgress: 0.3 }],
   ["cosine coral with layer 2", { colorMode: "cosine", cosineName: "coral", layer2On: true, layer2Mix: 0.5, layer2Base: 3, layer2ScaleX: 0.07, layer2ScaleY: 0.07 }],
   ["cosine custom parameters", { colorMode: "cosine", cosine: { a: [0.2, 0.6, 0.9], b: [0.8, 0.3, 0.1], c: [3.0, 0.5, 1.5], d: [-0.4, 0.7, 0.05] } }],
+  ["relief, linear, default light", { reliefOn: true, reliefGain: 4, colorMode: "gradient", gradient: "viridis" }],
+  ["relief, loop + warp, low sun, no ambient", { reliefOn: true, reliefGain: 6, lightAzimuth: 40, lightElevation: 12, reliefAmbient: 0, loop: true, loopProgress: 0.55, warpStrength: 1.5, colorMode: "cosine", cosineName: "dusk" }],
+  ["relief, layer 2 + tile", { reliefOn: true, reliefGain: 3, layer2On: true, layer2Mix: 0.5, layer2Base: 9, layer2ScaleX: 0.5, layer2ScaleY: 0.5, tileX: 4, tileY: 3, scaleX: 0.25, scaleY: 0.25 }],
+  ["relief, strong highlight, rgb", { reliefOn: true, reliefGain: 10, reliefSpec: 1, reliefShine: 8, lightElevation: 70, rScale: 1, gScale: 0.8, bScale: 0.6 }],
+  ["relief, hsv, wide stencil", { reliefOn: true, reliefGain: 2, reliefEps: 2.5, colorMode: "hsv", hsvHueShift: 0.1, hsvHueRange: 0.5, hsvSat: 0.7, hsvVal: 0.9 }],
   ["posterize 5, linear", { colorMode: "posterize", posterizeSteps: 5, gradient: "viridis" }, { bandEdges: true }],
   ["high octaves, large scale", { octaves: 10, scaleX: 1.7, scaleY: 1.7, persistence: 0.6 }],
   ...["multiply", "add", "screen", "darken", "lighten", "difference"].map((m) => [
@@ -82,7 +87,7 @@ await page.addScriptTag({ path: path.join(root, "perlin.js") });
 await page.addScriptTag({ path: path.join(root, "perlin-presets.js") });
 await page.addScriptTag({ path: path.join(root, "perlin-gl.js") });
 
-const out = await page.evaluate(({ cases, base, MAX_LEVEL, MAX_FRAC }) => {
+const out = await page.evaluate(async ({ cases, base, MAX_LEVEL, MAX_FRAC }) => {
   if (!window.MTPerlinGL.isAvailable()) return { skip: "no WebGL2" };
   const G = window.MTPerlinPresets.GRADIENTS;
   const gl = window.MTPerlinGL.createRenderer();
@@ -110,12 +115,36 @@ const out = await page.evaluate(({ cases, base, MAX_LEVEL, MAX_FRAC }) => {
     return { max, mean: sum / a.length, frac: over1 / a.length };
   }
 
+  // The CPU path exists twice (main thread and the worker's string copy); they must agree bytewise.
+  function viaWorker(p) {
+    return new Promise((resolve, reject) => {
+      const w = new Worker(URL.createObjectURL(new Blob([window.MTPerlin.WORKER_SOURCE], { type: "application/javascript" })));
+      w.onmessage = (e) => { w.terminate(); resolve(new Uint8ClampedArray(e.data.buffer)); };
+      w.onerror = (e) => { w.terminate(); reject(new Error(e.message)); };
+      w.postMessage({ id: 1, params: p });
+    });
+  }
+
   const rows = [];
+  const workerMismatch = [];
   for (const [name, params, opts] of cases) {
     const r = both(params);
+    const wbuf = await viaWorker(r.p);
+    for (let i = 0; i < wbuf.length; i++) { if (wbuf[i] !== r.a[i]) { workerMismatch.push(name); break; } }
     if (!r.supported) { rows.push({ name, ok: false, note: "not supported by the GPU renderer" }); continue; }
     const d = diff(r.a, r.b);
-    let ok = d.max <= MAX_LEVEL && d.frac <= MAX_FRAC;
+    // Relief lighting scales the (already rounded) base colour by a shade of up to 1 / flat, where
+    // flat is the shade of a flat surface; a base colour that rounds one level apart on the two
+    // paths (float32 against float64) therefore shows up to ceil(1 / flat) + 1 levels apart. Low
+    // sun and no ambient light is the extreme (measured: max 5 at 12 degrees, 0 ambient, and none
+    // of the pixels differ without warp, or at default light, or at gain 0).
+    let lim = MAX_LEVEL;
+    if (r.p.reliefOn) {
+      const amb = r.p.reliefAmbient != null ? r.p.reliefAmbient : 0.35;
+      const el = (r.p.lightElevation != null ? r.p.lightElevation : 45) * Math.PI / 180;
+      lim = Math.max(MAX_LEVEL, Math.ceil(1 / Math.max(1e-3, amb + (1 - amb) * Math.sin(el))) + 1);
+    }
+    let ok = d.max <= lim && d.frac <= MAX_FRAC;
     let note = "";
     if (!ok && opts && opts.bandEdges && !r.p.loop) {
       // Every pixel that differs by more than the tolerance must sit within 1e-4 of a band edge.
@@ -163,7 +192,9 @@ const out = await page.evaluate(({ cases, base, MAX_LEVEL, MAX_FRAC }) => {
     ["gradient with 17 stops", { colorMode: "gradient", gradient: Array.from({ length: 17 }, (_, i) => ({ pos: i / 16, color: [i * 15, 0, 0] })) }],
   ].map(([name, params]) => ({ name: "falls back: " + name, ok: gl.supports(Object.assign({}, base, params)) === false }));
 
-  return { rows: rows.concat([control, closure], fallbacks), renderer: (() => {
+  const workerRow = { name: "worker copy equals main-thread CPU path (bytewise)" + (workerMismatch.length ? ": " + workerMismatch.join("; ") : ` in all ${cases.length} cases`), ok: workerMismatch.length === 0 };
+
+  return { rows: rows.concat([control, closure, workerRow], fallbacks), renderer: (() => {
     const c = document.createElement("canvas").getContext("webgl2"); const e = c.getExtension("WEBGL_debug_renderer_info");
     return e ? c.getParameter(e.UNMASKED_RENDERER_WEBGL) : "unknown";
   })() };

@@ -623,6 +623,41 @@ const EX = global.window.MTPerlinExport;
   ok("cosine output is clamped to 0..255", wild.every((v) => v >= 0 && v <= 255 && Number.isInteger(v)), JSON.stringify(wild));
 }
 
+// ----- K: relief lighting -----
+{
+  const base = [200, 120, 60];
+  const flat = MT.shadeRelief(base, 0, 0, {});
+  ok("relief: a flat surface keeps its colour", flat[0] === 200 && flat[1] === 120 && flat[2] === 60, JSON.stringify(flat));
+
+  // Default light comes from the top-left (azimuth 315). A slope that tilts the normal towards
+  // it (positive slopes: N = (-g, -g, 1)) is brighter than flat, the opposite slope is darker.
+  const lit = MT.shadeRelief(base, 0.4, 0.4, {});
+  const dark = MT.shadeRelief(base, -0.4, -0.4, {});
+  ok("relief: a slope facing the light is brighter than flat", lit[0] > flat[0], "lit " + lit[0] + " flat " + flat[0]);
+  ok("relief: a slope facing away is darker than flat", dark[0] < flat[0], "dark " + dark[0] + " flat " + flat[0]);
+  ok("relief: gain 0 ignores the slope", MT.shadeRelief(base, 3, -2, { reliefGain: 0 }).join() === flat.join());
+  ok("relief: output is clamped whole numbers",
+    MT.shadeRelief(base, 5, 5, { reliefSpec: 1, reliefAmbient: 0, lightElevation: 5 }).every((v) => Number.isInteger(v) && v >= 0 && v <= 255));
+  // Light from the right (azimuth 90) lights a slope that faces right (negative x slope).
+  const fromRight = MT.shadeRelief(base, -0.4, 0, { lightAzimuth: 90 });
+  const fromLeft = MT.shadeRelief(base, 0.4, 0, { lightAzimuth: 90 });
+  ok("relief: azimuth 90 lights the right-facing slope", fromRight[0] > fromLeft[0], fromRight[0] + " vs " + fromLeft[0]);
+
+  // Through the renderer: relief changes the image, flow ignores it, and relief off is the old image.
+  const mockCtx = () => ({ createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData(img) { this.img = img; } });
+  function render(extra) {
+    const c = mockCtx();
+    MT.generatePerlinImage(Object.assign({ width: 24, height: 16, scaleX: 0.05, scaleY: 0.05, scaleT: 0.15, base: 3, octaves: 4,
+      persistence: 0.5, lacunarity: 2, colorMode: "rgb", gScale: 1, t: 0.7, loop: false }, extra), c);
+    return Array.from(c.img.data).join();
+  }
+  const off = render({});
+  ok("relief off equals the render without the parameter", off === render({ reliefOn: false, reliefGain: 9 }));
+  ok("relief on changes the image", off !== render({ reliefOn: true, reliefGain: 4 }));
+  ok("relief is ignored in flow mode", render({ colorMode: "flow" }) === render({ colorMode: "flow", reliefOn: true, reliefGain: 4 }));
+  ok("relief is ignored in per-channel RGB", render({ rgbMultiChannel: true }) === render({ rgbMultiChannel: true, reliefOn: true }));
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");

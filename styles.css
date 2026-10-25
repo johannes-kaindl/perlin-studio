@@ -610,6 +610,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 .color-section > label { margin-bottom: 10px; }
 .color-section > label:last-child { margin-bottom: 0; }
 
+.relief-block { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+
 /* Cosine palette editor: one row per vector, three channels */
 .gradient-preview-wrap + .sec-hint { margin-top: 10px; }
 .cos-row { margin-top: 6px; }

@@ -4,7 +4,7 @@
  * A port of the CPU maths in perlin.js, not a new noise: the shader reads the
  * same seeded permutation table (a 512x2 texture) and the same 32 gradients, and
  * mirrors perlin3/perlin4, fBm, domain warp, tiling, layer 2 and the
- * rgb / gradient / hsv / posterize / cosine colour modes line by line. The same preset
+ * rgb / gradient / hsv / posterize / cosine colour modes and the relief lighting line by line. The same preset
  * therefore renders the same image on both engines, up to float32 against
  * float64 (scripts/check-gl-parity.mjs measures the difference).
  *
@@ -58,6 +58,9 @@ uniform vec3  uRgbScale, uRgbInvert;
 uniform vec4  uHsv;           // shift, range, sat, val
 uniform vec3  uCosA, uCosB, uCosC, uCosD;   // cosine palette: a + b*cos(2pi(c*n + d))
 uniform int   uSteps;
+uniform bool  uRelief;        // relief lighting (see shadeRelief in perlin.js)
+uniform float uReps, uRelGain, uAmb, uSpecAmt, uShine, uFlat, uSpecFlat;
+uniform vec3  uLight, uHalf;
 uniform int   uStopN;
 uniform float uStopPos[${MAX_STOPS}];
 uniform vec3  uStopColor[${MAX_STOPS}];
@@ -268,21 +271,40 @@ vec3 colorize(float n) {
   return gradientLookup(min(1.0, floor(n * steps) / (steps - 1.0)));
 }
 
+// The height at pixel position (px, py): main field, blended with layer 2 when on.
+float heightAt(float px, float py) {
+  float n1 = uLoop
+    ? warped4(0, px * uScale.x, py * uScale.y, uZW.x, uZW.y, uOct)
+    : warped3(0, px * uScale.x, py * uScale.y, uTz, uOct);
+  if (!uLayer) return n1;
+  float n2 = uLoop
+    ? warped4(1, px * uL2Scale.x, py * uL2Scale.y, uZW.x, uZW.y, uL2Oct)
+    : warped3(1, px * uL2Scale.x, py * uL2Scale.y, uTz, uL2Oct);
+  return n1 * (1.0 - uMix) + blendLayers(n1, n2) * uMix;
+}
+
+// c is in 0..255 (already rounded, like the CPU colorize); light and half vector come from JS.
+vec3 shadeRelief(vec3 c, float gx, float gy) {
+  vec3 N = normalize(vec3(-uRelGain * gx, -uRelGain * gy, 1.0));
+  float shade = (uAmb + (1.0 - uAmb) * max(0.0, dot(N, uLight))) / uFlat;
+  float hit = max(0.0, dot(N, uHalf));
+  float spec = uSpecAmt * max(0.0, (hit > 0.0 ? pow(hit, uShine) : 0.0) - uSpecFlat) * 255.0;
+  return clamp(floor(c * shade + spec + 0.5), 0.0, 255.0);
+}
+
 void main() {
   // CPU pixel (x, y) has y = 0 at the top and no half-pixel offset.
   float px = floor(gl_FragCoord.x);
   float py = uSize.y - 1.0 - floor(gl_FragCoord.y);
-  float n1 = uLoop
-    ? warped4(0, px * uScale.x, py * uScale.y, uZW.x, uZW.y, uOct)
-    : warped3(0, px * uScale.x, py * uScale.y, uTz, uOct);
-  float n = n1;
-  if (uLayer) {
-    float n2 = uLoop
-      ? warped4(1, px * uL2Scale.x, py * uL2Scale.y, uZW.x, uZW.y, uL2Oct)
-      : warped3(1, px * uL2Scale.x, py * uL2Scale.y, uTz, uL2Oct);
-    n = n1 * (1.0 - uMix) + blendLayers(n1, n2) * uMix;
+  float h0 = heightAt(px, py);
+  if (uRelief) {
+    float h1 = heightAt(px + uReps, py);
+    float h2 = heightAt(px, py + uReps);
+    vec3 c = floor(colorize(h0) * 255.0 + 0.5);
+    outColor = vec4(shadeRelief(c, (h1 - h0) / (uReps * uScale.x), (h2 - h0) / (uReps * uScale.y)) / 255.0, 1.0);
+    return;
   }
-  outColor = vec4(colorize(n), 1.0);
+  outColor = vec4(colorize(h0), 1.0);
 }`;
 
   const VERT = `#version 300 es
@@ -408,6 +430,31 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }`;
       gl.uniform1i(U("uLayer"), isLayer ? 1 : 0);
       gl.uniform1i(U("uBlend"), BLEND_MODES[p.layer2BlendMode || "multiply"] ?? -1);
       gl.uniform1f(U("uMix"), p.layer2Mix || 0);
+
+      // Relief lighting: the light and half vectors are worked out here in float64, exactly as
+      // shadeRelief() does on the CPU, and handed over as uniforms.
+      const relief = !!p.reliefOn;
+      gl.uniform1i(U("uRelief"), relief ? 1 : 0);
+      if (relief) {
+        const amb = p.reliefAmbient != null ? p.reliefAmbient : 0.35;
+        const az = (p.lightAzimuth != null ? p.lightAzimuth : 315) * Math.PI / 180;
+        const el = (p.lightElevation != null ? p.lightElevation : 45) * Math.PI / 180;
+        const lx = Math.sin(az) * Math.cos(el), ly = -Math.cos(az) * Math.cos(el), lz = Math.sin(el);
+        let hx = lx, hy = ly, hz = lz + 1;
+        const hl = Math.sqrt(hx * hx + hy * hy + hz * hz);
+        hx /= hl; hy /= hl; hz /= hl;
+        const shine = p.reliefShine != null ? p.reliefShine : 32;
+        const hitFlat = Math.max(0, hz);
+        gl.uniform1f(U("uReps"), p.reliefEps != null ? p.reliefEps : 0.6);
+        gl.uniform1f(U("uRelGain"), p.reliefGain != null ? p.reliefGain : 1);
+        gl.uniform1f(U("uAmb"), amb);
+        gl.uniform1f(U("uSpecAmt"), p.reliefSpec != null ? p.reliefSpec : 0.25);
+        gl.uniform1f(U("uShine"), shine);
+        gl.uniform1f(U("uFlat"), Math.max(1e-3, amb + (1 - amb) * lz));
+        gl.uniform1f(U("uSpecFlat"), hitFlat > 0 ? Math.pow(hitFlat, shine) : 0);
+        gl.uniform3f(U("uLight"), lx, ly, lz);
+        gl.uniform3f(U("uHalf"), hx, hy, hz);
+      }
 
       gl.uniform1i(U("uLoop"), p.loop ? 1 : 0);
       if (p.loop) {

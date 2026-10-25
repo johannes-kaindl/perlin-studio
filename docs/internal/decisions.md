@@ -2,6 +2,10 @@
 
 Why things are the way they are. One entry per decision, newest first. The agent core (`AGENTS.md`) carries only the rule; the reason lives here.
 
+## 2026-10-25 — relief lighting by a 3-point stencil, on both renderers
+
+The first idea was Quilez' analytic noise derivatives for normals. They would have to be carried through the domain warp, layer 2 and tiling (a chain rule per feature), and would exist only in the shader. The flow mode already measures a slope with a 3-point stencil, so relief lighting reuses it: the same code on the CPU and the GPU, and it works with every feature that changes the height. The price is three samples (six with layer 2) and a slightly noisy slope in strongly warped areas. Flow and per-channel RGB ignore the overlay because they already need several samples per pixel.
+
 ## 2026-10-25 — the GPU renderer is a port of the CPU maths, opt-in, and stays out of presets
 
 A WebGL2 spike (4D loop fBm with a hash-based noise) rendered 1080p in 7 ms against 1.2 s for the CPU path, which made a GPU renderer worth building. Three choices:

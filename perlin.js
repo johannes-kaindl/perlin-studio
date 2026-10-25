@@ -14,6 +14,7 @@
  *   - `fbm4(perm, x, y, z, w, octaves, persistence, lacunarity)` → value in [0, 1]
  *   - `generatePerlinImage(params, ctx)` renders via the 3D/4D path into a canvas ctx
  *   - `colorize(noiseValue, params)` → `[r, g, b]` in 0–255
+ *   - `shadeRelief(rgb, gx, gy, params)` → lit `[r, g, b]` (relief lighting, `params.reliefOn`)
  *   - `WORKER_SOURCE` — full module code as a string for inline workers
  *
  * Color modes (`params.colorMode`):
@@ -451,6 +452,42 @@
     return hsvToRgb(hue, sat, v);
   }
 
+  // ---------- RELIEF LIGHTING ----------
+  // Treat the noise as a height field and light it. The surface slope comes from the same
+  // 3-point stencil the flow mode uses (so it works with warp, tiling, layer 2 and the loop
+  // without a derivative per feature); (gx, gy) are slopes per noise-space unit, y pointing
+  // down like the image. Colour comes from any colour mode, the light only scales it:
+  // a flat surface keeps its colour (shade is divided by the flat-surface value), slopes
+  // facing the light brighten, slopes facing away darken, and a Blinn-Phong highlight sits
+  // on top. Azimuth runs clockwise from the top of the image (0 = light from above, 90 = from
+  // the right), elevation is degrees above the surface.
+  function shadeRelief(c, gx, gy, p) {
+    const gain = p.reliefGain != null ? p.reliefGain : 1;
+    let nx = -gain * gx, ny = -gain * gy, nz = 1;
+    const inv = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
+    nx *= inv; ny *= inv; nz *= inv;
+    const az = (p.lightAzimuth != null ? p.lightAzimuth : 315) * Math.PI / 180;
+    const el = (p.lightElevation != null ? p.lightElevation : 45) * Math.PI / 180;
+    const lx = Math.sin(az) * Math.cos(el), ly = -Math.cos(az) * Math.cos(el), lz = Math.sin(el);
+    const amb = p.reliefAmbient != null ? p.reliefAmbient : 0.35;
+    const flat = Math.max(1e-3, amb + (1 - amb) * lz);
+    const shade = (amb + (1 - amb) * Math.max(0, nx * lx + ny * ly + nz * lz)) / flat;
+    // Half vector for a viewer straight above the image; highlight relative to a flat surface.
+    let hx = lx, hy = ly, hz = lz + 1;
+    const hl = Math.sqrt(hx * hx + hy * hy + hz * hz);
+    hx /= hl; hy /= hl; hz /= hl;
+    const shine = p.reliefShine != null ? p.reliefShine : 32;
+    const amt = p.reliefSpec != null ? p.reliefSpec : 0.25;
+    const hit = Math.max(0, nx * hx + ny * hy + nz * hz);
+    const hitFlat = Math.max(0, hz);
+    const spec = amt * Math.max(0, (hit > 0 ? Math.pow(hit, shine) : 0) - (hitFlat > 0 ? Math.pow(hitFlat, shine) : 0)) * 255;
+    return [
+      Math.max(0, Math.min(255, Math.round(c[0] * shade + spec))),
+      Math.max(0, Math.min(255, Math.round(c[1] * shade + spec))),
+      Math.max(0, Math.min(255, Math.round(c[2] * shade + spec))),
+    ];
+  }
+
   /**
    * Maps a noise value to RGB. Branches on `params.colorMode`.
    *
@@ -527,6 +564,8 @@
     const ry = tileY || 0;
     const isFlow = colorMode === "flow";
     const isMulti = colorMode === "rgb" && rgbMultiChannel;
+    const isRelief = !!params.reliefOn && !isFlow && !isMulti;
+    const reps = params.reliefEps != null ? params.reliefEps : 0.6;
     const eps = (params.flowEps ?? 0.6);
     // Layer 2 only composes into the standard render path — combining it
     // with the multi-sample flow stencil or per-channel RGB would 6× the
@@ -555,6 +594,12 @@
       const alpha = safeProgress * Math.PI * 2;
       const zc = Math.cos(alpha) * radius;
       const wc = Math.sin(alpha) * radius;
+      const H = (x, y) => {
+        const a = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+        if (!isLayer) return a;
+        const b = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+        return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
+      };
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           let r, g, b;
@@ -568,6 +613,9 @@
             const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,       zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
+          } else if (isRelief) {
+            const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
+            [r, g, b] = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
           } else {
             const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             let n = n1;
@@ -583,6 +631,12 @@
       }
     } else {
       const tz = (t || 0) * scaleT;
+      const H = (x, y) => {
+        const a = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+        if (!isLayer) return a;
+        const b = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+        return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
+      };
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           let r, g, b;
@@ -596,6 +650,9 @@
             const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,       tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
+          } else if (isRelief) {
+            const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
+            [r, g, b] = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
           } else {
             const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
             let n = n1;
@@ -640,6 +697,7 @@
     ${colorizeRgbMulti.toString()}
     ${colorizeFlow.toString()}
     ${colorize.toString()}
+    ${shadeRelief.toString()}
 
     self.onmessage = function(e) {
       const { id, params } = e.data;
@@ -657,6 +715,8 @@
       const ry = tileY || 0;
       const isFlow = colorMode === "flow";
       const isMulti = colorMode === "rgb" && rgbMultiChannel;
+      const isRelief = !!params.reliefOn && !isFlow && !isMulti;
+      const reps = params.reliefEps != null ? params.reliefEps : 0.6;
       const eps = params.flowEps != null ? params.flowEps : 0.6;
       const isLayer = !!layer2On && (layer2Mix || 0) > 0 && !isFlow && !isMulti;
       const l2sx = layer2ScaleX || scaleX;
@@ -674,6 +734,12 @@
         const alpha = safeProgress * Math.PI * 2;
         const zc = Math.cos(alpha) * radius;
         const wc = Math.sin(alpha) * radius;
+        const H = (x, y) => {
+          const a = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+          if (!isLayer) return a;
+          const b = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+          return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
+        };
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             let c;
@@ -687,6 +753,9 @@
               const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeRgbMulti(nr, ng, nb, params);
+            } else if (isRelief) {
+              const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
+              c = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
             } else {
               const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               let n = n1;
@@ -702,6 +771,12 @@
         }
       } else {
         const tz = (t || 0) * scaleT;
+        const H = (x, y) => {
+          const a = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+          if (!isLayer) return a;
+          const b = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+          return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
+        };
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             let c;
@@ -715,6 +790,9 @@
               const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               c = colorizeRgbMulti(nr, ng, nb, params);
+            } else if (isRelief) {
+              const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
+              c = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
             } else {
               const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
               let n = n1;
@@ -738,7 +816,7 @@
   window.MTPerlin = {
     makePermutation, perlin3, perlin4, fbm3, fbm4,
     warpedFbm3, warpedFbm4, blendLayers,
-    generatePerlinImage, colorize, colorizeRgbMulti, colorizeFlow,
+    generatePerlinImage, colorize, colorizeRgbMulti, colorizeFlow, shadeRelief,
     WORKER_SOURCE,
   };
 })();

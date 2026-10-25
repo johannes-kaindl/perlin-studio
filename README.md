@@ -59,6 +59,8 @@ live preview updates after every input.
   Posterize, Cosine (seven palettes after Inigo Quilez, `a + b·cos(2π(c·t+d))`,
   fully editable), Flow (renders the noise as a vector field — hue = local
   gradient direction)
+- **Relief lighting** — treats the noise as a height field and lights it
+  (light direction and height, ambient, highlight) on top of any colour mode
 - **Domain warping** — pre-displaces the sample point by a smoother
   noise field. Switches Perlin output from "Perlin" to marble veins,
   ink in water, alien terrain

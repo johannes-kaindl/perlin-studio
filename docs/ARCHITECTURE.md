@@ -479,7 +479,9 @@ Tell-tale: the FPS counter shows `... fps (main)`.
 
 ### GPU renderer (`perlin-gl.js`)
 
-`engine.setBackend("gpu")` routes frames through a WebGL2 fragment shader instead of the worker. It is a port, not a second noise: the shader reads the same permutation table (`makePermutation(base)`, uploaded as a 512×2 `R8` texture, row 0 = seed, row 1 = layer 2 seed), the same 32 gradients, and mirrors `perlin3`/`perlin4`, `fbm`, the domain warp, tiling, layer 2 and the rgb / gradient / hsv / posterize colour modes line by line. The same preset therefore gives the same image on both renderers.
+`engine.setBackend("gpu")` routes frames through a WebGL2 fragment shader instead of the worker. It is a port, not a second noise: the shader reads the same permutation table (`makePermutation(base)`, uploaded as a 512×2 `R8` texture, row 0 = seed, row 1 = layer 2 seed), the same 32 gradients, and mirrors `perlin3`/`perlin4`, `fbm`, the domain warp, tiling, layer 2, the rgb / gradient / hsv / posterize / cosine colour modes and the relief lighting line by line. The same preset therefore gives the same image on both renderers.
+
+The worker's copy of the render loop is a string, so the CPU path exists twice; the parity gate also renders every case in a real `Worker` from `WORKER_SOURCE` and requires it to equal the main-thread image bytewise.
 
 What differs is precision: the CPU path is float64, the shader float32, and the colour is rounded once on each side, so a pixel can be one level off. A pixel whose posterize value sits within float32 rounding of a band edge can land in the neighbouring band (a handful of pixels per frame). `scripts/check-gl-parity.mjs` renders each case on both paths in a real browser and compares; it has a negative control (a different seed must differ) and was run against a mutant (the Z/W swap of math bug class 2), which it caught in all ten loop cases.
 
@@ -682,6 +684,12 @@ output    = clamp(round(colour · 255), 0, 255)
 
 A whole colour ramp from four 3-vectors, no stop list (Inigo Quilez, "Simple color palettes"; his code snippets are MIT). `params.cosine = { a, b, c, d }` holds the numbers; `params.cosineName` selects one of seven built-in sets (`COSINE_PALETTES` in `perlin-presets.js`: rainbow, dusk, rose, citrus, peach, neon, coral), and `resolveParams` injects the numbers for a name without explicit ones. With integer `c` the ramp closes its cycle exactly (`n = 0` and `n = 1` give the same colour). The branch is plain `Math` inside `colorize`, so the worker gets it through `colorize.toString()` unchanged, and the GPU renderer mirrors it (`uMode == 4`). The native macOS and iOS apps do not know this mode yet (`Preset.colorModeIndex` maps an unknown mode to gradient).
 
+### Relief lighting — an overlay, not a mode
+
+`params.reliefOn` lights the result of any single-sample colour mode. The noise is read as a height field `h(x, y)`; the slope comes from the flow mode's 3-point stencil (`h(x+ε, y)`, `h(x, y+ε)`), divided by `ε·scale` so it is in noise-space units and independent of the canvas size. The normal is `normalize(−gain·gx, −gain·gy, 1)`; the light comes from `lightAzimuth` (degrees clockwise from the top of the image) and `lightElevation`. The result is `colour · shade + highlight`, where `shade` is `(ambient + (1 − ambient)·max(0, N·L))` divided by the same expression for a flat surface, so flat regions keep their colour and only slopes change. The highlight is Blinn-Phong with a viewer straight above, relative to the flat surface.
+
+Why a stencil and not analytic derivatives (Quilez' "Gradient noise derivatives"): the analytic gradient of the final height would have to go through the domain warp, layer 2 and the tiling, each with its own chain rule, and it exists only on the GPU; the stencil costs three samples (six with layer 2) and is the same code on both renderers. Flow and per-channel RGB already take several samples per pixel and ignore the overlay. The base colour is rounded to whole numbers first (as `colorize` returns it), then shaded and rounded again, on both renderers; a one-level rounding difference in the base colour can therefore show as up to `ceil(1 / flat) + 1` levels after shading (the parity gate derives its tolerance from that).
+
 ### `flow` — gradient direction
 
 Visualises the noise as a **vector field**. The render loop takes a
@@ -872,6 +880,7 @@ The current battery (46 assertions):
 | H0. Layer blends | Each of the six blend modes (`multiply`, `add`, `screen`, `darken`, `lighten`, `difference`) gives the right algebra at known sample points; unknown mode falls back to `n1` |
 | H1. Layer render path | `layer2On=false` is bit-identical to the un-layered baseline; `layer2On=true, mix=1` diverges; `layer2On=true, mix=0` short-circuits back to the baseline |
 | H. Image mask | Per-pixel alpha modulation matches the byte-arithmetic spec; invert flips via `255 − mask`; RGB channels untouched |
+| K. relief lighting | A flat surface keeps its colour; a slope facing the light is brighter, facing away darker; gain 0 ignores the slope; azimuth 90 lights the right-facing slope; output clamped to whole 0–255; relief off equals the old image; flow and per-channel RGB ignore it |
 | J. cosine palette | Seven built-in palettes; the name resolves to numbers, explicit numbers win, an unknown name falls back to rainbow; `t = 0` follows the formula; integer `c` closes the cycle; output is clamped to 0–255 |
 | I. resolveParams | Named gradient → concrete stops (gradient + posterize); explicit custom stops preserved; non-gradient modes get no gradient; input not mutated; unknown name → viridis; a built-in preset resolves to renderable params |
 

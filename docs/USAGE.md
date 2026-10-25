@@ -21,6 +21,7 @@ behind the curtain see [ARCHITECTURE](ARCHITECTURE.md).
    - [Posterize · steps + gradient](#posterize--steps--gradient)
    - [Cosine · a + b·cos(2π(c·t+d))](#cosine--a--bcos2πct--d)
    - [Flow · gradient direction](#flow--gradient-direction)
+   - [Relief lighting](#relief-lighting)
 6. [05 · Loop](#05--loop)
 7. [06 · Layer 2](#06--layer-2)
 8. [07 · Warp](#07--warp)
@@ -477,6 +478,22 @@ stencil ε   (0.1–3)       — pixel offset for the gradient stencil
 Cost: 3× the fbm work (three samples per pixel). Compatible with **Warp**
 and **Loop**. If the field reads too dark, raise `gain` and `floor` (the
 `flow` preset uses `gain 14`, `floor 0.24`).
+
+### Relief lighting
+
+A switch below the colour controls that works with **every colour mode except Flow and RGB · per-channel**. It reads the noise as a height field and lights it, so a flat colour field turns into silk, stone or lava.
+
+```
+relief          (0–20)    — how steep the surface is
+light direction (0–360°)  — where the light comes from, clockwise from the top (315 = top-left)
+light height    (1–90°)   — angle above the surface; low = long shadows
+ambient         (0–1)     — light that reaches every slope
+highlight       (0–1)     — strength of the shiny spot
+shininess       (2–128)   — how tight the shiny spot is
+stencil ε       (0.1–4)   — pixel offset used to measure the slope
+```
+
+Flat areas keep their colour; slopes facing the light get brighter and slopes facing away darker. Cost: three noise samples per pixel (six with Layer 2), so it is a good reason to switch the **Renderer** to GPU. It works with Warp, Tile, Layer 2 and Loop. Start with `relief 3–6`; a low `light height` with `ambient 0` gives dramatic shadows.
 
 ---
 

@@ -180,7 +180,7 @@ The duration/radius controls live inside a container with
 ### Color mode
 
 A single `<select id="p-color-mode">` with options `rgb`, `gradient`,
-`hsv`, `posterize`. Each mode has its own sub-section
+`hsv`, `posterize`, `cosine`, `flow`. Each mode has its own sub-section
 (`<div class="color-section" data-for="rgb">` etc.) that the JS
 shows/hides based on the dropdown. **The `data-for` attribute is how
 the JS finds them — don't change it.**
@@ -196,6 +196,13 @@ the JS finds them — don't change it.**
 - **Posterize sub-section** — one number input `p-poster-steps`
   (2–16) + one select `p-poster-gradient` with the same 8 options
   as the Gradient one.
+- **Cosine sub-section** — a select `p-cos-preset` (`rainbow|dusk|rose|citrus|peach|neon|coral|custom`), a
+  preview strip `p-cos-preview` (painted like the gradient preview) and twelve number inputs
+  `p-cos-{a,b,c,d}-{0,1,2}` (R, G, B). Editing a number sets the select to `custom`.
+- **Relief lighting** (below the colour sub-sections, applies on top of any mode) — a checkbox `p-relief-on` and
+  `#relief-controls` with seven range sliders: `p-relief-gain`, `p-light-az`, `p-light-el`, `p-relief-amb`,
+  `p-relief-spec`, `p-relief-shine`, `p-relief-eps`. `#relief-note` shows when the active colour mode ignores it
+  (flow, RGB per channel).
 
 ### Presets
 

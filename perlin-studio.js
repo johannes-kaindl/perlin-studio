@@ -96,6 +96,10 @@ const els = {
   // Color mode
   colorMode: $("p-color-mode"),
   backend: $("p-backend"),
+  reliefOn: $("p-relief-on"), reliefControls: $("relief-controls"), reliefNote: $("relief-note"),
+  reliefGain: $("p-relief-gain"), lightAz: $("p-light-az"), lightEl: $("p-light-el"),
+  reliefAmb: $("p-relief-amb"), reliefSpec: $("p-relief-spec"), reliefShine: $("p-relief-shine"),
+  reliefEps: $("p-relief-eps"),
   cosPreset: $("p-cos-preset"),
   cosPreview: $("p-cos-preview"),
   cosInputs: Object.fromEntries(["a", "b", "c", "d"].map((k) => [k, [0, 1, 2].map((i) => $(`p-cos-${k}-${i}`))])),
@@ -254,10 +258,20 @@ function gatherParams() {
     layer2BlendMode: els.layer2Blend.value,
     layer2Mix:       clampFloat(els.layer2Mix.value, 0, 1, 0.5),
     colorMode,
+    reliefOn:     els.reliefOn.checked,
     loop:         els.loop.checked,
     loopDuration: clampFloat(els.loopDuration.value, 0.5, 60, 4),
     loopRadius:   clampFloat(els.loopRadius.value, 0, 4, 1.0),
   };
+  if (base.reliefOn) {
+    base.reliefGain     = clampFloat(els.reliefGain.value, 0, 20, 4);
+    base.lightAzimuth   = clampFloat(els.lightAz.value, 0, 360, 315);
+    base.lightElevation = clampFloat(els.lightEl.value, 1, 90, 45);
+    base.reliefAmbient  = clampFloat(els.reliefAmb.value, 0, 1, 0.35);
+    base.reliefSpec     = clampFloat(els.reliefSpec.value, 0, 1, 0.25);
+    base.reliefShine    = clampFloat(els.reliefShine.value, 2, 128, 32);
+    base.reliefEps      = clampFloat(els.reliefEps.value, 0.1, 4, 0.6);
+  }
   if (colorMode === "rgb") {
     base.rScale = clampFloat(els.rs.value, 0, 4, 0);
     base.gScale = clampFloat(els.gs.value, 0, 4, 1);
@@ -386,6 +400,15 @@ function applyParamsToUi(p) {
   if (p.gInvert != null) els.gi.checked = p.gInvert;
   if (p.bInvert != null) els.bi.checked = p.bInvert;
   if (p.rgbMultiChannel != null) els.rgbMulti.checked = p.rgbMultiChannel;
+  if (p.reliefOn != null) els.reliefOn.checked = p.reliefOn;
+  if (p.reliefGain != null) els.reliefGain.value = p.reliefGain;
+  if (p.lightAzimuth != null) els.lightAz.value = p.lightAzimuth;
+  if (p.lightElevation != null) els.lightEl.value = p.lightElevation;
+  if (p.reliefAmbient != null) els.reliefAmb.value = p.reliefAmbient;
+  if (p.reliefSpec != null) els.reliefSpec.value = p.reliefSpec;
+  if (p.reliefShine != null) els.reliefShine.value = p.reliefShine;
+  if (p.reliefEps != null) els.reliefEps.value = p.reliefEps;
+  updateReliefMode();
   if (p.flowHueShift != null) els.flowHueShift.value = p.flowHueShift;
   if (p.flowSat != null) els.flowSat.value = p.flowSat;
   if (p.flowGain != null) els.flowGain.value = p.flowGain;
@@ -431,6 +454,15 @@ function updateColorSections() {
     const isActive = sec.dataset.for === active;
     sec.hidden = !isActive;
   }
+  updateReliefMode();
+}
+// Relief lighting needs a single noise sample per pixel to colour, so flow and per-channel
+// RGB ignore it (perlin.js: isRelief). Say so instead of silently doing nothing.
+function updateReliefMode() {
+  const on = els.reliefOn.checked;
+  const ignored = els.colorMode.value === "flow" || (els.colorMode.value === "rgb" && els.rgbMulti.checked);
+  els.reliefControls.hidden = !on;
+  els.reliefNote.hidden = !(on && ignored);
 }
 
 // Layer 2's sub-fields do nothing while the toggle is off (the engine ignores
@@ -1300,6 +1332,7 @@ function downloadWebm() {
 const PARAM_INPUTS = [
   "w", "h", "tileX", "tileY", "sx", "sy", "st", "base", "oct", "pers", "lac",
   "warpStrength", "warpScale",
+  "reliefOn", "reliefGain", "lightAz", "lightEl", "reliefAmb", "reliefSpec", "reliefShine", "reliefEps",
   "layer2On", "layer2Sx", "layer2Sy", "layer2Oct", "layer2Base", "layer2Mix",
   "loopDuration", "loopRadius",
   "rs", "gs", "bs", "ri", "gi", "bi", "rgbMulti",
@@ -1365,6 +1398,8 @@ function wireEvents() {
   });
   els.layer2Blend.addEventListener("change", schedulePreview);
   els.layer2On.addEventListener("change", updateLayer2Mode);
+  els.reliefOn.addEventListener("change", updateReliefMode);
+  els.rgbMulti.addEventListener("change", updateReliefMode);
   els.warpStrength.addEventListener("input", updateWarpMode);
   els.posterGradient.addEventListener("change", () => {
     updateGradientPreview();
