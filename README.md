@@ -92,9 +92,9 @@ they show the range of colour modes and features.
 
 <table>
   <tr>
-    <td width="33%"><img src="assets/gallery-aurora.png" alt="Aurora preset — HSV mode, cyan-green-blue bands" width="350"></td>
-    <td width="33%"><img src="assets/gallery-nebula.png" alt="Nebula preset — per-channel RGB noise, vivid magenta" width="350"></td>
-    <td width="33%"><img src="assets/gallery-marble.png" alt="Marble preset — domain warp pulls the field into stone veins" width="350"></td>
+    <td width="33%"><img src="assets/gallery-aurora.png" alt="Aurora preset — HSV mode, cyan-green-blue bands" width="280"></td>
+    <td width="33%"><img src="assets/gallery-nebula.png" alt="Nebula preset — per-channel RGB noise, vivid magenta" width="280"></td>
+    <td width="33%"><img src="assets/gallery-marble.png" alt="Marble preset — domain warp pulls the field into stone veins" width="280"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Aurora</b> · HSV mode</sub></td>
@@ -102,9 +102,9 @@ they show the range of colour modes and features.
     <td align="center"><sub><b>Marble</b> · domain warp</sub></td>
   </tr>
   <tr>
-    <td width="33%"><img src="assets/gallery-flow.png" alt="Flow preset — noise rendered as a vector field" width="350"></td>
-    <td width="33%"><img src="assets/gallery-composite.png" alt="Composite preset — two noise layers blended on a magma gradient" width="350"></td>
-    <td width="33%"><img src="assets/gallery-terrain.png" alt="Terrain preset — posterized forest gradient, contour-map look" width="350"></td>
+    <td width="33%"><img src="assets/gallery-flow.png" alt="Flow preset — noise rendered as a vector field" width="280"></td>
+    <td width="33%"><img src="assets/gallery-composite.png" alt="Composite preset — two noise layers blended on a magma gradient" width="280"></td>
+    <td width="33%"><img src="assets/gallery-terrain.png" alt="Terrain preset — posterized forest gradient, contour-map look" width="280"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Flow</b> · flow field</sub></td>

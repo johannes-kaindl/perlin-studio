@@ -305,6 +305,7 @@ Profile: **web-static · native** (+ KERN). Abgeglichen gegen
   Artefakt-Quelle ist `macos/packaging/Info.plist`; `scripts/bump-version.sh`
   hält dort `CFBundleShortVersionString` + `CFBundleVersion` self-consistent. Es
   gibt keinen zweiten Versionsort, daher entfällt die package.json-Synchronisation.
+- **image-budget (assets/hero.png)** *(bewusste Ausnahme)* — `hero.png` ist 1200×630, weil `index.html` es als `og:image` mit dieser Größe ausweist, und liegt damit bei ~563 KB über dem 400-KB-Budget (verlustfrei gemessen: 832 → 576 KB mit `oxipng -o max -Z`, mehr gibt das Rauschen nicht her). Die sechs Galeriebilder liegen unter dem Budget (560 px, `oxipng` im Render-Skript). Der Linter wiegt `assets/` heute nicht (`_images_dir()`); sobald er es tut, meldet er `hero.png` — dann ist diese Zeile der Grund.
 - **PROF-WEB-04** *(N/A)* — Die installierbare PWA hat bewusst **keinen**
   Service-Worker / Offline-Cache; es existiert keine SW-Cache-Version zum Bumpen.
 

@@ -22,7 +22,7 @@ liefert:
     lizenz: "AGPL-3.0-or-later (code); CC-BY-SA-4.0 for the documentation use"
   - id: readme-stills
     artefakt: hero image and six gallery stills rendered from the built-in presets
-    format: "PNG, hero 1200x630, gallery 700 px wide"
+    format: "PNG, hero 1200x630, gallery 560 px wide"
     deterministisch_aus: [preset, width, height, zlib-version]
     befehl: "node scripts/render-readme-images.js"
     lizenz: "AGPL-3.0-or-later (code); CC-BY-SA-4.0 for the documentation use"

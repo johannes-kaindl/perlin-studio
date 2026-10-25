@@ -12,6 +12,7 @@
 const fs = require("fs");
 const zlib = require("zlib");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 // perlin.js + perlin-presets.js export via window.* — build the sandbox as in
 // AGENTS.md so the renderer uses the real presets with no duplicated data.
@@ -103,15 +104,20 @@ function encodePng(width, height, rgb) {
 // Hero is the iconic Lava fire; the gallery shows the range of colour modes /
 // features: HSV (aurora), per-channel RGB (nebula), domain warp (marble),
 // flow field (flow), Layer 2 composite, and posterize (terrain).
+// Gallery: 560 px = 2x the 280 px README cell (readme_lint assumes dpr 2), the
+// largest size at which the high-entropy presets (flow, nebula) still fit the
+// 400 KB PNG budget (readme-spec images.budget.png_kb) after oxipng. Hero:
+// 1200x630 is the og:image size (index.html) and stays there, so at ~560 KB it
+// is a known budget exception. Don't raise any size without re-measuring.
 const ASSETS = path.join(REPO, "assets");
 const JOBS = [
   { out: "hero.png",              preset: "lava",      width: 1200, height: 630, loopProgress: 0.42 },
-  { out: "gallery-aurora.png",    preset: "aurora",    width: 700,  height: 467, loopProgress: 0.27 },
-  { out: "gallery-nebula.png",    preset: "nebula",    width: 700,  height: 467, loopProgress: 0.55 },
-  { out: "gallery-marble.png",    preset: "marble",    width: 700,  height: 467, loopProgress: 0.33 },
-  { out: "gallery-flow.png",      preset: "flow",      width: 700,  height: 467, loopProgress: 0.18 },
-  { out: "gallery-composite.png", preset: "composite", width: 700,  height: 467, loopProgress: 0.60 },
-  { out: "gallery-terrain.png",   preset: "terrain",   width: 700,  height: 467, loopProgress: 0.50 },
+  { out: "gallery-aurora.png",    preset: "aurora",    width: 560,  height: 373, loopProgress: 0.27 },
+  { out: "gallery-nebula.png",    preset: "nebula",    width: 560,  height: 373, loopProgress: 0.55 },
+  { out: "gallery-marble.png",    preset: "marble",    width: 560,  height: 373, loopProgress: 0.33 },
+  { out: "gallery-flow.png",      preset: "flow",      width: 560,  height: 373, loopProgress: 0.18 },
+  { out: "gallery-composite.png", preset: "composite", width: 560,  height: 373, loopProgress: 0.60 },
+  { out: "gallery-terrain.png",   preset: "terrain",   width: 560,  height: 373, loopProgress: 0.50 },
 ];
 
 if (!fs.existsSync(ASSETS)) {
@@ -119,12 +125,26 @@ if (!fs.existsSync(ASSETS)) {
   process.exit(1);
 }
 
+// Lossless recompression. The hand-rolled encoder above is deliberately
+// simple (zlib only), so oxipng saves 30-50 % on top without touching a pixel.
+// Optional: without it the images are valid but may exceed the PNG budget.
+function optimize(file) {
+  const r = spawnSync("oxipng", ["-o", "max", "-Z", "--strip", "all", "-q", file]);
+  if (r.error && r.error.code === "ENOENT") {
+    console.warn("  ! oxipng not on PATH (brew install oxipng) — image left unoptimized");
+    return false;
+  }
+  return r.status === 0;
+}
+
 for (const job of JOBS) {
   const t0 = Date.now();
   const rgb = presetFrame(job.preset, job.width, job.height, job.loopProgress);
   const png = encodePng(job.width, job.height, rgb);
-  fs.writeFileSync(path.join(ASSETS, job.out), png);
-  const kb = (png.length / 1024).toFixed(1);
+  const file = path.join(ASSETS, job.out);
+  fs.writeFileSync(file, png);
+  optimize(file);
+  const kb = (fs.statSync(file).size / 1024).toFixed(1);
   console.log(`✓ ${job.out.padEnd(24)} ${job.preset.padEnd(10)} ${job.width}×${job.height}  ${kb} KB  ${Date.now() - t0} ms`);
 }
 console.log("all images written →", ASSETS);
