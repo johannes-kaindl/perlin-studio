@@ -6,6 +6,9 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Documentation restructured after Diátaxis** — `docs/` now has a tutorial (*Getting started*), how-to guides (looping video, image and texture export, brand palettes, masks, embedding, GPU renderer, installing the PWA and the macOS app, troubleshooting), a reference (controls, colour modes and relief lighting, preset format, the `<perlin-noise>` element) and explanations (how the parameters shape the image, design choices, architecture), with an index in `docs/README.md`. The old `USAGE.md` was split across these pages and corrected (video export bakes the mask and background; six colour modes; renderer, noise type, cosine and relief documented). The superseded design documents and `docs/superpowers/` left the repository (see the git history).
+
 ## [0.18.0] — 2026-10-26
 
 ### Added
