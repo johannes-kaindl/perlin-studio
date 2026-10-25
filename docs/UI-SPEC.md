@@ -165,6 +165,8 @@ node type with the same `type` attribute (where shown).
 | octaves | `p-oct` | number | 1–10, default 6 |
 | persistence | `p-pers` | number | step 0.05, default 0.5 |
 | lacunarity | `p-lac` | number | step 0.1, default 2.0 |
+| Noise type | `p-field-type` | select | `perlin` (default) / `cells` / `borders` / `smooth` |
+| cell jitter | `p-cell-jitter` | range | 0–1, default 1; shown (`#cell-jitter-wrap`) only when the noise type is not `perlin` |
 
 ### Loop
 

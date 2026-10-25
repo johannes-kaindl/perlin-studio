@@ -291,6 +291,55 @@
     return (n + 1) * 0.5;
   }
 
+  // ---------- CELLULAR FIELDS (Voronoi) ----------
+  // The second kind of field next to Perlin: distance to the nearest of a jittered grid of feature
+  // points (Worley / Voronoi). The grid hash is the SAME permutation table as the Perlin noise, so
+  // `base` seeds it and tiling wraps cells the same way. Time does not move a third axis: each
+  // point circles inside its own cell with a per-cell phase, so the field repeats after one turn.
+  // That makes a seamless loop with a plain 2D 3x3 search (a 4D Worley would search 81 cells).
+  // `turns` is the fraction of a full turn, folded into [0, 1) by the caller in float64.
+  //
+  //   kind "cells"   F1, distance to the nearest point (dark at the points)
+  //   kind "borders" F2 - F1, close to 0 on the borders between cells
+  //   kind "smooth"  -ln(sum e^(-16 d)) / 16, a smooth minimum: soft blobs (Quilez, "Smooth Voronoi")
+  //
+  // Octaves add finer cells exactly like fBm adds finer noise; `jitter` 0 is a regular grid, 1 is
+  // fully random inside each cell. The point never leaves its own cell, which is what makes the
+  // 3x3 search exact.
+  function cellFbm(perm, x, y, turns, octaves, persistence, lacunarity, repeatX, repeatY, kind, jitter) {
+    const rx0 = repeatX || 0;
+    const ry0 = repeatY || 0;
+    let amp = 1, freq = 1, sum = 0, norm = 0;
+    for (let o = 0; o < octaves; o++) {
+      const rx = rx0 > 0 ? Math.round(rx0 * freq) : 0;
+      const ry = ry0 > 0 ? Math.round(ry0 * freq) : 0;
+      const px = x * freq, py = y * freq;
+      const xi = Math.floor(px), yi = Math.floor(py);
+      const fx = px - xi, fy = py - yi;
+      let f1 = 8, f2 = 8, acc = 0;
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          const cx = wrapCell(xi + i, rx), cy = wrapCell(yi + j, ry);
+          const h1 = perm[perm[cx] + cy];
+          const h2 = perm[perm[(cx + 53) & 255] + ((cy + 97) & 255)];
+          const ox = 0.5 + 0.5 * jitter * Math.sin(Math.PI * 2 * (turns + h1 / 256));
+          const oy = 0.5 + 0.5 * jitter * Math.sin(Math.PI * 2 * (turns + h2 / 256));
+          const dx = i + ox - fx, dy = j + oy - fy;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) { f2 = d; }
+          acc += Math.exp(-16 * d);
+        }
+      }
+      let v = kind === "borders" ? f2 - f1 : kind === "smooth" ? -Math.log(acc) / 16 : f1;
+      v = v < 0 ? 0 : v > 1 ? 1 : v;
+      sum += amp * v;
+      norm += amp;
+      amp *= persistence;
+      freq *= lacunarity;
+    }
+    return norm > 0 ? sum / norm : 0;
+  }
+
   // ---------- DOMAIN WARPING ----------
   // Inigo-Quilez-style domain warp: displace the sample coordinate by a
   // second, smoother noise field before running the main fbm. Tiny code,
@@ -319,8 +368,11 @@
     return s;
   }
 
-  function warpedFbm3(perm, x, y, z, octaves, persistence, lacunarity, warpStrength, warpScale, repeatX, repeatY) {
-    if (!warpStrength) return fbm3(perm, x, y, z, octaves, persistence, lacunarity, repeatX, repeatY);
+  function warpedFbm3(perm, x, y, z, octaves, persistence, lacunarity, warpStrength, warpScale, repeatX, repeatY, fld) {
+    if (!warpStrength) {
+      return fld ? cellFbm(perm, x, y, fld.turns, octaves, persistence, lacunarity, repeatX, repeatY, fld.kind, fld.jitter)
+                 : fbm3(perm, x, y, z, octaves, persistence, lacunarity, repeatX, repeatY);
+    }
     const s = effectiveWarpScale(warpScale, repeatX, repeatY);
     // Warp's perlin3 wraps at (tile * s) so the seam in main space coincides.
     // With integer s (guaranteed above when tile is on), this is always integer.
@@ -328,17 +380,22 @@
     const wry = repeatY > 0 ? repeatY * s : 0;
     const dx = perlin3(perm, x * s + 137.0, y * s +  23.0, z, wrx, wry) * warpStrength;
     const dy = perlin3(perm, x * s + 211.0, y * s -  53.0, z, wrx, wry) * warpStrength;
-    return fbm3(perm, x + dx, y + dy, z, octaves, persistence, lacunarity, repeatX, repeatY);
+    return fld ? cellFbm(perm, x + dx, y + dy, fld.turns, octaves, persistence, lacunarity, repeatX, repeatY, fld.kind, fld.jitter)
+               : fbm3(perm, x + dx, y + dy, z, octaves, persistence, lacunarity, repeatX, repeatY);
   }
 
-  function warpedFbm4(perm, x, y, z, w, octaves, persistence, lacunarity, warpStrength, warpScale, repeatX, repeatY) {
-    if (!warpStrength) return fbm4(perm, x, y, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
+  function warpedFbm4(perm, x, y, z, w, octaves, persistence, lacunarity, warpStrength, warpScale, repeatX, repeatY, fld) {
+    if (!warpStrength) {
+      return fld ? cellFbm(perm, x, y, fld.turns, octaves, persistence, lacunarity, repeatX, repeatY, fld.kind, fld.jitter)
+                 : fbm4(perm, x, y, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
+    }
     const s = effectiveWarpScale(warpScale, repeatX, repeatY);
     const wrx = repeatX > 0 ? repeatX * s : 0;
     const wry = repeatY > 0 ? repeatY * s : 0;
     const dx = perlin4(perm, x * s + 137.0, y * s +  23.0, z, w, wrx, wry) * warpStrength;
     const dy = perlin4(perm, x * s + 211.0, y * s -  53.0, z, w, wrx, wry) * warpStrength;
-    return fbm4(perm, x + dx, y + dy, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
+    return fld ? cellFbm(perm, x + dx, y + dy, fld.turns, octaves, persistence, lacunarity, repeatX, repeatY, fld.kind, fld.jitter)
+               : fbm4(perm, x + dx, y + dy, z, w, octaves, persistence, lacunarity, repeatX, repeatY);
   }
 
   // ---------- LAYER BLENDING ----------
@@ -566,6 +623,9 @@
     const isMulti = colorMode === "rgb" && rgbMultiChannel;
     const isRelief = !!params.reliefOn && !isFlow && !isMulti;
     const reps = params.reliefEps != null ? params.reliefEps : 0.6;
+    const fieldType = params.fieldType || "perlin";
+    const isCells = fieldType === "cells" || fieldType === "borders" || fieldType === "smooth";
+    const cellJitter = params.cellJitter != null ? params.cellJitter : 1;
     const eps = (params.flowEps ?? 0.6);
     // Layer 2 only composes into the standard render path — combining it
     // with the multi-sample flow stencil or per-channel RGB would 6× the
@@ -594,33 +654,34 @@
       const alpha = safeProgress * Math.PI * 2;
       const zc = Math.cos(alpha) * radius;
       const wc = Math.sin(alpha) * radius;
+      const fld = isCells ? { kind: fieldType, jitter: cellJitter, turns: safeProgress } : null;
       const H = (x, y) => {
-        const a = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+        const a = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
         if (!isLayer) return a;
-        const b = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+        const b = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
         return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
       };
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           let r, g, b;
           if (isFlow) {
-            const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
             [r, g, b] = colorizeFlow(n1 - n0, n2 - n0, params);
           } else if (isMulti) {
-            const nr = warpedFbm4(perm,  x * scaleX,         y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,       zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const nr = warpedFbm4(perm,  x * scaleX,         y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,       zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const nb = warpedFbm4(perm,  x * scaleX,        (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
           } else if (isRelief) {
             const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
             [r, g, b] = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
           } else {
-            const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
             let n = n1;
             if (isLayer) {
-              const n2 = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+              const n2 = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
               n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
             }
             [r, g, b] = colorize(n, params);
@@ -631,33 +692,34 @@
       }
     } else {
       const tz = (t || 0) * scaleT;
+      const fld = isCells ? { kind: fieldType, jitter: cellJitter, turns: tz - Math.floor(tz) } : null;
       const H = (x, y) => {
-        const a = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+        const a = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
         if (!isLayer) return a;
-        const b = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+        const b = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
         return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
       };
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           let r, g, b;
           if (isFlow) {
-            const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
             [r, g, b] = colorizeFlow(n1 - n0, n2 - n0, params);
           } else if (isMulti) {
-            const nr = warpedFbm3(perm,  x * scaleX,         y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,       tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-            const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const nr = warpedFbm3(perm,  x * scaleX,         y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,       tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+            const nb = warpedFbm3(perm,  x * scaleX,        (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
             [r, g, b] = colorizeRgbMulti(nr, ng, nb, params);
           } else if (isRelief) {
             const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
             [r, g, b] = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
           } else {
-            const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+            const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
             let n = n1;
             if (isLayer) {
-              const n2 = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+              const n2 = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
               n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
             }
             [r, g, b] = colorize(n, params);
@@ -687,6 +749,7 @@
     ${perlin4.toString()}
     ${fbm3.toString()}
     ${fbm4.toString()}
+    ${cellFbm.toString()}
     ${effectiveWarpScale.toString()}
     ${warpedFbm3.toString()}
     ${warpedFbm4.toString()}
@@ -717,6 +780,9 @@
       const isMulti = colorMode === "rgb" && rgbMultiChannel;
       const isRelief = !!params.reliefOn && !isFlow && !isMulti;
       const reps = params.reliefEps != null ? params.reliefEps : 0.6;
+      const fieldType = params.fieldType || "perlin";
+      const isCells = fieldType === "cells" || fieldType === "borders" || fieldType === "smooth";
+      const cellJitter = params.cellJitter != null ? params.cellJitter : 1;
       const eps = params.flowEps != null ? params.flowEps : 0.6;
       const isLayer = !!layer2On && (layer2Mix || 0) > 0 && !isFlow && !isMulti;
       const l2sx = layer2ScaleX || scaleX;
@@ -734,33 +800,34 @@
         const alpha = safeProgress * Math.PI * 2;
         const zc = Math.cos(alpha) * radius;
         const wc = Math.sin(alpha) * radius;
+        const fld = isCells ? { kind: fieldType, jitter: cellJitter, turns: safeProgress } : null;
         const H = (x, y) => {
-          const a = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+          const a = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
           if (!isLayer) return a;
-          const b = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+          const b = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
           return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
         };
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             let c;
             if (isFlow) {
-              const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n0 = warpedFbm4(perm, x * scaleX,         y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const n1 = warpedFbm4(perm, (x + eps) * scaleX, y * scaleY,         zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const n2 = warpedFbm4(perm, x * scaleX,         (y + eps) * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
               c = colorizeFlow(n1 - n0, n2 - n0, params);
             } else if (isMulti) {
-              const nr = warpedFbm4(perm,  x * scaleX,          y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const nr = warpedFbm4(perm,  x * scaleX,          y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const ng = warpedFbm4(perm, (x * scaleX) +  53.0, y * scaleY,        zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const nb = warpedFbm4(perm,  x * scaleX,         (y * scaleY) + 71.0, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
               c = colorizeRgbMulti(nr, ng, nb, params);
             } else if (isRelief) {
               const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
               c = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
             } else {
-              const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n1 = warpedFbm4(perm, x * scaleX, y * scaleY, zc, wc, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
               let n = n1;
               if (isLayer) {
-                const n2 = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+                const n2 = warpedFbm4(perm2, x * l2sx, y * l2sy, zc, wc, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
                 n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
               }
               c = colorize(n, params);
@@ -771,33 +838,34 @@
         }
       } else {
         const tz = (t || 0) * scaleT;
+        const fld = isCells ? { kind: fieldType, jitter: cellJitter, turns: tz - Math.floor(tz) } : null;
         const H = (x, y) => {
-          const a = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+          const a = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
           if (!isLayer) return a;
-          const b = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+          const b = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
           return a * (1 - lmix) + blendLayers(a, b, l2blend) * lmix;
         };
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             let c;
             if (isFlow) {
-              const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n0 = warpedFbm3(perm, x * scaleX,         y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const n1 = warpedFbm3(perm, (x + eps) * scaleX, y * scaleY,         tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const n2 = warpedFbm3(perm, x * scaleX,         (y + eps) * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
               c = colorizeFlow(n1 - n0, n2 - n0, params);
             } else if (isMulti) {
-              const nr = warpedFbm3(perm,  x * scaleX,          y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
-              const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const nr = warpedFbm3(perm,  x * scaleX,          y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const ng = warpedFbm3(perm, (x * scaleX) +  53.0, y * scaleY,        tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
+              const nb = warpedFbm3(perm,  x * scaleX,         (y * scaleY) + 71.0, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
               c = colorizeRgbMulti(nr, ng, nb, params);
             } else if (isRelief) {
               const h0 = H(x, y), h1 = H(x + reps, y), h2 = H(x, y + reps);
               c = shadeRelief(colorize(h0, params), (h1 - h0) / (reps * scaleX), (h2 - h0) / (reps * scaleY), params);
             } else {
-              const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry);
+              const n1 = warpedFbm3(perm, x * scaleX, y * scaleY, tz, octaves, persistence, lacunarity, ws, wsc, rx, ry, fld);
               let n = n1;
               if (isLayer) {
-                const n2 = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry);
+                const n2 = warpedFbm3(perm2, x * l2sx, y * l2sy, tz, l2oct, persistence, lacunarity, ws, wsc, rx, ry, fld);
                 n = n1 * (1 - lmix) + blendLayers(n1, n2, l2blend) * lmix;
               }
               c = colorize(n, params);
@@ -815,7 +883,7 @@
 
   window.MTPerlin = {
     makePermutation, perlin3, perlin4, fbm3, fbm4,
-    warpedFbm3, warpedFbm4, blendLayers,
+    warpedFbm3, warpedFbm4, cellFbm, blendLayers,
     generatePerlinImage, colorize, colorizeRgbMulti, colorizeFlow, shadeRelief,
     WORKER_SOURCE,
   };

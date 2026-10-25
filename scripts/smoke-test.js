@@ -658,6 +658,70 @@ const EX = global.window.MTPerlinExport;
   ok("relief is ignored in per-channel RGB", render({ rgbMultiChannel: true }) === render({ rgbMultiChannel: true, reliefOn: true }));
 }
 
+// ----- L: cellular (Voronoi) fields -----
+{
+  const perm = MT.makePermutation(5);
+  const cell = (x, y, turns, kind, jitter, oct, rx, ry) =>
+    MT.cellFbm(perm, x, y, turns, oct || 1, 0.5, 2, rx || 0, ry || 0, kind, jitter == null ? 1 : jitter);
+
+  // Regular grid (jitter 0) at the point of a cell is exactly 0 for the F1 kind: the point sits at (0.5, 0.5)
+  // of its cell and does not move (sin of the phase is multiplied by jitter 0).
+  ok("cells: jitter 0 puts a point at the middle of each cell", Math.abs(cell(3.5, 7.5, 0.3, "cells", 0)) < 1e-12);
+  // Range, over a scan.
+  let lo = Infinity, hi = -Infinity;
+  for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) {
+    for (const kind of ["cells", "borders", "smooth"]) {
+      const v = cell(x * 0.37, y * 0.41, 0.2, kind, 1, 3);
+      if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+  }
+  ok("cells: every kind stays in [0, 1]", lo >= 0 && hi <= 1, lo + " .. " + hi);
+  ok("cells: the field has structure (not constant)", hi - lo > 0.3, "span " + (hi - lo));
+
+  // Time: a turn of 1 is the starting position, 0.5 is not (the CORE-TEST-08 control: the check can fail).
+  let closed = 0, moved = 0;
+  for (let i = 0; i < 200; i++) {
+    const x = i * 0.173, y = i * 0.291;
+    if (Math.abs(cell(x, y, 0, "cells", 1) - cell(x, y, 1, "cells", 1)) < 1e-9) closed++;
+    if (Math.abs(cell(x, y, 0, "cells", 1) - cell(x, y, 0.5, "cells", 1)) > 1e-3) moved++;
+  }
+  ok("cells: turn 1 equals turn 0 (seamless loop)", closed === 200, closed + " of 200");
+  ok("cells: turn 0.5 differs from turn 0", moved > 100, moved + " of 200");
+
+  // Seed: another base changes the field.
+  const other = MT.makePermutation(6);
+  let diff = 0;
+  for (let i = 0; i < 100; i++) {
+    const x = i * 0.31, y = i * 0.17;
+    if (Math.abs(MT.cellFbm(perm, x, y, 0.1, 2, 0.5, 2, 0, 0, "cells", 1) - MT.cellFbm(other, x, y, 0.1, 2, 0.5, 2, 0, 0, "cells", 1)) > 1e-6) diff++;
+  }
+  ok("cells: a different base gives a different field", diff > 50, diff + " of 100");
+
+  // Tiling: with 4 cells per tile at octave 1, x and x + 4 are the same cell pattern.
+  let tiled = 0;
+  for (let i = 0; i < 100; i++) {
+    const x = (i * 0.137) % 4, y = (i * 0.211) % 3;
+    const a = cell(x, y, 0.4, "smooth", 1, 2, 4, 3), b = cell(x + 4, y + 3, 0.4, "smooth", 1, 2, 4, 3);
+    if (Math.abs(a - b) < 1e-9) tiled++;
+  }
+  ok("cells: tiling closes the seam", tiled === 100, tiled + " of 100");
+
+  // Through the renderer: a loop render at progress 1 is bytewise progress 0, and fieldType perlin is the old image.
+  const mockCtx = () => ({ createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData(img) { this.img = img; } });
+  function render(extra) {
+    const c = mockCtx();
+    MT.generatePerlinImage(Object.assign({ width: 24, height: 16, scaleX: 0.08, scaleY: 0.08, scaleT: 0.15, base: 3, octaves: 3,
+      persistence: 0.5, lacunarity: 2, colorMode: "rgb", gScale: 1, t: 0.7, loop: false }, extra), c);
+    return Array.from(c.img.data).join();
+  }
+  ok("fieldType perlin equals the render without the parameter", render({}) === render({ fieldType: "perlin", cellJitter: 0.2 }));
+  ok("fieldType cells changes the image", render({}) !== render({ fieldType: "cells" }));
+  ok("cells loop render: progress 1 equals progress 0",
+    render({ fieldType: "borders", loop: true, loopProgress: 0 }) === render({ fieldType: "borders", loop: true, loopProgress: 1 }));
+  ok("cells loop render: progress 0.5 differs from 0",
+    render({ fieldType: "borders", loop: true, loopProgress: 0 }) !== render({ fieldType: "borders", loop: true, loopProgress: 0.5 }));
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");

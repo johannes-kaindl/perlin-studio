@@ -2,6 +2,10 @@
 
 Why things are the way they are. One entry per decision, newest first. The agent core (`AGENTS.md`) carries only the rule; the reason lives here.
 
+## 2026-10-25 — cellular fields hash with the Perlin permutation table and loop by circling points
+
+Voronoi (Worley) is a second kind of field, not a colour mode. Two choices: the cell hash reads the same permutation table as Perlin (so `base` seeds it, tiling wraps the same way, and the GPU port needs no second hash), and time makes every point circle inside its own cell with a per-cell phase instead of moving a third or fourth axis. A circling point closes the loop exactly with a 2D 3×3 search; a 4D Worley field would search 81 cells per pixel and octave. The cost is that the loop radius means nothing for cells, and the motion is a plain sine (harmonic), not the wandering of Perlin. A shader-native integer hash (as in the first spike) was rejected for the same reason as for the GPU renderer: it would fork every seed into two images.
+
 ## 2026-10-25 — relief lighting by a 3-point stencil, on both renderers
 
 The first idea was Quilez' analytic noise derivatives for normals. They would have to be carried through the domain warp, layer 2 and tiling (a chain rule per feature), and would exist only in the shader. The flow mode already measures a slope with a 3-point stencil, so relief lighting reuses it: the same code on the CPU and the GPU, and it works with every feature that changes the height. The price is three samples (six with layer 2) and a slightly noisy slope in strongly warped areas. Flow and per-channel RGB ignore the overlay because they already need several samples per pixel.

@@ -58,6 +58,8 @@ uniform vec3  uRgbScale, uRgbInvert;
 uniform vec4  uHsv;           // shift, range, sat, val
 uniform vec3  uCosA, uCosB, uCosC, uCosD;   // cosine palette: a + b*cos(2pi(c*n + d))
 uniform int   uSteps;
+uniform int   uField;         // 0 perlin, 1 cells, 2 borders, 3 smooth (cellFbm in perlin.js)
+uniform float uJitter, uTurns;
 uniform bool  uRelief;        // relief lighting (see shadeRelief in perlin.js)
 uniform float uReps, uRelGain, uAmb, uSpecAmt, uShine, uFlat, uSpecFlat;
 uniform vec3  uLight, uHalf;
@@ -197,24 +199,59 @@ float fbm4(int row, float x, float y, float z, float w, int oct, int rx0, int ry
   return (n + 1.0) * 0.5;
 }
 
+
+// Cellular fields: a port of cellFbm() in perlin.js (same hash from the permutation table, the
+// feature point circles inside its own cell, 3x3 search). uTurns is already folded into [0, 1).
+float cellFbm(int row, float x, float y, int oct, int rx0, int ry0) {
+  float amp = 1.0, freq = 1.0, sum = 0.0, norm = 0.0;
+  for (int o = 0; o < ${MAX_OCTAVES}; o++) {
+    if (o >= oct) break;
+    int rx = rx0 > 0 ? roundInt(float(rx0) * freq) : 0;
+    int ry = ry0 > 0 ? roundInt(float(ry0) * freq) : 0;
+    float px = x * freq, py = y * freq;
+    float xf = floor(px), yf = floor(py);
+    int xi = int(xf), yi = int(yf);
+    float fx = px - xf, fy = py - yf;
+    float f1 = 8.0, f2 = 8.0, acc = 0.0;
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        int cx = wrapCell(xi + i, rx), cy = wrapCell(yi + j, ry);
+        float h1 = float(P(row, P(row, cx) + cy));
+        float h2 = float(P(row, P(row, (cx + 53) & 255) + ((cy + 97) & 255)));
+        float ox = 0.5 + 0.5 * uJitter * sin(6.28318530718 * (uTurns + h1 / 256.0));
+        float oy = 0.5 + 0.5 * uJitter * sin(6.28318530718 * (uTurns + h2 / 256.0));
+        float d = length(vec2(float(i) + ox - fx, float(j) + oy - fy));
+        if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) { f2 = d; }
+        acc += exp(-16.0 * d);
+      }
+    }
+    float v = uField == 2 ? f2 - f1 : (uField == 3 ? -log(acc) / 16.0 : f1);
+    sum += amp * clamp(v, 0.0, 1.0);
+    norm += amp;
+    amp *= uPers;
+    freq *= uLac;
+  }
+  return norm > 0.0 ? sum / norm : 0.0;
+}
+
 // warpStrength = 0 skips the warp entirely, like the CPU path.
 float warped3(int row, float x, float y, float z, int oct) {
-  if (uWarpS == 0.0) return fbm3(row, x, y, z, oct, uRepX, uRepY);
+  if (uWarpS == 0.0) return uField == 0 ? fbm3(row, x, y, z, oct, uRepX, uRepY) : cellFbm(row, x, y, oct, uRepX, uRepY);
   float s = uWarpScale;
   int wrx = uRepX > 0 ? roundInt(float(uRepX) * s) : 0;
   int wry = uRepY > 0 ? roundInt(float(uRepY) * s) : 0;
   float dx = perlin3(row, x * s + 137.0, y * s + 23.0, z, wrx, wry) * uWarpS;
   float dy = perlin3(row, x * s + 211.0, y * s - 53.0, z, wrx, wry) * uWarpS;
-  return fbm3(row, x + dx, y + dy, z, oct, uRepX, uRepY);
+  return uField == 0 ? fbm3(row, x + dx, y + dy, z, oct, uRepX, uRepY) : cellFbm(row, x + dx, y + dy, oct, uRepX, uRepY);
 }
 float warped4(int row, float x, float y, float z, float w, int oct) {
-  if (uWarpS == 0.0) return fbm4(row, x, y, z, w, oct, uRepX, uRepY);
+  if (uWarpS == 0.0) return uField == 0 ? fbm4(row, x, y, z, w, oct, uRepX, uRepY) : cellFbm(row, x, y, oct, uRepX, uRepY);
   float s = uWarpScale;
   int wrx = uRepX > 0 ? roundInt(float(uRepX) * s) : 0;
   int wry = uRepY > 0 ? roundInt(float(uRepY) * s) : 0;
   float dx = perlin4(row, x * s + 137.0, y * s + 23.0, z, w, wrx, wry) * uWarpS;
   float dy = perlin4(row, x * s + 211.0, y * s - 53.0, z, w, wrx, wry) * uWarpS;
-  return fbm4(row, x + dx, y + dy, z, w, oct, uRepX, uRepY);
+  return uField == 0 ? fbm4(row, x + dx, y + dy, z, w, oct, uRepX, uRepY) : cellFbm(row, x + dx, y + dy, oct, uRepX, uRepY);
 }
 
 float blendLayers(float n1, float n2) {
@@ -456,6 +493,12 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }`;
         gl.uniform3f(U("uHalf"), hx, hy, hz);
       }
 
+      // Cellular fields: the phase is folded in float64 here, exactly as the CPU does.
+      const FIELDS = { perlin: 0, cells: 1, borders: 2, smooth: 3 };
+      const field = FIELDS[p.fieldType || "perlin"] ?? 0;
+      gl.uniform1i(U("uField"), field);
+      gl.uniform1f(U("uJitter"), p.cellJitter != null ? p.cellJitter : 1);
+
       gl.uniform1i(U("uLoop"), p.loop ? 1 : 0);
       if (p.loop) {
         // Same arithmetic as generatePerlinImage: progress is folded into [0, 1) first, so
@@ -464,8 +507,11 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }`;
         const safeProgress = ((p.loopProgress || 0) % 1 + 1) % 1;
         const alpha = safeProgress * Math.PI * 2;
         gl.uniform2f(U("uZW"), Math.cos(alpha) * radius, Math.sin(alpha) * radius);
+        gl.uniform1f(U("uTurns"), safeProgress);
       } else {
-        gl.uniform1f(U("uTz"), (p.t || 0) * p.scaleT);
+        const tz = (p.t || 0) * p.scaleT;
+        gl.uniform1f(U("uTz"), tz);
+        gl.uniform1f(U("uTurns"), tz - Math.floor(tz));
       }
 
       const mode = p.colorMode || "rgb";

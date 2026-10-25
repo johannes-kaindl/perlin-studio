@@ -10,16 +10,17 @@ for the broad overview.
 3. [fBm — Fractal Brownian Motion](#fbm--fractal-brownian-motion)
 4. [Domain warping](#domain-warping)
 5. [Tileable noise](#tileable-noise)
-6. [Layer compositing](#layer-compositing)
-7. [Loop mechanics: circular orbit in 4D](#loop-mechanics-circular-orbit-in-4d)
-8. [Worker pipeline](#worker-pipeline)
-9. [Animation loop](#animation-loop)
-10. [Video recording](#video-recording)
-11. [Color modes](#color-modes)
-12. [Image mask](#image-mask)
-13. [Embeddable element (`<perlin-noise>`)](#embeddable-element-perlin-noise)
-14. [Smoke tests](#smoke-tests)
-15. [Known edge cases](#known-edge-cases)
+6. [Cellular fields (Voronoi)](#cellular-fields-voronoi)
+7. [Layer compositing](#layer-compositing)
+8. [Loop mechanics: circular orbit in 4D](#loop-mechanics-circular-orbit-in-4d)
+9. [Worker pipeline](#worker-pipeline)
+10. [Animation loop](#animation-loop)
+11. [Video recording](#video-recording)
+12. [Color modes](#color-modes)
+13. [Image mask](#image-mask)
+14. [Embeddable element (`<perlin-noise>`)](#embeddable-element-perlin-noise)
+15. [Smoke tests](#smoke-tests)
+16. [Known edge cases](#known-edge-cases)
 
 ---
 
@@ -279,6 +280,28 @@ the warp scale itself, leaving a sub-cell slip).
 `perlin3(perm, x, y, z)` — the smoke test asserts this across many
 sample points so adding the tile feature can't drift the v0.7
 rendering.
+
+---
+
+## Cellular fields (Voronoi)
+
+`params.fieldType` picks the field the rest of the pipeline works on: `perlin` (the default, everything above) or one of `cells`, `borders`, `smooth`, which call `cellFbm` in `perlin.js` instead of `fbm3`/`fbm4`. Everything downstream of the height value is unchanged: the domain warp still displaces the sample point with Perlin, layer 2 blends the same way (and uses the same field type), tiling wraps, and the colour modes, relief lighting and flow take the value as they take any other.
+
+```
+for each octave:  p = (x, y) · freq,  cell = floor(p)
+  for the 9 cells around:  point = cell + 0.5 + 0.5 · jitter · sin(2π(turns + h / 256))     per axis
+                           d = distance(p, point);  keep F1, F2 (two smallest) and Σ e^(−16 d)
+  v = F1                      (cells)
+      F2 − F1                 (borders)
+      −ln(Σ e^(−16 d)) / 16   (smooth: a smooth minimum, Quilez' "Smooth Voronoi")
+  clamp to [0, 1], sum like fBm (amplitude × persistence, frequency × lacunarity)
+```
+
+The hash `h` is read from the same permutation table as Perlin (`perm[perm[cx] + cy]` for the x offset, a shifted lookup for y), so `base` seeds the cells and tiling wraps the cell indices with the same period-per-octave rule. A point never leaves its own cell, which is what makes the 3×3 search exact.
+
+Time is not a third axis: each point circles inside its cell with a per-cell phase, so the field repeats after `turns` goes from 0 to 1. In loop mode `turns = safeProgress`; with the loop off it is `t · scaleT` folded into [0, 1) in float64 (the caller does it, so the GPU never sees a large phase). That closes the loop with a plain 2D search; a 4D Worley field would have to search 81 cells. The loop radius does not apply to cellular fields.
+
+The GPU renderer mirrors `cellFbm` line by line (`uField`, `uJitter`, `uTurns`); the parity gate has six cellular cases and checks loop closure for them. The native apps do not know `fieldType` and render Perlin.
 
 ---
 
@@ -880,6 +903,7 @@ The current battery (46 assertions):
 | H0. Layer blends | Each of the six blend modes (`multiply`, `add`, `screen`, `darken`, `lighten`, `difference`) gives the right algebra at known sample points; unknown mode falls back to `n1` |
 | H1. Layer render path | `layer2On=false` is bit-identical to the un-layered baseline; `layer2On=true, mix=1` diverges; `layer2On=true, mix=0` short-circuits back to the baseline |
 | H. Image mask | Per-pixel alpha modulation matches the byte-arithmetic spec; invert flips via `255 − mask`; RGB channels untouched |
+| L. cellular fields | Every kind stays in [0, 1]; jitter 0 puts a point in the middle of each cell; the field has structure; turn 1 equals turn 0 and turn 0.5 does not; a different base differs; tiling closes the seam; through the renderer: `perlin` equals the old image, loop progress 1 equals 0 |
 | K. relief lighting | A flat surface keeps its colour; a slope facing the light is brighter, facing away darker; gain 0 ignores the slope; azimuth 90 lights the right-facing slope; output clamped to whole 0–255; relief off equals the old image; flow and per-channel RGB ignore it |
 | J. cosine palette | Seven built-in palettes; the name resolves to numbers, explicit numbers win, an unknown name falls back to rainbow; `t = 0` follows the formula; integer `c` closes the cycle; output is clamped to 0–255 |
 | I. resolveParams | Named gradient → concrete stops (gradient + posterize); explicit custom stops preserved; non-gradient modes get no gradient; input not mutated; unknown name → viridis; a built-in preset resolves to renderable params |

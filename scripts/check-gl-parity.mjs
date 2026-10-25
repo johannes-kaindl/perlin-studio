@@ -61,6 +61,12 @@ const cases = [
   ["cosine neon (c = 2, 1, 0), loop", { colorMode: "cosine", cosineName: "neon", loop: true, loopProgress: 0.3 }],
   ["cosine coral with layer 2", { colorMode: "cosine", cosineName: "coral", layer2On: true, layer2Mix: 0.5, layer2Base: 3, layer2ScaleX: 0.07, layer2ScaleY: 0.07 }],
   ["cosine custom parameters", { colorMode: "cosine", cosine: { a: [0.2, 0.6, 0.9], b: [0.8, 0.3, 0.1], c: [3.0, 0.5, 1.5], d: [-0.4, 0.7, 0.05] } }],
+  ["cells, linear, rgb", { fieldType: "cells", scaleX: 0.04, scaleY: 0.04, octaves: 3, t: 4.1 }],
+  ["cells, jitter 0.4, large t", { fieldType: "cells", cellJitter: 0.4, scaleX: 0.05, scaleY: 0.05, t: 1234.5, colorMode: "gradient", gradient: "magma" }],
+  ["borders, loop + warp", { fieldType: "borders", scaleX: 0.05, scaleY: 0.05, loop: true, loopProgress: 0.7, warpStrength: 1.2, warpScale: 1.3, colorMode: "gradient", gradient: "viridis" }],
+  ["smooth cells, tile 3x2", { fieldType: "smooth", tileX: 3, tileY: 2, scaleX: 0.0156, scaleY: 0.0156, octaves: 2, colorMode: "cosine", cosineName: "neon" }],
+  ["smooth cells, loop, layer 2", { fieldType: "smooth", scaleX: 0.04, scaleY: 0.04, loop: true, loopProgress: 0.15, layer2On: true, layer2Mix: 0.5, layer2Base: 4, layer2ScaleX: 0.1, layer2ScaleY: 0.1, layer2BlendMode: "screen" }],
+  ["cells + relief + posterize-free gradient", { fieldType: "cells", scaleX: 0.03, scaleY: 0.03, reliefOn: true, reliefGain: 3, colorMode: "gradient", gradient: "fire", loop: true, loopProgress: 0.9 }],
   ["relief, linear, default light", { reliefOn: true, reliefGain: 4, colorMode: "gradient", gradient: "viridis" }],
   ["relief, loop + warp, low sun, no ambient", { reliefOn: true, reliefGain: 6, lightAzimuth: 40, lightElevation: 12, reliefAmbient: 0, loop: true, loopProgress: 0.55, warpStrength: 1.5, colorMode: "cosine", cosineName: "dusk" }],
   ["relief, layer 2 + tile", { reliefOn: true, reliefGain: 3, layer2On: true, layer2Mix: 0.5, layer2Base: 9, layer2ScaleX: 0.5, layer2ScaleY: 0.5, tileX: 4, tileY: 3, scaleX: 0.25, scaleY: 0.25 }],
@@ -178,11 +184,16 @@ const out = await page.evaluate(async ({ cases, base, MAX_LEVEL, MAX_FRAC }) => 
   const control = { name: "control: seed 1 on GPU vs seed 0 on CPU (must differ)", ...cd, ok: cd.mean > 1 && cd.frac > 0.05 };
 
   // Loop closure on the GPU: progress 1 must be bytewise progress 0 (CPU guarantee).
-  const g0 = mk(192, 128), g1 = mk(192, 128);
-  const lp = Object.assign({}, base, { loop: true, colorMode: "gradient", gradient: G.viridis });
-  gl.render(Object.assign({}, lp, { loopProgress: 0 }), g0);
-  gl.render(Object.assign({}, lp, { loopProgress: 1 }), g1);
-  const cl = diff(g0.getImageData(0, 0, 192, 128).data, g1.getImageData(0, 0, 192, 128).data);
+  // Perlin and the cellular fields both: a feature point that circles must be back where it started.
+  let clMax = 0;
+  for (const extra of [{}, { fieldType: "cells", scaleX: 0.05, scaleY: 0.05 }, { fieldType: "smooth", scaleX: 0.05, scaleY: 0.05 }]) {
+    const g0 = mk(192, 128), g1 = mk(192, 128);
+    const lp = Object.assign({}, base, { loop: true, colorMode: "gradient", gradient: G.viridis }, extra);
+    gl.render(Object.assign({}, lp, { loopProgress: 0 }), g0);
+    gl.render(Object.assign({}, lp, { loopProgress: 1 }), g1);
+    clMax = Math.max(clMax, diff(g0.getImageData(0, 0, 192, 128).data, g1.getImageData(0, 0, 192, 128).data).max);
+  }
+  const cl = { max: clMax, mean: 0, frac: 0 };
   const closure = { name: "GPU loop closure, progress 1 vs 0 (must be bytewise equal)", ...cl, ok: cl.max === 0 };
 
   // Unsupported modes must be reported as such (the engine then uses the CPU path).

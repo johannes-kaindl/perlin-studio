@@ -149,6 +149,18 @@
           <label>persistence<input type="number" id="p-pers" min="0" max="2" step="0.05" value="0.5"></label>
           <label class="span2">lacunarity<input type="number" id="p-lac" min="1" max="8" step="0.1" value="2.0"></label>
         </div>
+        <label class="select-row">Noise type
+          <select id="p-field-type" aria-label="Noise type">
+            <option value="perlin" selected>Perlin · fBm</option>
+            <option value="cells">Cells · distance to the nearest point</option>
+            <option value="borders">Borders · cell edges</option>
+            <option value="smooth">Smooth cells · soft blobs</option>
+          </select>
+        </label>
+        <div id="cell-jitter-wrap" hidden>
+          <p class="sec-hint">Cellular fields look cleanest with 1–2 octaves.</p>
+          <label>cell jitter<input type="range" id="p-cell-jitter" min="0" max="1" step="0.01" value="1"></label>
+        </div>
       </section>
 
       <section class="ctrl-section">

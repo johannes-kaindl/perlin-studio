@@ -96,6 +96,7 @@ const els = {
   // Color mode
   colorMode: $("p-color-mode"),
   backend: $("p-backend"),
+  fieldType: $("p-field-type"), cellJitter: $("p-cell-jitter"), cellJitterWrap: $("cell-jitter-wrap"),
   reliefOn: $("p-relief-on"), reliefControls: $("relief-controls"), reliefNote: $("relief-note"),
   reliefGain: $("p-relief-gain"), lightAz: $("p-light-az"), lightEl: $("p-light-el"),
   reliefAmb: $("p-relief-amb"), reliefSpec: $("p-relief-spec"), reliefShine: $("p-relief-shine"),
@@ -258,6 +259,8 @@ function gatherParams() {
     layer2BlendMode: els.layer2Blend.value,
     layer2Mix:       clampFloat(els.layer2Mix.value, 0, 1, 0.5),
     colorMode,
+    fieldType:    els.fieldType.value,
+    cellJitter:   clampFloat(els.cellJitter.value, 0, 1, 1),
     reliefOn:     els.reliefOn.checked,
     loop:         els.loop.checked,
     loopDuration: clampFloat(els.loopDuration.value, 0.5, 60, 4),
@@ -400,6 +403,9 @@ function applyParamsToUi(p) {
   if (p.gInvert != null) els.gi.checked = p.gInvert;
   if (p.bInvert != null) els.bi.checked = p.bInvert;
   if (p.rgbMultiChannel != null) els.rgbMulti.checked = p.rgbMultiChannel;
+  if (p.fieldType) els.fieldType.value = p.fieldType;
+  if (p.cellJitter != null) els.cellJitter.value = p.cellJitter;
+  updateFieldType();
   if (p.reliefOn != null) els.reliefOn.checked = p.reliefOn;
   if (p.reliefGain != null) els.reliefGain.value = p.reliefGain;
   if (p.lightAzimuth != null) els.lightAz.value = p.lightAzimuth;
@@ -455,6 +461,10 @@ function updateColorSections() {
     sec.hidden = !isActive;
   }
   updateReliefMode();
+}
+// The jitter only means something for the cellular fields.
+function updateFieldType() {
+  els.cellJitterWrap.hidden = els.fieldType.value === "perlin";
 }
 // Relief lighting needs a single noise sample per pixel to colour, so flow and per-channel
 // RGB ignore it (perlin.js: isRelief). Say so instead of silently doing nothing.
@@ -1332,6 +1342,7 @@ function downloadWebm() {
 const PARAM_INPUTS = [
   "w", "h", "tileX", "tileY", "sx", "sy", "st", "base", "oct", "pers", "lac",
   "warpStrength", "warpScale",
+  "fieldType", "cellJitter",
   "reliefOn", "reliefGain", "lightAz", "lightEl", "reliefAmb", "reliefSpec", "reliefShine", "reliefEps",
   "layer2On", "layer2Sx", "layer2Sy", "layer2Oct", "layer2Base", "layer2Mix",
   "loopDuration", "loopRadius",
@@ -1398,6 +1409,7 @@ function wireEvents() {
   });
   els.layer2Blend.addEventListener("change", schedulePreview);
   els.layer2On.addEventListener("change", updateLayer2Mode);
+  els.fieldType.addEventListener("change", updateFieldType);
   els.reliefOn.addEventListener("change", updateReliefMode);
   els.rgbMulti.addEventListener("change", updateReliefMode);
   els.warpStrength.addEventListener("input", updateWarpMode);
@@ -1532,6 +1544,7 @@ function initThemeToggle() {
   updateGradientPreview();
   writeCosine(COSINE_PALETTES.rainbow);
   updateCosinePreview();
+  updateFieldType();
   updateLoopMode();
   attachRangeReadouts();
   updateLayer2Mode();
