@@ -21,7 +21,8 @@ yarn-error.log*
 
 # Local session artefacts
 .remember/
-.claude/
+.claude/*
+!.claude/rules/
 .ipynb_checkpoints/
 
 # User-generated exports (sample data lives under docs/examples/)

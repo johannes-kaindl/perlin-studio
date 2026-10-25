@@ -1,329 +1,72 @@
 # AGENTS.md — context for AI agents
 
-> **Workspace-Standards (maintainer-lokal):** Die verbindliche Leitkonvention steht in `_docs/CONVENTIONS.md`
-> im Multi-Projekt-Workspace des Maintainers, `../_docs` relativ zu diesem Repo — nicht Teil dieses Repos,
-> ignorieren falls im Klon nicht vorhanden. Modell comply-or-explain. Dokumentierte
-> Abweichungen + erledigte/offene Punkte siehe Abschnitt
-> [Abweichungen von der Leitkonvention](#abweichungen-von-der-leitkonvention).
+> **Workspace-Standards (maintainer-lokal):** Die verbindliche Leitkonvention steht in `_docs/CONVENTIONS.md` im Multi-Projekt-Workspace des Maintainers, `../_docs` relativ zu diesem Repo — nicht Teil dieses Repos, ignorieren falls im Klon nicht vorhanden. Modell comply-or-explain. Dokumentierte Abweichungen siehe Abschnitt [Abweichungen von der Leitkonvention](#abweichungen-von-der-leitkonvention).
 
-This file is aimed at AI assistants (Claude Code, Cursor, Aider, …) that
-work on this repo. Humans contributing here will find what they need in
-[`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and
-[`docs/`](docs/).
+This file is aimed at AI assistants (Claude Code, Cursor, Aider, …) that work on this repo. Humans contributing here will find what they need in [`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`docs/`](docs/).
 
 ## Project character
 
-**Perlin Studio** is a single-page browser tool for parametric 3D/4D
-Perlin animations. Vanilla JS, no dependencies, no backend, no build
-step. Works by double-clicking `index.html` (`file://`) and on any
-static webhost.
+**Perlin Studio** is a single-page browser tool for parametric 3D/4D Perlin animations. Vanilla JS, no dependencies, no backend, no build step. Works by double-clicking `index.html` (`file://`) and on any static webhost.
 
-A native macOS companion app (`macos/`) — *Perlin Live Wallpaper* — renders the
-same noise live as an animated desktop background (Swift + Metal, public AppKit
-only). See [`macos/README.md`](macos/README.md) and the distribution guide
-[`docs/MACOS-APP.md`](docs/MACOS-APP.md).
+Two native companions reuse the same noise: *Perlin Live Wallpaper* (`macos/`, Swift + Metal, public AppKit only) and *Perlin Live Photo* (`ios/`, SwiftUI + Metal, reuses the macOS portable core by file reference).
 
-A native iOS/iPadOS companion (`ios/`) — *Perlin Live Photo* — turns the same
-noise into Apple Live Photos (SwiftUI + Metal; reuses the macOS portable core
-by file reference). See [`ios/README.md`](ios/README.md).
-
-Zero-dependency / no-build is a **deliberate feature** (PROF-WEB-01): the tool
-must stay statically deployable and embeddable as a Web Component. Don't migrate
-to TypeScript, a bundler, or a framework without discussing it with the
-maintainer first — Vanilla-JS constancy is the point.
+Zero-dependency / no-build is a **deliberate feature** (PROF-WEB-01): the tool must stay statically deployable and embeddable as a Web Component. Don't migrate to TypeScript, a bundler, or a framework without discussing it with the maintainer first — Vanilla-JS constancy is the point.
 
 ## Architecture principles
 
-### Module layering
+- **Five plain scripts, each attaching a `window` global, loaded in order** (`file://`-safe, no ES modules): `perlin.js` → `perlin-presets.js` → `perlin-engine.js` → the consumers `perlin-studio.js` and `perlin-element.js`; `perlin-export.js` is pure compositing math.
+- **Render/animation logic lives in `PerlinEngine`**, not duplicated in the studio or the `<perlin-noise>` element.
+- **No dependencies** without a specific reason. A 12-KB library for one feature is OK, but discuss with the maintainer first.
+- Defensive programming **only at external boundaries** (user input, file upload). Trust internal data flow.
+- Comments explain **why**, not *what*. Code should be readable without comments; comments cover the non-obvious, edge cases, math background.
+- **`_archiv/` is off-limits for active changes.** It documents the project's genealogy and may only be added to, never edited or deleted.
 
-Five plain scripts, each attaching a `window` global, loaded in order
-(`file://`-safe, no ES modules):
+## Context index
 
-1. `perlin.js` → `MTPerlin` — math + `WORKER_SOURCE`.
-2. `perlin-presets.js` → `MTPerlinPresets` — `GRADIENTS`, `BUILTIN_PRESETS`,
-   `resolveParams` (named gradient → concrete stops).
-3. `perlin-engine.js` → `PerlinEngine` — headless renderer: owns the worker,
-   the RAF loop, and FPS smoothing. Consumers pass `onTick` / `onFrame` /
-   `transformFrame` callbacks.
-4. `perlin-studio.js` and `perlin-element.js` are **consumers** of the engine.
-   The studio is the full editor; `<perlin-noise>` is the embeddable
-   renderer-only element. Keep render/animation logic in the engine, not
-   duplicated in either consumer.
-5. `perlin-export.js` → `MTPerlinExport` — pure compositing helpers
-   (`computeFitRect`, `compositeOverColor`, `hexToRgb`) used by the studio's
-   video export. No DOM; Node-requirable (smoke-tested).
-
-### Style boundaries
-
-- **No dependencies** without a specific reason. A 12-KB library for one feature
-  is OK, but discuss with the maintainer first.
-- Defensive programming **only at external boundaries** (user input, file
-  upload). Trust internal data flow.
-- Comments explain **why**, not *what*. Code should be readable without comments;
-  comments cover the non-obvious, edge cases, math background.
-
-### File layout
-
-```
-.
-├── index.html             # UI markup
-├── styles.css             # all styling (dark + light, system-following with toggle override)
-├── perlin.js              # math/API (noise, color modes, worker source)
-├── perlin-presets.js      # gradients, built-in presets, resolveParams (shared)
-├── perlin-engine.js       # headless render engine (worker lifecycle + RAF loop)
-├── perlin-studio.js       # controller (UI bindings, recording, presets) — consumes the engine
-├── perlin-element.js      # <perlin-noise> embeddable renderer-only custom element
-├── perlin-export.js       # pure compositing math for video export (window.MTPerlinExport)
-├── manifest.webmanifest   # PWA manifest (installable)
-├── assets/                # static assets (favicon.svg, icon-{192,512}.png,
-│                          #   apple-touch-icon.png, hero.png, gallery-*.png
-│                          #   + legacy default-atlas.webp for the archive)
-├── examples/
-│   ├── embed.html         # <perlin-noise> embedding demo
-│   └── marble.json        # resolved preset export for the src demo
-├── scripts/
-│   ├── check-syntax.mjs        # syntax gate (external perlin*.js + inline <script>), gates the deploy
-│   ├── smoke-test.js           # math + resolveParams invariants, gates the deploy
-│   ├── check-no-abs-paths.mjs  # CORE-META-14 gate: no absolute paths in tracked *.md
-│   ├── deploy-page.sh          # publish committed HEAD to pages.jkaindl.de (rsync)
-│   ├── bump-version.sh         # native version bump (macos/packaging/Info.plist)
-│   ├── render-readme-images.js # renders assets/*.png from perlin.js
-│   ├── render-guide-images.js  # renders docs/images/*.png for USAGE.md
-│   ├── render-readme-videos.js # renders docs/examples/*.webm (Node → ffmpeg)
-│   └── build-standalone.js     # inlines the studio into a single HTML file
-├── macos/                 # native companion app (Swift + Metal); see macos/README.md
-├── ios/                   # native iOS/iPadOS companion "Perlin Live Photo"; see ios/README.md
-├── dist/
-│   └── perlin-noise.js    # generated standalone bundle (scripts/build-standalone.js) — do not edit
-├── _archiv/               # historical predecessors (READ-ONLY!)
-│   ├── perlin_noise/      # Python original
-│   ├── texturizer.ipynb   # Texturizer notebook
-│   └── old_texturizer_combined/   # first browser version
-├── docs/
-│   ├── ARCHITECTURE.md    # technical docs
-│   ├── USAGE.md           # full user guide
-│   ├── MACOS-APP.md       # native app distribution + Gatekeeper guide
-│   └── examples/          # rendered WebM loops (for README + embedding)
-├── .editorconfig          # consistent indentation/encoding/EOL
-├── .well-known/
-│   └── security.txt       # RFC 9116 contact (deployed with the site)
-├── .gitea/
-│   └── issue_template/    # bug report + feature request forms
-├── README.md              # quickstart + entry point
-├── CONTRIBUTING.md        # developer workflow
-├── SECURITY.md            # threat model + reporting
-├── CHANGELOG.md
-├── LICENSE                # AGPL-3.0 (code)
-├── LICENSE-DOCS           # CC BY-SA 4.0 (documentation)
-├── LICENSING.md           # licensing overview / dual-license option
-├── CLA.md                 # contributor license agreement
-└── AGENTS.md              # this file
-```
-
-**`_archiv/` is off-limits for active changes.** These files document the
-project's genealogy and may only be added to (e.g. when another snapshot is
-preserved), never edited or deleted.
-
-### Glossary
-
-| Term | Meaning |
-|------|---------|
-| **fBm** | Fractal Brownian Motion — sum of Perlin octaves with decreasing amplitude and increasing frequency |
-| **Octave** | A frequency level in fBm. More octaves = more detail, more compute |
-| **Persistence** | Amplitude factor between octaves (typically 0.5) |
-| **Lacunarity** | Frequency factor between octaves (typically 2.0) |
-| **scaleT** | UI label **"Time scale"** — scales the time axis of the noise. Default 0.15 |
-| **loop** | When `true`: 4D path with a circular orbit in `(z, w)`. When `false`: 3D path with linear `t` |
-| **loopProgress** | Current position on the circular orbit in `[0, 1)`. Becomes `α = 2π·progress` |
-| **loopRadius** | How far the image travels over one full rotation |
-| **safeProgress** | `((p % 1) + 1) % 1` — protects the loop identity against the float-rounding of `Math.sin(2π)` |
-| **Worker source** | The full `perlin.js` code as a string in `MTPerlin.WORKER_SOURCE`. Loaded into an inline Blob worker — `file://`-compatible |
+- Before reading or changing `perlin*.js` or `scripts/smoke-test.js`: read `.claude/rules/perlin-core.md` (math bug classes, animation step, worker rules). It also loads by itself in Claude Code.
+- Before adding or moving a file, or when a term is unclear (fBm, loopProgress, safeProgress, scaleT): read `docs/internal/architecture.md` (module layering, file layout, glossary).
+- Before asking why something is the way it is (zero-dep, deploy guards, `v` tag prefix, hero.png over budget, single remote): read `docs/internal/decisions.md`.
+- Before changing the math, the worker pipeline or the loop mechanics: read `docs/ARCHITECTURE.md`.
+- Before changing the UI: read `docs/UI-SPEC.md`; for the embeddable element: `docs/WEB-COMPONENT-SPEC.md`.
+- Before a macOS or iOS release or notarization: read `docs/MACOS-APP.md`, `macos/README.md`, `ios/README.md`.
+- Before changing what the repo delivers (export formats, example loops, the standalone bundle): read `ANGEBOT.md`.
 
 ## Commands
 
 There is **no full test suite**. Instead:
 
-1. **Syntax gate** — parses every deployable script (the external `perlin*.js`
-   plus inline `<script>` blocks in `index.html` / `examples/`) without executing
-   it (PROF-WEB-03):
-   ```bash
-   node scripts/check-syntax.mjs
-   ```
-   `scripts/deploy-page.sh` runs this before publishing.
-2. **Math smoke tests** for Perlin changes:
-   ```bash
-   node scripts/smoke-test.js
-   ```
-   Covers permutation determinism, value range of `perlin3`/`perlin4`, loop
-   identity at `progress=0` vs `progress=1` (both bytewise and bit-exact at the
-   float level), Z/W axis independence, and `colorize` range.
-   `scripts/deploy-page.sh` gates on this — if smoke tests fail, the site does
-   not get republished. For deeper investigations the same pattern
-   (`global.window = {}` + require `perlin.js`) works for ad-hoc scripts.
-3. **Path hygiene gate** — no absolute maintainer paths in tracked Markdown:
-   ```bash
-   node scripts/check-no-abs-paths.mjs
-   ```
-   Also run by `scripts/deploy-page.sh`.
-4. **Manual browser test** — `python3 -m http.server` and click around.
+1. **Syntax gate** — parses every deployable script (external `perlin*.js` plus inline `<script>` blocks in `index.html` / `examples/`) without executing it (PROF-WEB-03): `node scripts/check-syntax.mjs`
+2. **Math smoke tests** for Perlin changes: `node scripts/smoke-test.js`. Covers permutation determinism, value range of `perlin3`/`perlin4`, loop identity at `progress=0` vs `progress=1` (bytewise and bit-exact), Z/W axis independence, and `colorize` range. For ad-hoc scripts the same pattern works (`global.window = {}` + require `perlin.js`).
+3. **Path hygiene gate** — no absolute maintainer paths in tracked Markdown: `node scripts/check-no-abs-paths.mjs`
+4. **Manual browser test** — `python3 -m http.server` and click around. The permission setup may forbid starting an HTTP server from the repo's location; if so, ask the user to test it themselves.
 
-> Sandbox note: the permission setup may forbid starting an HTTP server from
-> the repo's location. If you hit that, ask the user to test it themselves.
+**Deploy:** `bash scripts/deploy-page.sh` runs gates 1–3, snapshots committed `HEAD` via `git archive` and rsyncs it to `pages.jkaindl.de/perlin-studio/`. It needs real rsync 3.x (`brew install rsync`; macOS ships `openrsync`). The script carries four macOS deploy guards (CORE-OPS-01); don't remove them.
 
-### Deploy
-
-```bash
-bash scripts/deploy-page.sh
-```
-
-Runs both gates, snapshots committed `HEAD` via `git archive` (so untracked
-files can never leak), and rsyncs it to `pages.jkaindl.de/perlin-studio/`.
-Needs real rsync 3.x — macOS ships `openrsync`, which the server-side `rrsync`
-wrapper rejects (`brew install rsync`). The script deliberately carries the
-four macOS deploy guards; don't remove them (see the maintainer's workspace
-convention CORE-OPS-01, `../_docs/CONVENTIONS.md`, maintainer-local).
-
-### macOS app
-
-```bash
-cd macos
-swift build && swift run                          # build + run the live wallpaper
-swift run PerlinLiveWallpaper --selftest          # headless render-all-presets check
-./scripts/build-app.sh [--notarize]               # package signed (+ notarized) .app
-```
-
-Native release version bump (from the **repo root**, before tagging):
-`bash scripts/bump-version.sh X.Y.Z`. Full distribution guide:
-[`docs/MACOS-APP.md`](docs/MACOS-APP.md).
+**macOS app:** `cd macos && swift build && swift run`, headless check `swift run PerlinLiveWallpaper --selftest`, package with `./scripts/build-app.sh [--notarize]`. Version bump from the repo root before tagging: `bash scripts/bump-version.sh X.Y.Z`.
 
 ## Conventions
 
-### Language
-
-- **Everything is English**: UI strings, code comments, identifiers, commit
-  messages, PR descriptions, issue templates, docs. Matches the rest of the
-  author's public repos.
-- Math terms (Octaves, Persistence, Lacunarity, fBm) keep their standard form.
-- No emojis in code/docs unless the user explicitly asks.
-
-### Git
-
-- **Conventional Commits** (`feat/fix/docs/chore/refactor/test(scope): …`);
-  commit body may be German (CORE-GIT-04).
-- **Self-hosted Forgejo primary** (`origin` =
-  `git@git.jkaindl.de:jkaindl/perlin-studio.git`, browsable at
-  `https://git.jkaindl.de/jkaindl/perlin-studio`) — **and nothing else since
-  2026-09-05**: the GitHub mirror was removed. GitHub now stays only where it is
-  functionally required (the Obsidian store chain), and this is not a plugin; the
-  account has also been flagged since 2026-08-30, so the mirror was anonymously
-  404 anyway. One remote, one push (CORE-GIT-01). The repo moved off Codeberg on
-  2026-07-30; the old `jkaindl.codeberg.page` deploy is frozen, not live.
-- **Tags: SemVer with `v`-prefix** — the lived convention here (every tag from
-  `v0.4.0` through the current `v0.17.0` carries it). A documented deviation
-  from CORE-GIT-03's no-prefix default; keep new tags consistent (`vX.Y.Z`).
+- **Everything is English**: UI strings (including new buttons/sections), code comments, identifiers, commit messages, PR descriptions, issue templates, docs. Math terms (Octaves, Persistence, Lacunarity, fBm) keep their standard form. No emojis in code/docs unless the user explicitly asks.
+- **Conventional Commits** (`feat/fix/docs/chore/refactor/test(scope): …`); commit body may be German (CORE-GIT-04).
+- **One remote:** Forgejo (`origin` = `git@git.jkaindl.de:jkaindl/perlin-studio.git`), no mirror since 2026-09-05 (CORE-GIT-01).
+- **Tags: SemVer with `v`-prefix** (`vX.Y.Z`), a documented deviation from CORE-GIT-03.
 - Stage only touched files, **never `git add -A`** (CORE-GIT-06).
-- AI-assisted commits carry the trailer
-  `Co-Authored-By: Claude Opus <version> (1M context) <noreply@anthropic.com>`
-  (CORE-GIT-05).
-
-### When you change something
-
-1. **Mind the flow.** Don't commit performance tweaks in `perlin3`/`perlin4`
-   without sanity checks. Subtle math bugs look visually normal until the loop
-   stops closing or edges start flickering.
-2. **Keep UI strings English.** Including any new buttons/sections.
-3. **Update `CHANGELOG.md`** for every user-visible feature/fix (keep-a-changelog).
-4. **No cosmetic changes in `_archiv/`.**
-
-## Gotchas
-
-### Math bug class 1: float rounding at loop endpoints
-
-`Math.sin(2π)` is not `0` but about `-2.4e-16`. `Math.floor(-1.7e-16)` is `-1`,
-which masks to `255` in the hash lookup — a *completely different* image. Fix:
-`safeProgress = ((p % 1) + 1) % 1`.
-
-### Math bug class 2: Z/W axis swap in `perlin4`
-
-In the 4D hash tree, `AAB` and `AAA+1` are different constructs:
-`AAB = perm[AA+1]+W` is a **Z shift**, `AAA+1 = perm[AA]+W+1` is a **W shift**.
-The offsets must line up: `AAB` uses `z-1`, `AAA+1` uses `w-1`. The outer lerp is
-over `tt` (W), not `s` (Z).
-
-### Animation bug: `t` progress too fast
-
-The initial implementation had `t += fps` per second — 30× too fast. The correct
-version is `t += 1` per second, and `scaleT` scales that in noise space. So the
-per-frame step is ~`scaleT / fps` ≈ 0.005 — a soft ripple instead of a flicker.
-
-### Worker CSP
-
-Under `file://`, some browsers block the worker. The code automatically falls
-back to main-thread rendering (see `initWorker` / `renderInMain`). While
-debugging, watch whether the FPS counter says "(main)" — if so, the fallback is
-active.
-
-### Worker communication patterns
-
-- **Never queue frames.** `requestFrame` skips if `state.workerBusy` is still
-  `true`. Recordings use `renderFrameAndWait`, which synchronizes via
-  `state.pendingResolves`.
-- **Use transferables.**
-  `postMessage({ ..., buffer: buf.buffer }, [buf.buffer])` → zero-copy back.
+- AI-assisted commits carry the trailer `Co-Authored-By: Claude Opus <version> (1M context) <noreply@anthropic.com>` (CORE-GIT-05).
+- **Update `CHANGELOG.md`** for every user-visible feature/fix (keep-a-changelog).
+- **Mind the flow:** subtle math bugs look visually normal until the loop stops closing or edges start flickering (details in `.claude/rules/perlin-core.md`).
 
 ## Memory
 
-- **Project memory (Daemon pointer layer):**
-  `~/.claude/projects/-Users-Shared-code-perlin-studio/memory/MEMORY.md` — the
-  index loaded each session (CORE-AGENT-02).
-- **Coding-Cockpit (SSOT):** `$VAULT/25_Coding/perlin-studio/perlin-studio.md`
-  (CORE-META-14, maintainer-local; `$VAULT` = the maintainer's Obsidian vault) —
-  status · tasks · decisions · history. The Daemon memory points here.
-- **Session handoff:** `.remember/` (gitignored, CORE-AGENT-03) — `remember.md`
-  handoff + `now.md` / `recent.md` / `archive.md` buffers.
-- **SDD artifacts (since 2026-07-16): Cockpit, not repo** — specs, plans and
-  task reports live in the maintainer's Coding-Cockpit
-  (`$VAULT/25_Coding/perlin-studio/_SDD/`, CORE-META-14, maintainer-local). They
-  carry working context (vault paths, sister-repo internals) that is of no use
-  in a public repo. The repo keeps the design essence in this file +
-  `CHANGELOG.md`.
-- **Legacy stock:** `docs/superpowers/{specs,plans}/` is frozen — do not add new
-  specs or plans there. Historical references to existing spec files stay valid
-  (the files remain).
-- **Never in the repo:** absolute paths outside the repo (`/Users/…`, vault
-  paths) — use placeholders (`$VAULT/…`, `~/…`, repo-relative). Provenance as
-  repo name + `file:line` is welcome.
+- **Project memory:** `~/.claude/projects/-Users-johannes-Projects-jkaindl-apps-perlin-studio/memory/MEMORY.md` — the index loaded each session (CORE-AGENT-02).
+- **Coding-Cockpit (SSOT):** `$VAULT/25_Coding/perlin-studio/perlin-studio.md` (CORE-META-14, maintainer-local; `$VAULT` = the maintainer's Obsidian vault) — status · tasks · decisions · history. Specs, plans and task reports live in its `_SDD/`, not in the repo.
+- **Session handoff:** `.remember/` (gitignored, CORE-AGENT-03).
+- **Legacy stock:** `docs/superpowers/{specs,plans}/` is frozen — do not add new specs or plans there.
+- **Never in the repo:** absolute paths outside the repo (`/Users/…`, vault paths) — use placeholders (`$VAULT/…`, `~/…`, repo-relative).
 
 ## Abweichungen von der Leitkonvention
 
-Profile: **web-static · native** (+ KERN). Abgeglichen gegen
-`_docs/CONVENTIONS.md` (comply-or-explain).
+Profile: **web-static · native** (+ KERN). Abgeglichen gegen `_docs/CONVENTIONS.md` (comply-or-explain). Das Warum steht in `docs/internal/decisions.md`.
 
-- **PROF-NAT-02** *(adaptiert)* — Kein `package.json`: das Web-Frontend ist
-  no-build/zero-dep (PROF-WEB-01), es gibt keine maschinenlesbare Web-Version
-  (die Studio-Historie lebt im `CHANGELOG.md`). Die einzige versionierte native
-  Artefakt-Quelle ist `macos/packaging/Info.plist`; `scripts/bump-version.sh`
-  hält dort `CFBundleShortVersionString` + `CFBundleVersion` self-consistent. Es
-  gibt keinen zweiten Versionsort, daher entfällt die package.json-Synchronisation.
+- **PROF-NAT-02** *(adaptiert)* — Kein `package.json`: das Web-Frontend ist no-build/zero-dep (PROF-WEB-01), es gibt keine maschinenlesbare Web-Version (die Studio-Historie lebt im `CHANGELOG.md`). Die einzige versionierte native Artefakt-Quelle ist `macos/packaging/Info.plist`; `scripts/bump-version.sh` hält dort `CFBundleShortVersionString` + `CFBundleVersion` self-consistent. Es gibt keinen zweiten Versionsort, daher entfällt die package.json-Synchronisation.
 - **image-budget (assets/hero.png)** *(bewusste Ausnahme)* — `hero.png` ist 1200×630, weil `index.html` es als `og:image` mit dieser Größe ausweist, und liegt damit bei ~563 KB über dem 400-KB-Budget (verlustfrei gemessen: 832 → 576 KB mit `oxipng -o max -Z`, mehr gibt das Rauschen nicht her). Die sechs Galeriebilder liegen unter dem Budget (560 px, `oxipng` im Render-Skript). Der Linter wiegt `assets/` heute nicht (`_images_dir()`); sobald er es tut, meldet er `hero.png` — dann ist diese Zeile der Grund.
-- **PROF-WEB-04** *(N/A)* — Die installierbare PWA hat bewusst **keinen**
-  Service-Worker / Offline-Cache; es existiert keine SW-Cache-Version zum Bumpen.
-
-### Erledigte Konventions-Punkte (vormals offen)
-
-- [x] CORE-META-08 — `LICENSE-DOCS` (CC BY-SA 4.0) für Text/Doku angelegt.
-- [x] CORE-GIT-01 — GitHub-Mirror-Remote (`github`) eingerichtet.
-- [x] CORE-AGENT-01 — Kanonisches Sektions-Skelett (diese Datei).
-- [x] PROF-WEB-03 — `node --check`-Syntax-Gate (`scripts/check-syntax.mjs`) + CI-Step.
-- [x] PROF-NAT-02 — `scripts/bump-version.sh` (siehe Abweichung oben).
-- [x] PROF-NAT-03 — `docs/MACOS-APP.md` (Signing/Notarization/Gatekeeper).
-
-## Extension roadmap (nice-to-have)
-
-Shipped since the original roadmap: gradient editor (custom color stops),
-tileable noise, per-channel noise, flow field, domain warp, mask + layers, the
-`<perlin-noise>` Web Component, and the macOS companion app. Still open ideas
-(sync with the maintainer first on scope/approach):
-
-- GIF export (`gif.js`, ~12 KB)
-- Obsidian plugin port
+- **PROF-WEB-04** *(N/A)* — Die installierbare PWA hat bewusst **keinen** Service-Worker / Offline-Cache; es existiert keine SW-Cache-Version zum Bumpen.
