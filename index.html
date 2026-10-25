@@ -159,6 +159,7 @@
             <option value="gradient">Gradient · preset</option>
             <option value="hsv">HSV · hue from noise</option>
             <option value="posterize">Posterize · steps + gradient</option>
+            <option value="cosine">Cosine · a + b·cos(2π(c·t+d))</option>
             <option value="flow">Flow · gradient direction</option>
           </select>
         </label>
@@ -210,6 +211,28 @@
           <label>hue range<input type="range" id="p-hue-range" min="0" max="1" step="0.01" value="0.6"></label>
           <label>saturation<input type="range" id="p-sat" min="0" max="1" step="0.05" value="0.8"></label>
           <label>value<input type="range" id="p-val" min="0" max="1" step="0.05" value="1"></label>
+        </div>
+
+        <!-- Cosine-specific -->
+        <div class="color-section" data-for="cosine" hidden>
+          <label>Palette
+            <select id="p-cos-preset">
+              <option value="rainbow" selected>Rainbow</option>
+              <option value="dusk">Dusk</option>
+              <option value="rose">Rose</option>
+              <option value="citrus">Citrus</option>
+              <option value="peach">Peach</option>
+              <option value="neon">Neon</option>
+              <option value="coral">Coral</option>
+              <option value="custom">Custom …</option>
+            </select>
+          </label>
+          <div class="gradient-preview-wrap"><div class="gradient-preview" id="p-cos-preview"></div></div>
+          <p class="sec-hint">colour = a + b·cos(2π(c·t + d)), one value each for R, G, B. After Inigo Quilez.</p>
+          <div class="cos-row"><span class="cos-key">a · base</span><div class="grid-3"><input type="number" step="0.05" id="p-cos-a-0" aria-label="a · base R"><input type="number" step="0.05" id="p-cos-a-1" aria-label="a · base G"><input type="number" step="0.05" id="p-cos-a-2" aria-label="a · base B"></div></div>
+          <div class="cos-row"><span class="cos-key">b · amplitude</span><div class="grid-3"><input type="number" step="0.05" id="p-cos-b-0" aria-label="b · amplitude R"><input type="number" step="0.05" id="p-cos-b-1" aria-label="b · amplitude G"><input type="number" step="0.05" id="p-cos-b-2" aria-label="b · amplitude B"></div></div>
+          <div class="cos-row"><span class="cos-key">c · frequency</span><div class="grid-3"><input type="number" step="0.05" id="p-cos-c-0" aria-label="c · frequency R"><input type="number" step="0.05" id="p-cos-c-1" aria-label="c · frequency G"><input type="number" step="0.05" id="p-cos-c-2" aria-label="c · frequency B"></div></div>
+          <div class="cos-row"><span class="cos-key">d · phase</span><div class="grid-3"><input type="number" step="0.05" id="p-cos-d-0" aria-label="d · phase R"><input type="number" step="0.05" id="p-cos-d-1" aria-label="d · phase G"><input type="number" step="0.05" id="p-cos-d-2" aria-label="d · phase B"></div></div>
         </div>
 
         <!-- Flow-specific -->

@@ -57,6 +57,10 @@ const cases = [
   // A posterize band edge is a step function: a pixel whose noise value sits within float32
   // rounding of an edge may land in the neighbouring band (a large jump, on a handful of
   // pixels). The case therefore passes only if every such pixel really is at a band edge.
+  ["cosine rainbow, linear", { colorMode: "cosine", cosineName: "rainbow" }],
+  ["cosine neon (c = 2, 1, 0), loop", { colorMode: "cosine", cosineName: "neon", loop: true, loopProgress: 0.3 }],
+  ["cosine coral with layer 2", { colorMode: "cosine", cosineName: "coral", layer2On: true, layer2Mix: 0.5, layer2Base: 3, layer2ScaleX: 0.07, layer2ScaleY: 0.07 }],
+  ["cosine custom parameters", { colorMode: "cosine", cosine: { a: [0.2, 0.6, 0.9], b: [0.8, 0.3, 0.1], c: [3.0, 0.5, 1.5], d: [-0.4, 0.7, 0.05] } }],
   ["posterize 5, linear", { colorMode: "posterize", posterizeSteps: 5, gradient: "viridis" }, { bandEdges: true }],
   ["high octaves, large scale", { octaves: 10, scaleX: 1.7, scaleY: 1.7, persistence: 0.6 }],
   ...["multiply", "add", "screen", "darken", "lighten", "difference"].map((m) => [
@@ -88,6 +92,7 @@ const out = await page.evaluate(({ cases, base, MAX_LEVEL, MAX_FRAC }) => {
   function both(params) {
     const p = Object.assign({}, base, params);
     if (typeof p.gradient === "string") p.gradient = G[p.gradient];
+    if (p.colorMode === "cosine" && !p.cosine) p.cosine = window.MTPerlinPresets.COSINE_PALETTES[p.cosineName];
     const cpu = mk(p.width, p.height), gpu = mk(p.width, p.height);
     window.MTPerlin.generatePerlinImage(p, cpu);
     const supported = gl.supports(p);

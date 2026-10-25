@@ -596,6 +596,33 @@ const EX = global.window.MTPerlinExport;
   ok("compositeOverColor is pure", inp[0] === 9 && inp[3] === 100);
 }
 
+// ----- J: cosine palette colour mode -----
+{
+  const P = global.window.MTPerlinPresets;
+  const pal = P.COSINE_PALETTES;
+  ok("seven cosine palettes", Object.keys(pal).length === 7, "got " + Object.keys(pal).length);
+
+  // Quilez' first palette is a + b*cos(2pi(c*t+d)) with these numbers; at t = 0 the red channel is
+  // 0.5 + 0.5*cos(0) = 1 and the blue channel 0.5 + 0.5*cos(2pi*0.67).
+  const r = P.resolveParams({ colorMode: "cosine", cosineName: "rainbow" });
+  ok("resolveParams injects the named cosine palette", r.cosine && r.cosine.d[1] === 0.33);
+  const c0 = MT.colorize(0, r);
+  const wantB = Math.round(255 * (0.5 + 0.5 * Math.cos(Math.PI * 2 * 0.67)));
+  ok("cosine t=0: red is full", c0[0] === 255, "got " + c0[0]);
+  ok("cosine t=0: blue follows the formula", c0[2] === wantB, "got " + c0[2] + " want " + wantB);
+  ok("cosine honours explicit parameters over the name",
+    P.resolveParams({ colorMode: "cosine", cosineName: "neon", cosine: pal.coral }).cosine === pal.coral);
+  ok("cosine falls back to rainbow for an unknown name",
+    P.resolveParams({ colorMode: "cosine", cosineName: "nope" }).cosine === pal.rainbow);
+
+  // c = 1 per channel makes the palette cycle exactly over [0, 1]: t=0 and t=1 give the same colour.
+  const cyc = MT.colorize(1, r);
+  ok("cosine with integer c closes the cycle (t=0 equals t=1)", cyc[0] === c0[0] && cyc[1] === c0[1] && cyc[2] === c0[2]);
+  // Output is clamped into 0..255 whatever the parameters.
+  const wild = MT.colorize(0.37, { colorMode: "cosine", cosine: { a: [2, -2, 0.5], b: [3, 3, 0], c: [1, 1, 1], d: [0, 0, 0] } });
+  ok("cosine output is clamped to 0..255", wild.every((v) => v >= 0 && v <= 255 && Number.isInteger(v)), JSON.stringify(wild));
+}
+
 console.log("");
 if (failed === 0) {
   console.log("smoke tests: all passed");

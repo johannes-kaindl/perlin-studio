@@ -13,6 +13,20 @@
 (function (root) {
   "use strict";
 
+  // ============= COSINE PALETTES =============
+  // color(t) = a + b·cos(2π(c·t + d)), per channel. The seven parameter sets are the examples of
+  // Inigo Quilez' "Simple color palettes" (iquilezles.org/articles/palettes; his code snippets are
+  // MIT). Names are ours, from how the ramps look.
+  const COSINE_PALETTES = {
+    rainbow: { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1.0, 1.0, 1.0], d: [0.00, 0.33, 0.67] },
+    dusk:    { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1.0, 1.0, 1.0], d: [0.00, 0.10, 0.20] },
+    rose:    { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1.0, 1.0, 1.0], d: [0.30, 0.20, 0.20] },
+    citrus:  { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1.0, 1.0, 0.5], d: [0.80, 0.90, 0.30] },
+    peach:   { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [1.0, 0.7, 0.4], d: [0.00, 0.15, 0.20] },
+    neon:    { a: [0.5, 0.5, 0.5], b: [0.5, 0.5, 0.5], c: [2.0, 1.0, 0.0], d: [0.50, 0.20, 0.25] },
+    coral:   { a: [0.8, 0.5, 0.4], b: [0.2, 0.4, 0.2], c: [2.0, 1.0, 1.0], d: [0.00, 0.25, 0.25] },
+  };
+
   // ============= GRADIENTS =============
   const GRADIENTS = {
     viridis: [
@@ -199,11 +213,16 @@
         p.gradient = GRADIENTS[p.gradientName] || GRADIENTS.viridis;
       }
     }
+    if (mode === "cosine") {
+      const q = p.cosine;
+      const hasPalette = q && ["a", "b", "c", "d"].every((k) => Array.isArray(q[k]) && q[k].length >= 3);
+      if (!hasPalette) p.cosine = COSINE_PALETTES[p.cosineName] || COSINE_PALETTES.rainbow;
+    }
     return p;
   }
 
-  root.MTPerlinPresets = { GRADIENTS, BUILTIN_PRESETS, resolveParams };
+  root.MTPerlinPresets = { GRADIENTS, COSINE_PALETTES, BUILTIN_PRESETS, resolveParams };
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { GRADIENTS, BUILTIN_PRESETS, resolveParams };
+    module.exports = { GRADIENTS, COSINE_PALETTES, BUILTIN_PRESETS, resolveParams };
   }
 })(typeof window !== "undefined" ? window : globalThis);

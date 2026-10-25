@@ -7,6 +7,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Cosine colour mode** (web) — a new colour mode `cosine`: `a + b·cos(2π(c·t+d))` per channel, seven built-in palettes (rainbow, dusk, rose, citrus, peach, neon, coral, after Inigo Quilez' *Simple color palettes*) and an editor for the twelve numbers with a live preview. Works on both renderers (the parity gate covers it); the native macOS and iOS apps do not know the mode yet and treat it as an unknown mode (they fall back to the gradient mode).
 - **GPU renderer (WebGL2)** (web) — new `perlin-gl.js` and a *Renderer* select
   in the studio (CPU · worker / GPU · WebGL2, remembered per browser, CPU stays
   the default). The fragment shader is a line-by-line port of the maths in

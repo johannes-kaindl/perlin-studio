@@ -22,7 +22,7 @@
 // Gradients + built-in presets live in the shared perlin-presets.js module so
 // the <perlin-noise> element resolves them identically. (Loaded before this
 // script in index.html.)
-const { GRADIENTS, BUILTIN_PRESETS } = window.MTPerlinPresets;
+const { GRADIENTS, COSINE_PALETTES, BUILTIN_PRESETS } = window.MTPerlinPresets;
 
 // ============= STATE =============
 // Custom gradient — survives switches between named presets and "Custom"
@@ -96,6 +96,9 @@ const els = {
   // Color mode
   colorMode: $("p-color-mode"),
   backend: $("p-backend"),
+  cosPreset: $("p-cos-preset"),
+  cosPreview: $("p-cos-preview"),
+  cosInputs: Object.fromEntries(["a", "b", "c", "d"].map((k) => [k, [0, 1, 2].map((i) => $(`p-cos-${k}-${i}`))])),
   btnCustomPalette: $("btn-custom-palette"),
   // rgb
   rs: $("p-rs"), gs: $("p-gs"), bs: $("p-bs"),
@@ -275,6 +278,9 @@ function gatherParams() {
     base.gradient = (name === "custom")
       ? state.customStops.map(s => ({ pos: s.pos, color: s.color.slice() }))
       : (GRADIENTS[name] || GRADIENTS.viridis);
+  } else if (colorMode === "cosine") {
+    base.cosineName = els.cosPreset.value;
+    base.cosine = readCosine();
   } else if (colorMode === "hsv") {
     base.hsvHueShift = clampFloat(els.hueShift.value, 0, 1, 0);
     base.hsvHueRange = clampFloat(els.hueRange.value, 0, 1, 0.6);
@@ -398,6 +404,13 @@ function applyParamsToUi(p) {
       }));
       renderCustomStops();
     }
+  }
+  if (p.cosineName || p.cosine) {
+    const named = p.cosineName && COSINE_PALETTES[p.cosineName];
+    els.cosPreset.value = named ? p.cosineName : "custom";
+    const pal = p.cosine || named;
+    if (pal) writeCosine(pal);
+    updateCosinePreview();
   }
   if (p.hsvHueShift != null) els.hueShift.value = p.hsvHueShift;
   if (p.hsvHueRange != null) els.hueRange.value = p.hsvHueRange;
@@ -632,6 +645,36 @@ function updateGradientPreview() {
   const mode = els.colorMode.value;
   const name = mode === "posterize" ? els.posterGradient.value : els.gradientPreset.value;
   els.customStopsWrap.hidden = !((mode === "gradient" || mode === "posterize") && name === "custom");
+}
+
+// ---- Cosine palette (a + b·cos(2π(c·t + d)), see perlin.js colorize) ----
+const COS_LIMITS = { a: [-2, 3], b: [-2, 3], c: [0, 8], d: [-2, 2] };
+const COS_DEFAULT = COSINE_PALETTES.rainbow;
+function readCosine() {
+  const out = {};
+  for (const k of ["a", "b", "c", "d"]) {
+    const [lo, hi] = COS_LIMITS[k];
+    out[k] = els.cosInputs[k].map((el, i) => clampFloat(el.value, lo, hi, COS_DEFAULT[k][i]));
+  }
+  return out;
+}
+function writeCosine(pal) {
+  for (const k of ["a", "b", "c", "d"]) {
+    els.cosInputs[k].forEach((el, i) => { el.value = pal[k][i]; });
+  }
+}
+function updateCosinePreview() {
+  const pal = readCosine();
+  const stops = [];
+  for (let s = 0; s <= 24; s++) {
+    const t = s / 24;
+    const rgb = [0, 1, 2].map((i) => {
+      const v = pal.a[i] + pal.b[i] * Math.cos(Math.PI * 2 * (pal.c[i] * t + pal.d[i]));
+      return Math.round(Math.max(0, Math.min(1, v)) * 255);
+    });
+    stops.push(`rgb(${rgb.join(",")}) ${(t * 100).toFixed(1)}%`);
+  }
+  els.cosPreview.style.background = `linear-gradient(to right, ${stops.join(", ")})`;
 }
 
 // ---- Custom gradient editor ----
@@ -1302,6 +1345,20 @@ function wireEvents() {
     updateGradientPreview();
     schedulePreview();
   });
+  els.cosPreset.addEventListener("change", () => {
+    if (els.cosPreset.value !== "custom") writeCosine(COSINE_PALETTES[els.cosPreset.value]);
+    updateCosinePreview();
+    schedulePreview();
+  });
+  for (const k of ["a", "b", "c", "d"]) {
+    for (const el of els.cosInputs[k]) {
+      el.addEventListener("input", () => {
+        els.cosPreset.value = "custom";
+        updateCosinePreview();
+        schedulePreview();
+      });
+    }
+  }
   els.gradientPreset.addEventListener("change", () => {
     updateGradientPreview();
     schedulePreview();
@@ -1438,6 +1495,8 @@ function initThemeToggle() {
   updateColorSections();
   renderCustomStops();
   updateGradientPreview();
+  writeCosine(COSINE_PALETTES.rainbow);
+  updateCosinePreview();
   updateLoopMode();
   attachRangeReadouts();
   updateLayer2Mode();

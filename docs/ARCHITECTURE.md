@@ -600,8 +600,8 @@ If none is supported, recording aborts with an error.
 
 ## Color modes
 
-`colorize(n, params)` maps a noise value `n ∈ [0, 1]` to RGB. Five
-variants — `rgb`, `gradient`, `hsv`, `posterize`, `flow`. Two of
+`colorize(n, params)` maps a noise value `n ∈ [0, 1]` to RGB. Six
+variants — `rgb`, `gradient`, `hsv`, `posterize`, `cosine`, `flow`. Two of
 them (`rgb` with per-channel toggle, and `flow`) take **more than
 one noise sample per pixel**, so the render loop branches on the
 mode before calling the appropriate helper.
@@ -672,6 +672,15 @@ Reduces the noise to a few discrete levels, yielding cartoon-like
 effects. Great for terrain height maps and stylisation. Uses the
 same gradient palettes as the `gradient` mode (including custom
 stops).
+
+### `cosine` — a + b·cos(2π(c·n + d))
+
+```
+colour[k] = a[k] + b[k] · cos(2π · (c[k] · n + d[k])),   k = R, G, B
+output    = clamp(round(colour · 255), 0, 255)
+```
+
+A whole colour ramp from four 3-vectors, no stop list (Inigo Quilez, "Simple color palettes"; his code snippets are MIT). `params.cosine = { a, b, c, d }` holds the numbers; `params.cosineName` selects one of seven built-in sets (`COSINE_PALETTES` in `perlin-presets.js`: rainbow, dusk, rose, citrus, peach, neon, coral), and `resolveParams` injects the numbers for a name without explicit ones. With integer `c` the ramp closes its cycle exactly (`n = 0` and `n = 1` give the same colour). The branch is plain `Math` inside `colorize`, so the worker gets it through `colorize.toString()` unchanged, and the GPU renderer mirrors it (`uMode == 4`). The native macOS and iOS apps do not know this mode yet (`Preset.colorModeIndex` maps an unknown mode to gradient).
 
 ### `flow` — gradient direction
 
@@ -863,6 +872,7 @@ The current battery (46 assertions):
 | H0. Layer blends | Each of the six blend modes (`multiply`, `add`, `screen`, `darken`, `lighten`, `difference`) gives the right algebra at known sample points; unknown mode falls back to `n1` |
 | H1. Layer render path | `layer2On=false` is bit-identical to the un-layered baseline; `layer2On=true, mix=1` diverges; `layer2On=true, mix=0` short-circuits back to the baseline |
 | H. Image mask | Per-pixel alpha modulation matches the byte-arithmetic spec; invert flips via `255 − mask`; RGB channels untouched |
+| J. cosine palette | Seven built-in palettes; the name resolves to numbers, explicit numbers win, an unknown name falls back to rainbow; `t = 0` follows the formula; integer `c` closes the cycle; output is clamped to 0–255 |
 | I. resolveParams | Named gradient → concrete stops (gradient + posterize); explicit custom stops preserved; non-gradient modes get no gradient; input not mutated; unknown name → viridis; a built-in preset resolves to renderable params |
 
 The pattern is "regression guard plus sanity guard" — for every

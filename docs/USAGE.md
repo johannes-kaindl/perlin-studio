@@ -19,6 +19,7 @@ behind the curtain see [ARCHITECTURE](ARCHITECTURE.md).
    - [Gradient · preset (and custom hex palettes)](#gradient--preset)
    - [HSV · hue from noise](#hsv--hue-from-noise)
    - [Posterize · steps + gradient](#posterize--steps--gradient)
+   - [Cosine · a + b·cos(2π(c·t+d))](#cosine--a--bcos2πct--d)
    - [Flow · gradient direction](#flow--gradient-direction)
 6. [05 · Loop](#05--loop)
 7. [06 · Layer 2](#06--layer-2)
@@ -438,6 +439,15 @@ Gradient preset  — any palette (Custom … included)
 
 The noise is quantised to N equal steps, then mapped onto the gradient —
 cartoon-like banding, great for terrain height-maps and stylised effects.
+
+### Cosine · a + b·cos(2π(c·t+d))
+
+```
+Palette  — seven ready-made ramps (Rainbow, Dusk, Rose, Citrus, Peach, Neon, Coral) or Custom …
+a, b, c, d — three numbers each (R, G, B)
+```
+
+A colour ramp from a formula instead of a list of stops: each channel is `a + b·cos(2π(c·t + d))`, with `t` the noise value. `a` is the base brightness, `b` the swing, `c` how often the channel cycles over the ramp and `d` where it starts. Whole numbers for `c` make the ramp close its cycle (the lowest and highest noise values get the same colour). Editing any number switches the palette to Custom; the strip above the numbers previews the ramp. The idea and the seven starting sets are from Inigo Quilez' article *Simple color palettes*.
 
 ### Flow · gradient direction
 

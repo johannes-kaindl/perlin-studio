@@ -21,6 +21,7 @@
  *   - `"gradient"`  color stops `[{pos:0..1, color:[r,g,b]}, ...]`, linearly interpolated
  *   - `"hsv"`       noise → hue, hsvSat/hsvVal as constants
  *   - `"posterize"` noise quantised to N steps, then mapped onto a gradient
+ *   - `"cosine"`    a + b·cos(2π(c·n + d)) per channel, `params.cosine = {a,b,c,d}` (three numbers each)
  *
  * Animation loop (`params.loop = true`):
  *   Instead of running linearly through the time axis, the 4D noise traces a
@@ -480,6 +481,20 @@
       const steps = Math.max(2, p.posterizeSteps || 5);
       const quantized = Math.floor(n * steps) / (steps - 1);
       return gradientLookup(p.gradient || [], Math.min(1, quantized));
+    }
+    if (mode === "cosine") {
+      // Inigo Quilez' cosine palette (iquilezles.org/articles/palettes, code snippets MIT):
+      // four 3-vectors give a whole colour ramp, no stop list. Kept inline (Math only) so
+      // colorize.toString() carries it into the worker unchanged.
+      const q = p.cosine || {};
+      const a = q.a || [0.5, 0.5, 0.5], b = q.b || [0.5, 0.5, 0.5];
+      const c = q.c || [1, 1, 1], d = q.d || [0, 0.33, 0.67];
+      const out = [0, 0, 0];
+      for (let k = 0; k < 3; k++) {
+        const v = a[k] + b[k] * Math.cos(Math.PI * 2 * (c[k] * n + d[k]));
+        out[k] = Math.max(0, Math.min(255, Math.round(v * 255)));
+      }
+      return out;
     }
     return [0, 0, 0];
   }

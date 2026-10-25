@@ -53,10 +53,11 @@ live preview updates after every input.
   persistence, lacunarity, seed)
 - **Low-resolution "pixel" look** — a small Width/Height upscales into
   crisp pixel blocks for a deliberate retro / Minecraft feel
-- **Five color modes**: RGB (per channel, with optional per-channel
+- **Six color modes**: RGB (per channel, with optional per-channel
   multi-sample for nebula / film-grain looks), Gradient (8 presets + a
   custom-stops editor with per-stop hex input and paste-a-palette), HSV,
-  Posterize, Flow (renders the noise as a vector field — hue = local
+  Posterize, Cosine (seven palettes after Inigo Quilez, `a + b·cos(2π(c·t+d))`,
+  fully editable), Flow (renders the noise as a vector field — hue = local
   gradient direction)
 - **Domain warping** — pre-displaces the sample point by a smoother
   noise field. Switches Perlin output from "Perlin" to marble veins,

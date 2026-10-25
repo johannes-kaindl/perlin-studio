@@ -4,7 +4,7 @@
  * A port of the CPU maths in perlin.js, not a new noise: the shader reads the
  * same seeded permutation table (a 512x2 texture) and the same 32 gradients, and
  * mirrors perlin3/perlin4, fBm, domain warp, tiling, layer 2 and the
- * rgb / gradient / hsv / posterize colour modes line by line. The same preset
+ * rgb / gradient / hsv / posterize / cosine colour modes line by line. The same preset
  * therefore renders the same image on both engines, up to float32 against
  * float64 (scripts/check-gl-parity.mjs measures the difference).
  *
@@ -31,7 +31,7 @@
   const MAX_STOPS = 16;
   const MAX_OCTAVES = 12;
   const BLEND_MODES = { multiply: 0, add: 1, screen: 2, darken: 3, lighten: 4, difference: 5 };
-  const COLOR_MODES = { rgb: 0, gradient: 1, hsv: 2, posterize: 3 };
+  const COLOR_MODES = { rgb: 0, gradient: 1, hsv: 2, posterize: 3, cosine: 4 };
 
   // GRAD4 is the table from perlin.js (Ken Perlin's reference), written as GLSL.
   const FRAG = `#version 300 es
@@ -56,6 +56,7 @@ uniform float uMix;
 uniform int   uMode;
 uniform vec3  uRgbScale, uRgbInvert;
 uniform vec4  uHsv;           // shift, range, sat, val
+uniform vec3  uCosA, uCosB, uCosC, uCosD;   // cosine palette: a + b*cos(2pi(c*n + d))
 uniform int   uSteps;
 uniform int   uStopN;
 uniform float uStopPos[${MAX_STOPS}];
@@ -262,6 +263,7 @@ vec3 colorize(float n) {
   }
   if (uMode == 1) return gradientLookup(n);
   if (uMode == 2) return hsvToRgb(mod(uHsv.x + n * uHsv.y, 1.0), uHsv.z, uHsv.w);
+  if (uMode == 4) return clamp(uCosA + uCosB * cos(6.28318530718 * (uCosC * n + uCosD)), 0.0, 1.0);
   float steps = float(uSteps);
   return gradientLookup(min(1.0, floor(n * steps) / (steps - 1.0)));
 }
@@ -426,6 +428,12 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }`;
         gl.uniform3f(U("uRgbInvert"), p.rInvert ? 1 : 0, p.gInvert ? 1 : 0, p.bInvert ? 1 : 0);
       } else if (mode === "hsv") {
         gl.uniform4f(U("uHsv"), p.hsvHueShift ?? 0, p.hsvHueRange ?? 1, p.hsvSat ?? 0.8, p.hsvVal ?? 1.0);
+      } else if (mode === "cosine") {
+        const q = p.cosine || {};
+        gl.uniform3fv(U("uCosA"), q.a || [0.5, 0.5, 0.5]);
+        gl.uniform3fv(U("uCosB"), q.b || [0.5, 0.5, 0.5]);
+        gl.uniform3fv(U("uCosC"), q.c || [1, 1, 1]);
+        gl.uniform3fv(U("uCosD"), q.d || [0, 0.33, 0.67]);
       } else {
         const stops = p.gradient || [];
         const pos = new Float32Array(MAX_STOPS), col = new Float32Array(MAX_STOPS * 3);
