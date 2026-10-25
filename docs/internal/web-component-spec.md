@@ -280,5 +280,5 @@ workspace. If so, hand the QA checklist to the maintainer to run locally.
 ## Documentation touch-list
 
 `CHANGELOG.md` (new feature), `README.md` (roadmap tick + embedding section),
-`docs/ARCHITECTURE.md` (the five-layer split + engine/element), `docs/USAGE.md`
+`docs/explanation/architecture.md` (the five-layer split + engine/element), `docs/how-to/embed-in-a-web-page.md`
 (embedding usage), `AGENTS.md` (file-layout table + element notes).

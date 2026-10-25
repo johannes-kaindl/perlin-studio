@@ -55,7 +55,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
   a complete look on click (hold Option to remove). Stored as UUID-named JSON
   under Application Support.
   Separate artifact — the zero-build, `file://`-safe web studio is unchanged.
-  See `macos/README.md` and the design specs under `docs/superpowers/specs/`.
+  See `macos/README.md` and the design specs that were under `docs/superpowers/specs/` (moved out of the repo on 2026-10-26; see the git history).
 - **Live Photo export** (macOS app) — "Export Live Photo…" renders the current
   preset to an Apple Live Photo (HEIC still + paired H.264 `.mov` with the
   QuickTime content-identifier + still-image-time markers) and adds it to Photos

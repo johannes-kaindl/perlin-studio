@@ -21,10 +21,10 @@ developers prototyping textures.
 
 - **Live demo:** https://pages.jkaindl.de/perlin-studio/
 - **Repo:** https://git.jkaindl.de/jkaindl/perlin-studio
-- **Hero image (current render output):** [`assets/hero.png`](../assets/hero.png)
-- **Gallery (current render output):** [`assets/gallery-*.png`](../assets/)
-- **Full user guide (every control explained):** [`docs/USAGE.md`](USAGE.md)
-- **Technical architecture (not relevant for design, but linked for completeness):** [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)
+- **Hero image (current render output):** [`assets/hero.png`](../../assets/hero.png)
+- **Gallery (current render output):** [`assets/gallery-*.png`](../../assets/)
+- **Full user guide (every control explained):** [`docs/reference/controls.md`](../reference/controls.md)
+- **Technical architecture (not relevant for design, but linked for completeness):** [`docs/explanation/architecture.md`](../explanation/architecture.md)
 
 ---
 

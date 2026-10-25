@@ -143,8 +143,8 @@ linkable from the [live demo](https://pages.jkaindl.de/perlin-studio/)
 
 ## Usage
 
-Full reference of every parameter and control:
-**[docs/USAGE.md](docs/USAGE.md)**.
+New here? Start with **[Getting started](docs/tutorials/getting-started.md)**.
+Every parameter and control: **[control reference](docs/reference/controls.md)**.
 
 Short version of the most important controls:
 
@@ -196,7 +196,7 @@ Main thread (UI)              Web Worker
 ```
 
 Full technical docs (math, pipeline, edge cases):
-**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+**[docs/explanation/architecture.md](docs/explanation/architecture.md)**.
 
 ## No build step
 
@@ -256,9 +256,12 @@ animation smooth even at low resolutions.
 ├── assets/                # static assets (favicon, PWA icons, README images)
 ├── examples/
 │   └── embed.html         # <perlin-noise> embedding demo
-├── docs/
-│   ├── ARCHITECTURE.md    # technical docs
-│   ├── USAGE.md           # full user guide
+├── docs/                  # documentation, see docs/README.md (Diátaxis)
+│   ├── tutorials/         # getting started
+│   ├── how-to/            # task guides, troubleshooting
+│   ├── reference/         # controls, colour modes, preset format, element
+│   ├── explanation/       # architecture, design choices
+│   ├── internal/          # notes for contributors and agents
 │   └── examples/          # rendered WebM loops (for README + embedding)
 ├── scripts/
 │   ├── render-readme-images.js  # renders assets/*.png from perlin.js
@@ -273,6 +276,15 @@ animation smooth even at low resolutions.
 ├── SECURITY.md            # threat model + reporting
 └── AGENTS.md              # context file for AI assistants
 ```
+
+## Documentation
+
+The documentation is split by what you need it for ([index](docs/README.md)):
+
+- **Learn:** [Getting started](docs/tutorials/getting-started.md) — from opening the studio to a looping video.
+- **Do:** [how-to guides](docs/README.md#how-to-guides) for exporting, palettes, masks, embedding and installing, and [Troubleshooting](docs/how-to/troubleshooting.md).
+- **Look up:** the [control reference](docs/reference/controls.md), [colour modes](docs/reference/colour-modes.md), [preset format](docs/reference/preset-format.md) and the [`<perlin-noise>` element](docs/reference/web-component.md).
+- **Understand:** [how the parameters shape the image](docs/explanation/how-the-parameters-shape-the-image.md), [design choices](docs/explanation/design-choices.md) and the [architecture](docs/explanation/architecture.md).
 
 ## Contributing
 

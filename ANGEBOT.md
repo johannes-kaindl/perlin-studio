@@ -60,7 +60,7 @@ What this repo gives to others, not what it can do. Required for media repos (PR
 
 ## Get it
 
-The still images and videos come from the studio itself: open the hosted copy at `https://pages.jkaindl.de/perlin-studio/` or double-click `index.html`, pick a preset or set parameters, then export. The reference loops (`docs/examples/*.webm`) and the embeddable element (`dist/perlin-noise.js`) are also served from that site, so a consumer can fetch them directly. A consumer should freeze what it takes and stamp the origin (PROF-MEDIA-02): the repo, the tag (`vX.Y.Z`), and the parameters or preset name. The native apps are built from `macos/` and `ios/`; their build guides are `docs/MACOS-APP.md` and `ios/README.md`.
+The still images and videos come from the studio itself: open the hosted copy at `https://pages.jkaindl.de/perlin-studio/` or double-click `index.html`, pick a preset or set parameters, then export. The reference loops (`docs/examples/*.webm`) and the embeddable element (`dist/perlin-noise.js`) are also served from that site, so a consumer can fetch them directly. A consumer should freeze what it takes and stamp the origin (PROF-MEDIA-02): the repo, the tag (`vX.Y.Z`), and the parameters or preset name. The native apps are built from `macos/` and `ios/`; their build guides are `docs/how-to/install-the-macos-app.md` and `ios/README.md`.
 
 ## What it is not
 

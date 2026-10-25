@@ -1,6 +1,6 @@
 # Architecture
 
-In-depth technical documentation. Read the [README](../README.md) first
+In-depth technical documentation. Read the [README](../../README.md) first
 for the broad overview.
 
 ## Contents
@@ -364,7 +364,7 @@ bypassed) when:
 
 Both restrictions live in `generatePerlinImage` and the worker
 source as `!isFlow && !isMulti` in the `isLayer` predicate. The
-USAGE doc surfaces the restriction in the Layer 2 section hint.
+control reference surfaces the restriction in the Layer 2 section hint.
 
 ### Smoke guarantees
 

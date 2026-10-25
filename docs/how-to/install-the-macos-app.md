@@ -7,7 +7,7 @@ signing/notarizing for distribution, and how an end user opens it past
 Gatekeeper.
 
 For *what the app does* and how it relates to the studio, see
-[`macos/README.md`](../macos/README.md).
+[`macos/README.md`](../../macos/README.md).
 
 ## Build & run (from source)
 

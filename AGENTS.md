@@ -26,9 +26,10 @@ Zero-dependency / no-build is a **deliberate feature** (PROF-WEB-01): the tool m
 - Before reading or changing `perlin*.js` (the GLSL port `perlin-gl.js` included) or `scripts/smoke-test.js`: read `.claude/rules/perlin-core.md` (math bug classes, animation step, worker rules, GPU parity). It also loads by itself in Claude Code.
 - Before adding or moving a file, or when a term is unclear (fBm, loopProgress, safeProgress, scaleT): read `docs/internal/architecture.md` (module layering, file layout, glossary).
 - Before asking why something is the way it is (zero-dep, deploy guards, `v` tag prefix, hero.png over budget, single remote): read `docs/internal/decisions.md`.
-- Before changing the math, the worker pipeline or the loop mechanics: read `docs/ARCHITECTURE.md`.
-- Before changing the UI: read `docs/UI-SPEC.md`; for the embeddable element: `docs/WEB-COMPONENT-SPEC.md`.
-- Before a macOS or iOS release or notarization: read `docs/MACOS-APP.md`, `macos/README.md`, `ios/README.md`.
+- Before changing the math, the worker pipeline or the loop mechanics: read `docs/explanation/architecture.md`.
+- Before changing the UI: read `docs/internal/ui-spec.md`; for the embeddable element: `docs/internal/web-component-spec.md`.
+- Before a macOS or iOS release or notarization: read `docs/how-to/install-the-macos-app.md`, `macos/README.md`, `ios/README.md`.
+- Before writing or moving user documentation: read `docs/README.md` (the Diátaxis index: tutorial, how-to, reference, explanation — a page belongs in exactly one).
 - Before changing what the repo delivers (export formats, example loops, the standalone bundle): read `ANGEBOT.md`.
 
 ## Commands
@@ -61,7 +62,7 @@ There is **no full test suite**. Instead:
 - **Project memory:** `~/.claude/projects/-Users-johannes-Projects-jkaindl-apps-perlin-studio/memory/MEMORY.md` — the index loaded each session (CORE-AGENT-02).
 - **Coding-Cockpit (SSOT):** `$VAULT/25_Coding/perlin-studio/perlin-studio.md` (CORE-META-14, maintainer-local; `$VAULT` = the maintainer's Obsidian vault) — status · tasks · decisions · history. Specs, plans and task reports live in its `_SDD/`, not in the repo.
 - **Session handoff:** `.remember/` (gitignored, CORE-AGENT-03).
-- **Legacy stock:** `docs/superpowers/{specs,plans}/` is frozen — do not add new specs or plans there.
+- **Specs, plans and design briefs** live in the cockpit `_SDD/`, never in `docs/` (the old `docs/superpowers/` and design docs moved there on 2026-10-26).
 - **Never in the repo:** absolute paths outside the repo (`/Users/…`, vault paths) — use placeholders (`$VAULT/…`, `~/…`, repo-relative).
 
 ## Abweichungen von der Leitkonvention

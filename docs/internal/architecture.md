@@ -1,6 +1,6 @@
 # Architecture notes for contributors and agents
 
-Orientation only: where things live and what the terms mean. The math, the worker pipeline and the loop mechanics are in [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+Orientation only: where things live and what the terms mean. The math, the worker pipeline and the loop mechanics are in [`../explanation/architecture.md`](../explanation/architecture.md).
 
 ## Module layering
 
@@ -41,7 +41,7 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 │   ├── deploy-page.sh          # publish committed HEAD to pages.jkaindl.de (rsync)
 │   ├── bump-version.sh         # native version bump (macos/packaging/Info.plist)
 │   ├── render-readme-images.js # renders assets/*.png from perlin.js (+ oxipng)
-│   ├── render-guide-images.js  # renders docs/images/*.png for USAGE.md
+│   ├── render-guide-images.js  # renders docs/images/*.png for the docs
 │   ├── render-readme-videos.js # renders docs/examples/*.webm (Node → ffmpeg)
 │   └── build-standalone.js     # concatenates the runtime scripts into dist/perlin-noise.js
 ├── macos/                 # native companion app (Swift + Metal); see macos/README.md
@@ -53,9 +53,8 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 │   ├── texturizer.ipynb   # Texturizer notebook
 │   └── old_texturizer_combined/   # first browser version
 ├── docs/
-│   ├── ARCHITECTURE.md    # technical docs (math, worker pipeline, loop mechanics)
-│   ├── USAGE.md           # full user guide
-│   ├── MACOS-APP.md       # native app distribution + Gatekeeper guide
+│   ├── README.md          # documentation index (Diátaxis)
+│   ├── tutorials/ how-to/ reference/ explanation/   # user documentation, one page per need
 │   ├── internal/          # architecture notes and decisions for contributors and agents
 │   └── examples/          # rendered WebM loops (for README + embedding)
 ├── .claude/rules/         # path-triggered agent rules (perlin-core.md)

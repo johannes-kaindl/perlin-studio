@@ -48,4 +48,4 @@ The generated Live Photo animates **in Photos** (long-press). It does **not**
 work as an *animated lock-screen wallpaper*: iOS gates animated Live Photo
 wallpapers to genuine camera captures (verified — even a real transplanted
 `live-photo-info` track is rejected for synthetic frames). The **still** works as
-a wallpaper. See `docs/superpowers/specs/` for the history.
+a wallpaper. The design history was in `docs/superpowers/specs/` until 2026-10-26 (see `git log -- docs/superpowers`).

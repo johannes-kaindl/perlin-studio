@@ -88,7 +88,7 @@ every studio colour mode — gradient / posterize / hsv / rgb (incl. per-channel
 ## Packaging a signed, notarized `.app`
 
 > Full distribution & Gatekeeper guide (signing, notarization, "Open Anyway"):
-> [`docs/MACOS-APP.md`](../docs/MACOS-APP.md).
+> [`docs/how-to/install-the-macos-app.md`](../docs/how-to/install-the-macos-app.md).
 
 `scripts/build-app.sh` assembles `dist/Perlin Live Wallpaper.app` (menu-bar app,
 icon from the studio art), Developer-ID signs it with the hardened runtime, and
