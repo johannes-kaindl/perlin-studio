@@ -236,7 +236,7 @@ Smooth cells · soft blobs             — a smooth minimum of the distances: me
 cell jitter (0–1)                     — 0 is a regular grid, 1 fully random inside each cell
 ```
 
-The cellular types use the same `base` seed, `scale`, `octaves`, `persistence` and `lacunarity` as Perlin, and they work with Warp, Tile, Layer 2, Relief lighting and every colour mode. Use **1–2 octaves** for clean cells; with more, the fine layers turn them to grain. They animate by letting each point circle inside its own cell, so the **Loop** closes exactly (the loop radius has no effect on them; the **Time scale** sets the speed when Loop is off). Layer 2 uses the same noise type as the main layer.
+The cellular types use the same `base` seed, `scale`, `octaves`, `persistence` and `lacunarity` as Perlin, and they work with Warp, Tile, Layer 2, Relief lighting and every colour mode. Use **1–2 octaves** for clean cells; with more, the fine layers turn them to grain. They animate by letting each point circle inside its own cell, so the **Loop** closes exactly (the loop radius has no effect on them; the **Time scale** sets the speed when Loop is off). Layer 2 uses the same noise type as the main layer. A side-by-side of the four types is in [How the parameters shape the image](../explanation/how-the-parameters-shape-the-image.md#noise-types-smooth-noise-or-cells).
 
 ---
 

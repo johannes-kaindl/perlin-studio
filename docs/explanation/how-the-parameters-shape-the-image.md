@@ -73,23 +73,25 @@ Persistence is the loudness ratio between neighbouring octaves. Low values let t
   </tr>
 </table>
 
-## The same noise in five colour modes
+## The same noise in six colour modes
 
 The colour mode only changes how the noise value becomes a colour; the field underneath is identical.
 
 <table>
   <tr>
-    <td width="20%"><img src="../images/mode-rgb.png" width="100%" alt="RGB per-channel mode"></td>
-    <td width="20%"><img src="../images/mode-gradient.png" width="100%" alt="Gradient mode (magma)"></td>
-    <td width="20%"><img src="../images/mode-hsv.png" width="100%" alt="HSV mode"></td>
-    <td width="20%"><img src="../images/mode-posterize.png" width="100%" alt="Posterize mode (ocean)"></td>
-    <td width="20%"><img src="../images/mode-flow.png" width="100%" alt="Flow vector-field mode"></td>
+    <td width="16%"><img src="../images/mode-rgb.png" width="100%" alt="RGB per-channel mode"></td>
+    <td width="16%"><img src="../images/mode-gradient.png" width="100%" alt="Gradient mode (magma)"></td>
+    <td width="16%"><img src="../images/mode-hsv.png" width="100%" alt="HSV mode"></td>
+    <td width="16%"><img src="../images/mode-posterize.png" width="100%" alt="Posterize mode (ocean)"></td>
+    <td width="16%"><img src="../images/mode-cosine.png" width="100%" alt="Cosine mode (neon palette)"></td>
+    <td width="16%"><img src="../images/mode-flow.png" width="100%" alt="Flow vector-field mode"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>RGB</b></sub></td>
     <td align="center"><sub><b>Gradient</b></sub></td>
     <td align="center"><sub><b>HSV</b></sub></td>
     <td align="center"><sub><b>Posterize</b></sub></td>
+    <td align="center"><sub><b>Cosine</b></sub></td>
     <td align="center"><sub><b>Flow</b></sub></td>
   </tr>
 </table>
@@ -106,6 +108,42 @@ Domain warping pushes each sample point by a second, smoother field before the m
   <tr>
     <td align="center"><sub><b>strength 0</b> · raw noise</sub></td>
     <td align="center"><sub><b>strength 1.8</b> · marble swirls</sub></td>
+  </tr>
+</table>
+
+## Noise types: smooth noise or cells
+
+Perlin noise is smooth; the cellular types are built from a jittered grid of points and the distance to them. The three pictures on the right share one colour mode and one seed with the Perlin picture on the left; the cellular ones use a single octave, which is what keeps the cells clean.
+
+<table>
+  <tr>
+    <td width="25%"><img src="../images/noise-perlin.png" width="100%" alt="Perlin noise in the neon cosine palette"></td>
+    <td width="25%"><img src="../images/noise-cells.png" width="100%" alt="Cells: distance to the nearest point"></td>
+    <td width="25%"><img src="../images/noise-borders.png" width="100%" alt="Borders: the cell edges"></td>
+    <td width="25%"><img src="../images/noise-smooth.png" width="100%" alt="Smooth cells: a smooth minimum, soft blobs"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Perlin</b> · 5 octaves</sub></td>
+    <td align="center"><sub><b>Cells</b> · 1 octave</sub></td>
+    <td align="center"><sub><b>Borders</b> · 1 octave</sub></td>
+    <td align="center"><sub><b>Smooth cells</b> · 1 octave</sub></td>
+  </tr>
+</table>
+
+With more octaves the fine layers turn cells into grain, so the control hint says 1–2. Every other control (scale, seed, warp, tiling, layer 2, the loop) works the same as for Perlin.
+
+## Relief lighting: a flat colour becomes a surface
+
+Relief lighting reads the noise as a height field and lights it from a direction. Flat areas keep their colour; slopes facing the light brighten and slopes facing away darken. Left: the warped field as a flat colour; right: the same field with relief lighting on.
+
+<table>
+  <tr>
+    <td width="50%"><img src="../images/relief-off.png" width="100%" alt="A warped noise field in the sunset gradient, flat colour"></td>
+    <td width="50%"><img src="../images/relief-on.png" width="100%" alt="The same field with relief lighting: folds with highlights and shadows"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>relief off</b></sub></td>
+    <td align="center"><sub><b>relief 4</b> · light from the top-left, 45°</sub></td>
   </tr>
 </table>
 

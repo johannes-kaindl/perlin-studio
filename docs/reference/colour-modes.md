@@ -121,7 +121,12 @@ Palette  — seven ready-made ramps (Rainbow, Dusk, Rose, Citrus, Peach, Neon, C
 a, b, c, d — three numbers each (R, G, B)
 ```
 
-A colour ramp from a formula instead of a list of stops: each channel is `a + b·cos(2π(c·t + d))`, with `t` the noise value. `a` is the base brightness, `b` the swing, `c` how often the channel cycles over the ramp and `d` where it starts. Whole numbers for `c` make the ramp close its cycle (the lowest and highest noise values get the same colour). Editing any number switches the palette to Custom; the strip above the numbers previews the ramp. The idea and the seven starting sets are from Inigo Quilez' article *Simple color palettes*.
+A colour ramp from a formula instead of a list of stops: each channel is `a + b·cos(2π(c·t + d))`, with `t` the noise value. `a` is the base brightness, `b` the swing, `c` how often the channel cycles over the ramp and `d` where it starts. Whole numbers for `c` make the ramp close its cycle (the lowest and highest noise values get the same colour). Editing any number switches the palette to Custom; the strip above the numbers previews the ramp. The seven built-in palettes, top to bottom: rainbow, dusk, rose, citrus, peach, neon, coral.
+
+<p align="center">
+  <img src="../images/cosine-palettes.png" width="80%" alt="The seven built-in cosine palettes as horizontal colour strips">
+</p>
+ The idea and the seven starting sets are from Inigo Quilez' article *Simple color palettes*.
 
 ### Flow · gradient direction
 
@@ -167,3 +172,14 @@ stencil ε       (0.1–4)   — pixel offset used to measure the slope
 ```
 
 Flat areas keep their colour; slopes facing the light get brighter and slopes facing away darker. Cost: three noise samples per pixel (six with Layer 2), so it is a good reason to switch the **Renderer** to GPU. It works with Warp, Tile, Layer 2 and Loop. Start with `relief 3–6`; a low `light height` with `ambient 0` gives dramatic shadows.
+
+<table>
+  <tr>
+    <td width="50%"><img src="../images/relief-off.png" width="100%" alt="A warped noise field, flat colour"></td>
+    <td width="50%"><img src="../images/relief-on.png" width="100%" alt="The same field with relief lighting"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>off</b></sub></td>
+    <td align="center"><sub><b>relief 4</b>, light from the top-left at 45°</sub></td>
+  </tr>
+</table>

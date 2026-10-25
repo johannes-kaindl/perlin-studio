@@ -6,7 +6,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-10-26
+
+### Fixed
+- The hint under the *Relief lighting* switch no longer touches the switch row.
+
 ### Changed
+- **Documentation images for the new features** — the guide images are rendered by `scripts/render-guide-images.js` and now cover the cosine colour mode and its seven palettes, the four noise types side by side and relief lighting off and on; the colour-mode comparison shows six modes.
 - **Documentation restructured after Diátaxis** — `docs/` now has a tutorial (*Getting started*), how-to guides (looping video, image and texture export, brand palettes, masks, embedding, GPU renderer, installing the PWA and the macOS app, troubleshooting), a reference (controls, colour modes and relief lighting, preset format, the `<perlin-noise>` element) and explanations (how the parameters shape the image, design choices, architecture), with an index in `docs/README.md`. The old `USAGE.md` was split across these pages and corrected (video export bakes the mask and background; six colour modes; renderer, noise type, cosine and relief documented). The superseded design documents and `docs/superpowers/` left the repository (see the git history).
 
 ## [0.18.0] — 2026-10-26

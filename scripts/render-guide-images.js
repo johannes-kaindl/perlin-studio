@@ -1,4 +1,4 @@
-// Renders the User-Guide illustration images (docs/images/*.png) from the
+// Renders the documentation illustration images (docs/images/*.png) from the
 // real render pipeline (perlin.js generatePerlinImage via a headless mock
 // ctx) so the "what does each control do" comparisons are accurate. Pure Node
 // (zlib + crc32), no external dependencies — same approach as
@@ -115,5 +115,37 @@ write("mode-gradient", { ...cbase, colorMode: "gradient", gradientName: "magma" 
 write("mode-hsv", { ...cbase, colorMode: "hsv", hsvHueShift: 0.55, hsvHueRange: 0.5, hsvSat: 0.85, hsvVal: 1.0 });
 write("mode-posterize", { ...cbase, colorMode: "posterize", posterizeSteps: 5, gradientName: "ocean" });
 write("mode-flow", { ...cbase, colorMode: "flow", flowHueShift: 0, flowSat: 0.9, flowGain: 14, flowFloor: 0.24, flowEps: 0.5 });
+
+// 7) Cosine colour mode on the same field, and the seven built-in palettes as strips
+write("mode-cosine", { ...cbase, colorMode: "cosine", cosineName: "neon" });
+{
+  const { COSINE_PALETTES } = global.window.MTPerlinPresets;
+  const names = Object.keys(COSINE_PALETTES);
+  const sw = 560, rowH = 26, gap = 4, sh = names.length * rowH + (names.length - 1) * gap;
+  const rgb = Buffer.alloc(sw * sh * 3, 20);   // dark gaps between the strips
+  names.forEach((name, row) => {
+    const p = { colorMode: "cosine", cosine: COSINE_PALETTES[name] };
+    for (let x = 0; x < sw; x++) {
+      const c = global.window.MTPerlin.colorize(x / (sw - 1), p);
+      for (let y = 0; y < rowH; y++) {
+        const i = ((row * (rowH + gap) + y) * sw + x) * 3;
+        rgb[i] = c[0]; rgb[i + 1] = c[1]; rgb[i + 2] = c[2];
+      }
+    }
+  });
+  const png = encodePng(sw, sh, rgb);
+  fs.writeFileSync(path.join(OUT, "cosine-palettes.png"), png);
+  console.log(`✓ ${"cosine-palettes".padEnd(22)} ${sw}×${sh}  ${(png.length / 1024).toFixed(1)} KB  (top to bottom: ${names.join(", ")})`);
+}
+// 8) Noise types under one colour mode: Perlin needs octaves, the cellular types look clean with 1-2
+const nbase = { ...BASE, colorMode: "cosine", cosineName: "neon", base: 6 };
+write("noise-perlin", { ...nbase, scaleX: 0.02, scaleY: 0.02, octaves: 5, fieldType: "perlin" });
+write("noise-cells", { ...nbase, scaleX: 0.03, scaleY: 0.03, octaves: 1, fieldType: "cells" });
+write("noise-borders", { ...nbase, scaleX: 0.03, scaleY: 0.03, octaves: 1, fieldType: "borders" });
+write("noise-smooth", { ...nbase, scaleX: 0.03, scaleY: 0.03, octaves: 1, fieldType: "smooth" });
+// 9) Relief lighting off and on, over a warped field so the slopes are visible
+const rbase = { ...BASE, octaves: 4, warpStrength: 1.6, warpScale: 0.5, colorMode: "gradient", gradientName: "sunset", base: 5 };
+write("relief-off", { ...rbase });
+write("relief-on", { ...rbase, reliefOn: true, reliefGain: 4, lightAzimuth: 315, lightElevation: 45, reliefAmbient: 0.35, reliefSpec: 0.25, reliefShine: 32 });
 
 console.log("guide images →", OUT);
