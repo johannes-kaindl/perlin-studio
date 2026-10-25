@@ -6,6 +6,9 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **GPU check page** — `examples/gpu-check.html` (live: <https://pages.jkaindl.de/perlin-studio/examples/gpu-check.html>) runs the CPU-against-GPU parity check in the browser it is opened in, with a pass/fail table, the GPU speed on that device and a copyable result. The check itself moved to `perlin-gl-check.js`, which `scripts/check-gl-parity.mjs` now only drives, so a phone runs exactly what the developer gate runs.
+
 ## [0.18.1] — 2026-10-26
 
 ### Fixed

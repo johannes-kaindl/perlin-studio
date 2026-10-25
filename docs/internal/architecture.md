@@ -23,6 +23,7 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 ├── perlin-presets.js      # gradients, built-in presets, resolveParams (shared)
 ├── perlin-engine.js       # headless render engine (worker lifecycle + RAF loop)
 ├── perlin-gl.js           # optional WebGL2 renderer (GLSL port of the noise maths)
+├── perlin-gl-check.js     # CPU-vs-GPU parity check, runs in any browser (not loaded by the studio)
 ├── perlin-studio.js       # controller (UI bindings, recording, presets) — consumes the engine
 ├── perlin-element.js      # <perlin-noise> embeddable renderer-only custom element
 ├── perlin-export.js       # pure compositing math for video export (window.MTPerlinExport)
@@ -32,6 +33,7 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 │                          #   + legacy default-atlas.webp for the archive)
 ├── examples/
 │   ├── embed.html         # <perlin-noise> embedding demo
+│   ├── gpu-check.html     # runs perlin-gl-check.js on a device (phone, other machine)
 │   └── marble.json        # resolved preset export for the src demo
 ├── scripts/
 │   ├── check-syntax.mjs        # syntax gate (external perlin*.js + inline <script>), gates the deploy

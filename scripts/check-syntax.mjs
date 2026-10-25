@@ -30,6 +30,7 @@ const jsFiles = [
   'perlin-presets.js',
   'perlin-engine.js',
   'perlin-gl.js',
+  'perlin-gl-check.js',
   'perlin-export.js',
   'perlin-studio.js',
   'perlin-element.js',

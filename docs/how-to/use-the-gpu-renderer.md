@@ -20,6 +20,6 @@ Even with GPU selected, a frame uses the CPU when the colour mode is **Flow** or
 
 ## Is the picture really the same?
 
-It is checked, not assumed. `scripts/check-gl-parity.mjs` renders each case on both paths in a real browser and compares: at most one colour level apart, tiling exact, loop closure bytewise. It needs Playwright and is run by hand after touching `perlin-gl.js` or the maths in `perlin.js`. The two paths differ only by float32 against float64 rounding.
+It is checked, not assumed. You can run the check yourself in any browser, including a phone: open the [GPU check page](https://pages.jkaindl.de/perlin-studio/examples/gpu-check.html), press **Run the check** and read the verdict; it also shows how fast the GPU path is on that device. The developers' version, `scripts/check-gl-parity.mjs` renders each case on both paths in a real browser and compares: at most one colour level apart, tiling exact, loop closure bytewise. It needs Playwright and is run by hand after touching `perlin-gl.js` or the maths in `perlin.js`. The two paths differ only by float32 against float64 rounding.
 
 How it is built: [Architecture, GPU renderer](../explanation/architecture.md#gpu-renderer-perlin-gljs).

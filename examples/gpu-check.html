@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Perlin Studio — GPU check</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f3f0e6; --fg: #1b1b1b; --dim: #6b675c; --card: #fffdf6; --line: #d8d3c3; --ok: #1a7f37; --bad: #b3261e; --accent: #1ea84a; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0b0d10; --fg: #e8e6e0; --dim: #9aa4ad; --card: #14181d; --line: #2a3139; --ok: #4cc26b; --bad: #ff7b72; --accent: #39ff7a; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+    main { max-width: 46rem; margin: 0 auto; padding: 1.25rem 16px 3rem; }
+    h1 { font-size: 1.35rem; margin: 0 0 .25rem; }
+    p { margin: .5rem 0; }
+    .dim { color: var(--dim); font-size: .9rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+    button { font: inherit; padding: .7rem 1.1rem; border-radius: 10px; border: 1px solid var(--line); background: var(--accent); color: #04140a; font-weight: 600; min-height: 44px; }
+    button.secondary { background: transparent; color: var(--fg); }
+    button:disabled { opacity: .5; }
+    #verdict { font-size: 1.6rem; font-weight: 700; margin: 0; }
+    #verdict.pass { color: var(--ok); } #verdict.fail { color: var(--bad); }
+    .row { display: grid; grid-template-columns: 3.2rem 1fr; gap: 0 .5rem; padding: .4rem 0; border-bottom: 1px solid var(--line); font-size: .85rem; }
+    .row .s { font-weight: 700; } .row .s.ok { color: var(--ok); } .row .s.bad { color: var(--bad); }
+    .row .n { word-break: break-word; } .row .d { grid-column: 2; color: var(--dim); font-size: .78rem; word-break: break-word; }
+    .row.wide { grid-template-columns: 1fr; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 8rem; font: .8rem/1.4 ui-monospace, monospace; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: .5rem; }
+    progress { width: 100%; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: .2rem .8rem; margin: 0; font-size: .85rem; }
+    dt { color: var(--dim); } dd { margin: 0; word-break: break-word; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Perlin Studio — GPU check</h1>
+  <p class="dim">Renders each test case on the CPU and on the GPU (WebGL2) in <em>this</em> browser and compares the pixels. It is the same check the developer runs; it takes a few seconds and changes nothing.</p>
+
+  <div class="card">
+    <dl id="env"></dl>
+  </div>
+
+  <p><button id="run">Run the check</button></p>
+  <progress id="bar" max="1" value="0" hidden></progress>
+
+  <div class="card" id="result" hidden>
+    <p id="verdict"></p>
+    <p class="dim" id="summary"></p>
+    <div id="rows"></div>
+    <h2 style="font-size:1rem;margin:1rem 0 .25rem">Speed on this device</h2>
+    <div id="bench"></div>
+  </div>
+
+  <div class="card" id="share" hidden>
+    <p>Send this text back (copy it, or select it and copy by hand):</p>
+    <textarea id="text" readonly></textarea>
+    <p><button class="secondary" id="copy">Copy result</button> <span class="dim" id="copied"></span></p>
+  </div>
+</main>
+
+<script src="../perlin.js"></script>
+<script src="../perlin-presets.js"></script>
+<script src="../perlin-gl.js"></script>
+<script src="../perlin-gl-check.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+function webglRenderer() {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    if (!gl) return null;
+    const e = gl.getExtension("WEBGL_debug_renderer_info");
+    return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : "(hidden by the browser)";
+  } catch (e) { return null; }
+}
+const env = {
+  "Browser": navigator.userAgent,
+  "Screen": `${screen.width}×${screen.height} @ ${window.devicePixelRatio}×`,
+  "WebGL2": webglRenderer() || "not available",
+  "Check script": window.MTPerlinGLCheck ? "loaded" : "MISSING",
+};
+$("env").innerHTML = Object.entries(env).map(([k, v]) => `<dt>${k}</dt><dd></dd>`).join("");
+Object.values(env).forEach((v, i) => { $("env").querySelectorAll("dd")[i].textContent = v; });
+
+let lastText = "";
+$("run").addEventListener("click", async () => {
+  const btn = $("run"); btn.disabled = true; btn.textContent = "Running …";
+  $("bar").hidden = false;
+  let out;
+  try {
+    out = await MTPerlinGLCheck.run({ onProgress: (d, t) => { $("bar").value = d / t; } });
+  } catch (e) { out = { skip: "error: " + e.message }; }
+  $("bar").hidden = true; btn.disabled = false; btn.textContent = "Run again";
+  $("result").hidden = false; $("share").hidden = false;
+  if (out.skip) {
+    $("verdict").className = "fail"; $("verdict").textContent = "Not run";
+    $("summary").textContent = out.skip;
+    $("rows").innerHTML = ""; $("bench").innerHTML = "";
+    lastText = `GPU check NOT RUN: ${out.skip}\n${Object.entries(env).map(([k, v]) => k + ": " + v).join("\n")}`;
+    $("text").value = lastText; return;
+  }
+  const failed = out.rows.filter((r) => !r.ok);
+  $("verdict").className = failed.length ? "fail" : "pass";
+  $("verdict").textContent = failed.length ? `FAIL — ${failed.length} of ${out.rows.length} checks` : `PASS — all ${out.rows.length} checks`;
+  $("summary").textContent = "GPU renderer: " + out.renderer;
+  $("rows").innerHTML = "";
+  for (const r of out.rows) {
+    const tr = document.createElement("div"); tr.className = "row";
+    const d = r.max === undefined ? (r.note || "") : `max ${r.max}, mean ${r.mean.toFixed(4)}${r.note || ""}`;
+    tr.innerHTML = `<span class="s ${r.ok ? "ok" : "bad"}">${r.ok ? "ok" : "FAIL"}</span><span class="n"></span>` + (d ? `<span class="d"></span>` : "");
+    tr.children[1].textContent = r.name; if (d) tr.children[2].textContent = d;
+    $("rows").appendChild(tr);
+  }
+  const bench = MTPerlinGLCheck.benchmark() || {};
+  $("bench").innerHTML = "";
+  for (const [k, v] of Object.entries(bench)) {
+    const tr = document.createElement("div"); tr.className = "row wide";
+    tr.innerHTML = `<span class="n"></span>`;
+    tr.children[0].textContent = `${k} (1280×720): ${v.toFixed(1)} ms per frame`;
+    $("bench").appendChild(tr);
+  }
+  lastText = [
+    `GPU check: ${failed.length ? "FAIL (" + failed.length + " of " + out.rows.length + ")" : "PASS (" + out.rows.length + " checks)"}`,
+    ...Object.entries(env).map(([k, v]) => k + ": " + v),
+    "GPU renderer: " + out.renderer,
+    ...Object.entries(bench).map(([k, v]) => `${k}: ${v.toFixed(1)} ms/frame at 1280x720`),
+    ...failed.map((r) => "FAIL " + r.name + (r.max !== undefined ? ` (max ${r.max})` : " " + (r.note || ""))),
+  ].join("\n");
+  $("text").value = lastText;
+});
+$("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(lastText); $("copied").textContent = "Copied."; }
+  catch (e) { $("text").select(); $("copied").textContent = "Select-all done; copy it by hand."; }
+});
+</script>
+</body>
+</html>
