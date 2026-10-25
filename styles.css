@@ -580,6 +580,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--glow
 .checkbox-row label span { color: var(--text-dim); }
 
 .select-row { margin-bottom: 8px; }
+.grid-2 + .select-row { margin-top: 10px; }
 
 /* Always-visible entry point to the custom hex palette (otherwise two
    dropdowns deep). Accent-tinted so it reads as the way to your own colours. */

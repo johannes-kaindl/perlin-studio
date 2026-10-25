@@ -15,3 +15,4 @@ Loads when you touch the math, the engine or the smoke test. Subtle math bugs lo
 - **Never queue frames.** `requestFrame` skips if `state.workerBusy` is still `true`. Recordings use `renderFrameAndWait`, which synchronizes via `state.pendingResolves`.
 - **Use transferables.** `postMessage({ ..., buffer: buf.buffer }, [buf.buffer])` → zero-copy back.
 - **Don't commit performance tweaks in `perlin3`/`perlin4` without sanity checks.**
+- **`perlin-gl.js` is a line-by-line port, not a rewrite.** The shader mirrors `perlin3`/`perlin4`, `fbm`, the warp and the colour modes, with the same Z/W pairing (`AAB` = Z shift, `AAA+1` = W shift). Don't tidy it; change both sides together and run `node scripts/check-gl-parity.mjs`. The loop angle is computed in JS on purpose: progress 1 must equal progress 0 bytewise, which `sin(2π)` in float32 would break.

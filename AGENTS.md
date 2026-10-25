@@ -14,7 +14,7 @@ Zero-dependency / no-build is a **deliberate feature** (PROF-WEB-01): the tool m
 
 ## Architecture principles
 
-- **Five plain scripts, each attaching a `window` global, loaded in order** (`file://`-safe, no ES modules): `perlin.js` → `perlin-presets.js` → `perlin-engine.js` → the consumers `perlin-studio.js` and `perlin-element.js`; `perlin-export.js` is pure compositing math.
+- **Five plain scripts, each attaching a `window` global, loaded in order** (`file://`-safe, no ES modules): `perlin.js` → `perlin-presets.js` → `perlin-engine.js` → the consumers `perlin-studio.js` and `perlin-element.js`; `perlin-export.js` is pure compositing math. `perlin-gl.js` is an optional WebGL2 port of the noise maths that `PerlinEngine` can route frames through.
 - **Render/animation logic lives in `PerlinEngine`**, not duplicated in the studio or the `<perlin-noise>` element.
 - **No dependencies** without a specific reason. A 12-KB library for one feature is OK, but discuss with the maintainer first.
 - Defensive programming **only at external boundaries** (user input, file upload). Trust internal data flow.
@@ -23,7 +23,7 @@ Zero-dependency / no-build is a **deliberate feature** (PROF-WEB-01): the tool m
 
 ## Context index
 
-- Before reading or changing `perlin*.js` or `scripts/smoke-test.js`: read `.claude/rules/perlin-core.md` (math bug classes, animation step, worker rules). It also loads by itself in Claude Code.
+- Before reading or changing `perlin*.js` (the GLSL port `perlin-gl.js` included) or `scripts/smoke-test.js`: read `.claude/rules/perlin-core.md` (math bug classes, animation step, worker rules, GPU parity). It also loads by itself in Claude Code.
 - Before adding or moving a file, or when a term is unclear (fBm, loopProgress, safeProgress, scaleT): read `docs/internal/architecture.md` (module layering, file layout, glossary).
 - Before asking why something is the way it is (zero-dep, deploy guards, `v` tag prefix, hero.png over budget, single remote): read `docs/internal/decisions.md`.
 - Before changing the math, the worker pipeline or the loop mechanics: read `docs/ARCHITECTURE.md`.
@@ -38,7 +38,8 @@ There is **no full test suite**. Instead:
 1. **Syntax gate** — parses every deployable script (external `perlin*.js` plus inline `<script>` blocks in `index.html` / `examples/`) without executing it (PROF-WEB-03): `node scripts/check-syntax.mjs`
 2. **Math smoke tests** for Perlin changes: `node scripts/smoke-test.js`. Covers permutation determinism, value range of `perlin3`/`perlin4`, loop identity at `progress=0` vs `progress=1` (bytewise and bit-exact), Z/W axis independence, and `colorize` range. For ad-hoc scripts the same pattern works (`global.window = {}` + require `perlin.js`).
 3. **Path hygiene gate** — no absolute maintainer paths in tracked Markdown: `node scripts/check-no-abs-paths.mjs`
-4. **Manual browser test** — `python3 -m http.server` and click around. The permission setup may forbid starting an HTTP server from the repo's location; if so, ask the user to test it themselves.
+4. **GPU parity** (by hand, after touching `perlin-gl.js` or the maths in `perlin.js`; needs Playwright, see the script header): `node scripts/check-gl-parity.mjs` — renders each case on the CPU and the GPU path in a real browser and compares. Exit 2 = skipped.
+5. **Manual browser test** — `python3 -m http.server` and click around. The permission setup may forbid starting an HTTP server from the repo's location; if so, ask the user to test it themselves.
 
 **Deploy:** `bash scripts/deploy-page.sh` runs gates 1–3, snapshots committed `HEAD` via `git archive` and rsyncs it to `pages.jkaindl.de/perlin-studio/`. It needs real rsync 3.x (`brew install rsync`; macOS ships `openrsync`). The script carries four macOS deploy guards (CORE-OPS-01); don't remove them.
 

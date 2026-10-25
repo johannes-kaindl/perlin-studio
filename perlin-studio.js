@@ -95,6 +95,7 @@ const els = {
 
   // Color mode
   colorMode: $("p-color-mode"),
+  backend: $("p-backend"),
   btnCustomPalette: $("btn-custom-palette"),
   // rgb
   rs: $("p-rs"), gs: $("p-gs"), bs: $("p-bs"),
@@ -841,7 +842,7 @@ function refreshRangeReadouts() { for (const sync of rangeReadouts) sync(); }
 // the FPS readout, and transformFrame applies the image mask before paint.
 const engine = new PerlinEngine(els.canvas, {
   onTick: (position) => setTValue(position),
-  onFrame: ({ fps, isMain }) => {
+  onFrame: ({ fps, isMain, backend }) => {
     if (!state.firstFrameRendered) {
       state.firstFrameRendered = true;
       els.canvasLoading.hidden = true;
@@ -850,11 +851,49 @@ const engine = new PerlinEngine(els.canvas, {
     // not just transiently in the FPS readout.
     if (isMain && els.engineMode.hidden) els.engineMode.hidden = false;
     if (engine.playing) {
-      els.fpsCounter.textContent = `${fps.toFixed(1)} fps`;
+      els.fpsCounter.textContent = `${fps.toFixed(1)} fps${backend === "gpu" ? " · GPU" : ""}`;
     }
   },
   transformFrame: (imgData) => applyMaskToImageData(imgData),
+  // The GPU path only reads pixels back when a mask would change them.
+  transformActive: () => !!(state.maskApplied && state.maskSourceImage),
+  onBackendChange: (name) => {
+    els.backend.value = name;
+    syncBackendUi();
+  },
 });
+
+// ============= RENDERER (CPU worker / GPU) =============
+// A viewer setting, not a parameter: both renderers draw the same image (perlin-gl.js is a
+// port of the maths in perlin.js, scripts/check-gl-parity.mjs measures it), so the choice is
+// neither in presets nor in exports. Remembered per browser; CPU stays the default until the
+// GPU path has seen more devices.
+const BACKEND_KEY = "perlin-studio:backend";
+function syncBackendUi() {
+  const mode = els.backend.value;
+  els.backend.title = mode === "gpu"
+    ? "Rendering on the GPU. Flow and multi-channel RGB colour modes still use the CPU."
+    : "Rendering in a worker on the CPU.";
+}
+function initBackendSelect() {
+  const gpuOption = els.backend.querySelector('option[value="gpu"]');
+  if (!window.MTPerlinGL || !MTPerlinGL.isAvailable()) {
+    gpuOption.disabled = true;
+    gpuOption.textContent = "GPU · WebGL2 (not available)";
+  } else {
+    let saved = null;
+    try { saved = localStorage.getItem(BACKEND_KEY); } catch (e) {}
+    if (saved === "gpu" && engine.setBackend("gpu") === "gpu") els.backend.value = "gpu";
+  }
+  syncBackendUi();
+  els.backend.addEventListener("change", () => {
+    const got = engine.setBackend(els.backend.value);
+    els.backend.value = got;
+    try { localStorage.setItem(BACKEND_KEY, got); } catch (e) {}
+    syncBackendUi();
+    renderOnce();
+  });
+}
 
 // ============= LIVE PREVIEW + ANIMATION =============
 function getTValue() {
@@ -1408,6 +1447,7 @@ function initThemeToggle() {
   updateExportEstimate();
   wireEvents();
   initThemeToggle();
+  initBackendSelect();
   setFrameState("paused");
   // Apply and render the first preset; the loading overlay clears on the first
   // painted frame (see onFrame). Status is set deterministically here so it

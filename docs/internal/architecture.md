@@ -10,7 +10,8 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 2. `perlin-presets.js` → `MTPerlinPresets` — `GRADIENTS`, `BUILTIN_PRESETS`, `resolveParams` (named gradient → concrete stops).
 3. `perlin-engine.js` → `PerlinEngine` — headless renderer: owns the worker, the RAF loop, and FPS smoothing. Consumers pass `onTick` / `onFrame` / `transformFrame` callbacks.
 4. `perlin-studio.js` and `perlin-element.js` are **consumers** of the engine. The studio is the full editor; `<perlin-noise>` is the embeddable renderer-only element. Keep render/animation logic in the engine, not duplicated in either consumer.
-5. `perlin-export.js` → `MTPerlinExport` — pure compositing helpers (`computeFitRect`, `compositeOverColor`, `hexToRgb`) used by the studio's video export. No DOM; Node-requirable (smoke-tested).
+5. `perlin-gl.js` → `MTPerlinGL` — optional WebGL2 renderer, a GLSL port of `perlin.js` (same permutation table, same gradients). `PerlinEngine.setBackend("gpu")` routes frames through it; unsupported modes fall back to the CPU path. Not in the standalone bundle yet (the `<perlin-noise>` element renders on the CPU).
+6. `perlin-export.js` → `MTPerlinExport` — pure compositing helpers (`computeFitRect`, `compositeOverColor`, `hexToRgb`) used by the studio's video export. No DOM; Node-requirable (smoke-tested).
 
 ## File layout
 
@@ -21,6 +22,7 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 ├── perlin.js              # math/API (noise, color modes, worker source)
 ├── perlin-presets.js      # gradients, built-in presets, resolveParams (shared)
 ├── perlin-engine.js       # headless render engine (worker lifecycle + RAF loop)
+├── perlin-gl.js           # optional WebGL2 renderer (GLSL port of the noise maths)
 ├── perlin-studio.js       # controller (UI bindings, recording, presets) — consumes the engine
 ├── perlin-element.js      # <perlin-noise> embeddable renderer-only custom element
 ├── perlin-export.js       # pure compositing math for video export (window.MTPerlinExport)
@@ -35,6 +37,7 @@ Five plain scripts, each attaching a `window` global, loaded in order (`file://`
 │   ├── check-syntax.mjs        # syntax gate (external perlin*.js + inline <script>), gates the deploy
 │   ├── smoke-test.js           # math + resolveParams invariants, gates the deploy
 │   ├── check-no-abs-paths.mjs  # CORE-META-14 gate: no absolute paths in tracked *.md
+│   ├── check-gl-parity.mjs     # CPU vs GPU pixel comparison, by hand (needs Playwright)
 │   ├── deploy-page.sh          # publish committed HEAD to pages.jkaindl.de (rsync)
 │   ├── bump-version.sh         # native version bump (macos/packaging/Info.plist)
 │   ├── render-readme-images.js # renders assets/*.png from perlin.js (+ oxipng)

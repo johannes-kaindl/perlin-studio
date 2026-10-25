@@ -152,6 +152,7 @@ node type with the same `type` attribute (where shown).
 |---|---|---|---|
 | Width | `p-w` | `<input type="number">` | 4–1024, default 256 |
 | Height | `p-h` | `<input type="number">` | 4–1024, default 256 |
+| Renderer | `p-backend` | `<select>` | `cpu` (worker, default) / `gpu` (WebGL2; disabled when unavailable). A viewer setting kept in `localStorage`, not part of presets or exports |
 
 ### Noise
 

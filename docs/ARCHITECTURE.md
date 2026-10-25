@@ -33,11 +33,13 @@ and double-click-to-run is a hard requirement.
 perlin.js          → MTPerlin          math + WORKER_SOURCE (pure, no DOM)
 perlin-presets.js  → MTPerlinPresets   GRADIENTS, BUILTIN_PRESETS, resolveParams
 perlin-engine.js   → PerlinEngine      headless renderer: worker + RAF + FPS
+perlin-gl.js       → MTPerlinGL        optional WebGL2 renderer (GLSL port of perlin.js)
 perlin-studio.js   (controller)        ─┐ both consume PerlinEngine
 perlin-element.js  (<perlin-noise>)    ─┘
 
 scripts/
 ├── smoke-test.js                  ← math + resolveParams invariants, gates CI
+├── check-gl-parity.mjs            ← CPU vs GPU pixel comparison (needs Playwright, run by hand)
 ├── render-readme-images.js        ← regenerates assets/*.png
 ├── render-readme-videos.js        ← regenerates docs/examples/*.webm
 └── build-standalone.js            ← concatenates the 4 runtime scripts → dist/
@@ -474,6 +476,16 @@ Safari versions under `file://`), `state.worker = null` and
 `generatePerlinImage` directly from `perlin.js`.
 
 Tell-tale: the FPS counter shows `... fps (main)`.
+
+### GPU renderer (`perlin-gl.js`)
+
+`engine.setBackend("gpu")` routes frames through a WebGL2 fragment shader instead of the worker. It is a port, not a second noise: the shader reads the same permutation table (`makePermutation(base)`, uploaded as a 512×2 `R8` texture, row 0 = seed, row 1 = layer 2 seed), the same 32 gradients, and mirrors `perlin3`/`perlin4`, `fbm`, the domain warp, tiling, layer 2 and the rgb / gradient / hsv / posterize colour modes line by line. The same preset therefore gives the same image on both renderers.
+
+What differs is precision: the CPU path is float64, the shader float32, and the colour is rounded once on each side, so a pixel can be one level off. A pixel whose posterize value sits within float32 rounding of a band edge can land in the neighbouring band (a handful of pixels per frame). `scripts/check-gl-parity.mjs` renders each case on both paths in a real browser and compares; it has a negative control (a different seed must differ) and was run against a mutant (the Z/W swap of math bug class 2), which it caught in all ten loop cases.
+
+The loop angle (`safeProgress`, `cos`, `sin`) is computed in JS and passed as uniforms. The shader never takes `sin(2π)` itself, so progress 1 is bytewise progress 0 on the GPU as well.
+
+What the shader does not cover renders on the CPU, frame by frame, chosen in `supports(params)`: the `flow` colour mode and multi-channel RGB (several noise samples per pixel), and gradients with more than 16 stops. A GPU error (lost context, driver bug) drops the engine back to `"cpu"` for good and the failed frame is rendered on the CPU, so a recording never skips a frame. The shader draws into its own off-screen canvas and the engine copies it into the visible 2D canvas, so the mask, the PNG export and the recorder work unchanged; pixels are only read back when a mask is active.
 
 ---
 

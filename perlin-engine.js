@@ -19,6 +19,14 @@
  *                                      carries the smoothed FPS for a readout.
  *   - transformFrame(imageData)        mutate pixels in place before paint
  *                                      (e.g. apply an alpha mask).
+ *   - transformActive()                tells the GPU path whether transformFrame
+ *                                      would change anything right now; without
+ *                                      it every frame pays a pixel read-back.
+ *
+ * Two backends render the same params: "cpu" (worker, the default) and "gpu"
+ * (perlin-gl.js, WebGL2). `setBackend("gpu")` opts in; frames the GPU renderer
+ * does not support (flow / multi-channel colour modes) quietly use the CPU
+ * path, and a GPU failure drops back to "cpu" for good (`onBackendChange`).
  *
  * @license AGPL-3.0-or-later
  */
@@ -36,6 +44,11 @@
       this.onTick = opts.onTick || null;
       this.onFrame = opts.onFrame || null;
       this.transformFrame = opts.transformFrame || null;
+      this.transformActive = opts.transformActive || null;
+      this.onBackendChange = opts.onBackendChange || null;
+
+      this._backend = "cpu";
+      this._gl = null;          // perlin-gl.js renderer, created on first setBackend("gpu")
 
       this.params = null;
       this.worker = null;
@@ -87,6 +100,29 @@
 
     /** Store the current params. Does not render. */
     setParams(params) { this.params = params; }
+
+    get backend() { return this._backend; }
+
+    /**
+     * Choose the renderer: "cpu" (worker) or "gpu" (WebGL2). Returns the backend
+     * that is active afterwards — "gpu" falls back to "cpu" when WebGL2 or the
+     * module is missing. Does not render; call renderOnce() to repaint.
+     */
+    setBackend(name) {
+      let next = "cpu";
+      if (name === "gpu") {
+        const G = root.MTPerlinGL;
+        if (!this._gl && G && G.isAvailable()) this._gl = G.createRenderer();
+        if (this._gl) next = "gpu";
+      }
+      if (next !== this._backend) {
+        this._backend = next;
+        if (this.onBackendChange) this.onBackendChange(next);
+      }
+      return next;
+    }
+
+    _useGpu(params) { return this._backend === "gpu" && !!this._gl && this._gl.supports(params); }
 
     get playing() { return this._playing; }
     get fps() { return this.fpsEMA; }
@@ -159,6 +195,7 @@
     // the worker is busy the request is dropped; wall-clock timing means the
     // next tick simply renders the then-current position.
     _requestFrame(params) {
+      if (this._useGpu(params) && this._renderGpu(params)) return;
       if (!this.worker) { this._renderInMain(params); return; }
       if (this.workerBusy) return;
       this.workerBusy = true;
@@ -171,6 +208,7 @@
      * recording where every frame must land (the skip logic would drop frames).
      */
     renderFrameAndWait(params) {
+      if (this._useGpu(params) && this._renderGpu(params)) return Promise.resolve();
       if (!this.worker) { this._renderInMain(params); return Promise.resolve(); }
       return new Promise((resolve, reject) => {
         const id = ++this.workerJobId;
@@ -194,6 +232,34 @@
         this.ctx.putImageData(imgData, 0, 0);
       }
       this._measureFps(true);
+    }
+
+    // GPU frames are synchronous. Bumping latestJobId makes any worker frame still
+    // in flight (from before a backend switch) stale, so it cannot overwrite this one.
+    // Returns false when the GPU failed and the engine switched to "cpu": the caller
+    // then renders the frame on the CPU path, so a recording never skips a frame.
+    _renderGpu(params) {
+      this.latestJobId = ++this.workerJobId;
+      try {
+        if (this.canvas.width !== params.width || this.canvas.height !== params.height) {
+          this.canvas.width = params.width;
+          this.canvas.height = params.height;
+        }
+        this._gl.render(params, this.ctx);
+      } catch (err) {
+        // Lost context, driver bug: give the CPU path the frame and stay there.
+        if (typeof console !== "undefined") console.warn("GPU renderer failed, using the CPU path:", err && err.message);
+        this._gl = null;
+        this.setBackend("cpu");
+        return false;
+      }
+      if (this.transformFrame && (!this.transformActive || this.transformActive())) {
+        const imgData = this.ctx.getImageData(0, 0, params.width, params.height);
+        this.transformFrame(imgData);
+        this.ctx.putImageData(imgData, 0, 0);
+      }
+      this._measureFps(false);
+      return true;
     }
 
     _onWorkerMessage(e) {
@@ -226,13 +292,14 @@
         this.fpsEMA = this.fpsEMA ? this.fpsEMA * 0.85 + inst * 0.15 : inst;
       }
       this.lastFrameTime = now;
-      if (this.onFrame) this.onFrame({ position: this.position, fps: this.fpsEMA, isMain: !!isMain });
+      if (this.onFrame) this.onFrame({ position: this.position, fps: this.fpsEMA, isMain: !!isMain, backend: this._backend });
     }
 
     /** Stop the loop, terminate the worker, drop pending resolves. */
     destroy() {
       this.pause();
       if (this.worker) { this.worker.terminate(); this.worker = null; }
+      if (this._gl) { this._gl.destroy(); this._gl = null; }
       this.pendingResolves = [];
     }
   }

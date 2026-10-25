@@ -2,6 +2,16 @@
 
 Why things are the way they are. One entry per decision, newest first. The agent core (`AGENTS.md`) carries only the rule; the reason lives here.
 
+## 2026-10-25 — the GPU renderer is a port of the CPU maths, opt-in, and stays out of presets
+
+A WebGL2 spike (4D loop fBm with a hash-based noise) rendered 1080p in 7 ms against 1.2 s for the CPU path, which made a GPU renderer worth building. Three choices:
+
+- **Port, not a second noise.** `perlin-gl.js` reads the same permutation table and gradients and mirrors the CPU functions, so a preset renders the same image on both renderers and the repo's determinism claims (ANGEBOT) survive. A shader-native noise (integer hash) would have been simpler and a little faster but would have forked every seed into two images. `scripts/check-gl-parity.mjs` is the proof: at most one colour level apart, tile exact, loop closure bytewise.
+- **Opt-in, per viewer.** The renderer select defaults to CPU and lives in `localStorage`, not in presets or exports: it changes speed, never the image. Revisit the default after the GPU path has run on more than one machine (only an Apple M5 Pro, Chromium, was measured).
+- **Fallback instead of parity everywhere.** Flow and multi-channel RGB need several noise samples per pixel and render on the CPU, frame by frame, rather than being ported in the first slice.
+
+The Metal port in `macos/` is a second, independent copy of the same maths; the parity script does not cover it.
+
 ## 2026-10-25 — hero.png stays 1200×630 and over the PNG budget
 
 `assets/hero.png` is the `og:image` (`index.html` declares 1200×630). Lossless recompression (`oxipng -o max -Z`) takes it from 832 KB to 576 KB, not below the 400 KB budget; the noise does not compress further. A 984×517 render fits (379 KB) but trips the linter's `image-scale` check (it assumes dpr-2 captures and flags files under 1200 px embedded wider than half their width), and embedding at 492 px would make the README hero much smaller. The gallery images were rendered at 560 px instead of 700 px (embedded at 280 px, 2× for retina) and all fit. Revisit if the linter learns to treat rendered images differently, or if `image-budget` starts weighing `assets/`.

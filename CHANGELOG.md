@@ -7,6 +7,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **GPU renderer (WebGL2)** (web) — new `perlin-gl.js` and a *Renderer* select
+  in the studio (CPU · worker / GPU · WebGL2, remembered per browser, CPU stays
+  the default). The fragment shader is a line-by-line port of the maths in
+  `perlin.js` and reads the same seeded permutation table, so a preset renders
+  the same image on both renderers (float32 against float64: at most one colour
+  level apart, measured by `scripts/check-gl-parity.mjs`). Loop closure stays
+  bytewise on the GPU because the loop angle is computed in JS. Measured on an
+  M5 Pro at 1080p, 6 octaves: about 1.2 s per frame on the CPU, a few
+  milliseconds on the GPU. The flow and multi-channel RGB colour modes (and
+  gradients with more than 16 stops) still render on the CPU, frame by frame; a
+  GPU failure drops back to the CPU for good.
 - **Video export bakes the mask + a background** (web) — the recorder now
   composites the active image mask and a chosen background (solid color,
   imported image with cover/contain, or best-effort transparent) into the

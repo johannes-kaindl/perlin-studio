@@ -80,6 +80,8 @@ live preview updates after every input.
   / export
 - **Worker-accelerated** — main thread stays free, frame-skip without
   drift, wall-clock time as animation basis
+- **Optional GPU renderer** — a WebGL2 port of the same noise (*Renderer* →
+  GPU); same image, orders of magnitude faster at large sizes
 - **Dark + light theme**, follows the OS by default; a sun/moon toggle
   in the topbar pins an explicit choice across reloads
 
@@ -242,6 +244,7 @@ animation smooth even at low resolutions.
 ├── perlin.js              # math/API (3D + 4D noise, color modes, worker source)
 ├── perlin-presets.js      # gradients, built-in presets, resolveParams (shared)
 ├── perlin-engine.js       # headless render engine (worker + RAF loop)
+├── perlin-gl.js           # optional WebGL2 renderer (port of the noise maths)
 ├── perlin-studio.js       # controller (UI, recording, presets, events)
 ├── perlin-element.js      # <perlin-noise> embeddable custom element
 ├── manifest.webmanifest   # PWA manifest (installable)
