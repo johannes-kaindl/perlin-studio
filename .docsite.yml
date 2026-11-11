@@ -1,0 +1,5 @@
+# Opt-in fuer docs.jkaindl.de (Aggregator: jkaindl/mkdocs).
+# Das ist der dezentrale Schluessel; der zentrale steht in mkdocs/repos.yml.
+# Erst beide zusammen machen die Doku dieses Repos oeffentlich, gelesen wird
+# dafuer der Branch main. Diese Datei entfernen oder `false` setzen = privat.
+public: true
